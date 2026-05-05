@@ -1,0 +1,1143 @@
+/* ─── Overlay ─────────────────────────────────────────── */
+.adm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: adm-fade 0.18s ease;
+}
+
+@keyframes adm-fade {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+/* ─── Login card ─────────────────────────────────────── */
+.adm-login {
+  background: #fff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 360px;
+  padding: 0 32px 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.30);
+  animation: adm-up 0.24s cubic-bezier(0.34, 1.4, 0.64, 1);
+  overflow: hidden;
+  text-align: center;
+}
+
+@keyframes adm-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.97) }
+  to   { opacity: 1; transform: translateY(0)    scale(1)    }
+}
+
+/* Top accent bar */
+.adm-login__accent {
+  height: 4px;
+  background: linear-gradient(90deg, #4a5a1e 0%, #b5c840 50%, #4a5a1e 100%);
+  margin: 0 -32px 28px;
+}
+
+/* Logo container */
+.adm-login__logo-wrap {
+  width: 72px;
+  height: 72px;
+  background: #f8f9f3;
+  border: 1.5px solid #e5e8d8;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  box-shadow: 0 2px 8px rgba(74, 90, 30, 0.1);
+  overflow: hidden;
+  padding: 10px;
+}
+
+.adm-login__logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.adm-login__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+}
+
+.adm-login__sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #7a8c2e;
+  margin: 0 0 24px;
+}
+
+.adm-login__line {
+  flex: 1;
+  height: 1px;
+  background: #e5e8d8;
+}
+
+.adm-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Password input */
+.adm-pw {
+  position: relative;
+}
+
+.adm-pw__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 42px 12px 14px;
+  border: 1.5px solid #e0e4cc;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  color: #222;
+  background: #fafaf8;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.adm-pw__input:focus {
+  border-color: #7a8c2e;
+  box-shadow: 0 0 0 3px rgba(122, 140, 46, 0.12);
+  background: #fff;
+}
+
+.adm-pw__input::placeholder {
+  color: #aaa;
+}
+
+.adm-pw__eye {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.adm-pw__eye:hover {
+  color: #7a8c2e;
+}
+
+.adm-pw__err {
+  color: #c0392b;
+  font-size: 12px;
+  margin: 0;
+  text-align: left;
+}
+
+.adm-login__btn {
+  width: 100%;
+  padding: 13px;
+  background: #7a8c2e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.15s;
+  margin-top: 2px;
+}
+
+.adm-login__btn:hover {
+  background: #8fa030;
+  transform: translateY(-1px);
+}
+
+.adm-login__hint {
+  color: #ccc;
+  font-size: 11px;
+  margin: 16px 0 0;
+}
+
+/* ─── Dashboard panel ────────────────────────────────── */
+.adm-dash {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 980px;
+  max-height: 92vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #e5e8d8 transparent;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.30);
+  animation: adm-up 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* ─── Header ──────────────────────────────────────────── */
+.adm-dash__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+}
+
+.adm-dash__hl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adm-dash__logo-box {
+  width: 36px;
+  height: 36px;
+  background: #f8f9f3;
+  border: 1px solid #e5e8d8;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 5px;
+  flex-shrink: 0;
+}
+
+.adm-dash__logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.adm-dash__name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-dash__badge {
+  background: #f2f6e0;
+  color: #5a6c1e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.adm-dash__live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.adm-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7a8c2e;
+  animation: adm-pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes adm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1)    }
+  50%       { opacity: 0.6; transform: scale(0.85) }
+}
+
+.adm-dash__hr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Header buttons */
+.adm-hbtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  background: #fafaf8;
+  color: #777;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.adm-hbtn:hover {
+  background: #f2f6e0;
+  border-color: #d5e0a8;
+  color: #5a6c1e;
+}
+
+.adm-hbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.adm-hbtn--primary {
+  background: #f2f6e0;
+  border-color: #d5e0a8;
+  color: #5a6c1e;
+}
+
+.adm-hbtn--primary:hover {
+  background: #e8f0c8;
+  border-color: #b5c840;
+}
+
+.adm-hbtn--close {
+  background: #fafaf8;
+  border-color: #eee;
+  color: #999;
+}
+
+.adm-hbtn--close:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #c0392b;
+}
+
+/* ─── Period bar ─────────────────────────────────────── */
+.adm-period-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafaf8;
+}
+
+.adm-period-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #bbb;
+  margin-right: 8px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.adm-period-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.adm-period-btn:hover {
+  background: #f2f6e0;
+  color: #5a6c1e;
+}
+
+.adm-period-btn.active {
+  background: #7a8c2e;
+  color: #fff;
+  border-color: #7a8c2e;
+}
+
+/* ─── Body ───────────────────────────────────────────── */
+.adm-dash__body {
+  padding: 20px 20px 24px;
+}
+
+.adm-loading {
+  color: #aaa;
+  font-size: 14px;
+  text-align: center;
+  padding: 48px 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Section label */
+.adm-section-lbl {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #bbb;
+  margin: 0 0 10px;
+}
+
+/* ─── Stats grid ─────────────────────────────────────── */
+.adm-grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.adm-grid5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.adm-card {
+  background: #fff;
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  padding: 14px 16px 12px;
+  transition: box-shadow 0.18s, border-color 0.18s;
+}
+
+.adm-card:hover {
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+  border-color: #d5e0a8;
+}
+
+.adm-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.adm-card__label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #7a8c2e;
+}
+
+.adm-card__icon {
+  color: #c8d96a;
+  display: flex;
+  opacity: 0.8;
+}
+
+.adm-card__num {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  color: #111;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.adm-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adm-card__sub {
+  font-size: 11px;
+  color: #aaa;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Delta badge */
+.adm-delta {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: #f2f2f2;
+  color: #999;
+}
+
+.adm-delta.up {
+  background: #f0f8e8;
+  color: #5a8c2e;
+}
+
+.adm-delta.down {
+  background: #fef2f2;
+  color: #c0392b;
+}
+
+/* ─── Conversions ────────────────────────────────────── */
+.adm-conv-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.adm-conv-row--3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.adm-conv-panel {
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.adm-conv-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adm-conv-title svg {
+  color: #aaa;
+  flex-shrink: 0;
+}
+
+.adm-conv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.adm-conv-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-conv-src {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-conv-bar-bg {
+  display: none;
+}
+
+.adm-conv-num {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #111;
+  min-width: 24px;
+  text-align: right;
+}
+
+.adm-conv-pct {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #bbb;
+  min-width: 34px;
+  text-align: right;
+}
+
+.adm-conv-empty {
+  color: #ccc;
+  font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+  padding: 8px 0;
+}
+
+/* ─── Charts row ─────────────────────────────────────── */
+.adm-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.adm-chart-panel {
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.adm-chart-panel__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  margin: 0 0 14px;
+}
+
+/* Distribution */
+.adm-dist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-dist__row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-dist__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.adm-dist__label {
+  font-size: 12px;
+  color: #444;
+  font-family: 'Montserrat', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm-dist__bar-bg {
+  display: none; /* hide bar, use spacing instead */
+}
+
+.adm-dist__num {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #222;
+}
+
+.adm-dist__pct {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #aaa;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Line chart */
+.adm-chart-wrap {
+  width: 100%;
+}
+
+.adm-svg-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.adm-chart-xlabel {
+  fill: #bbb;
+  font-size: 9px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.adm-chart-empty {
+  color: #ccc;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.adm-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.adm-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.adm-legend-dash {
+  width: 18px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg, #25d366 0px, #25d366 4px, transparent 4px, transparent 7px
+  );
+  margin-left: 8px;
+}
+
+.adm-legend-text {
+  font-size: 11px;
+  color: #aaa;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ─── Tab separator ─────────────────────────────────── */
+.adm-tab-btn {
+  font-weight: 800 !important;
+}
+.adm-period-sep {
+  width: 1px;
+  height: 18px;
+  background: #e8e8e8;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ─── Fallback warning ───────────────────────────────── */
+.adm-fallback-warn {
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  color: #92400e;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  padding: 10px 20px;
+}
+
+.adm-fallback-warn strong {
+  font-weight: 800;
+}
+
+/* ─── Users section ──────────────────────────────────── */
+.adm-users {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-users__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+}
+
+.adm-users__count {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.adm-users__loading {
+  color: #aaa;
+  font-size: 13px;
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+}
+
+.adm-users__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.adm-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #f5f5f5;
+  background: #fff;
+  transition: background 0.15s;
+}
+
+.adm-user-row:last-child {
+  border-bottom: none;
+}
+
+.adm-user-row:hover {
+  background: #fafaf8;
+}
+
+.adm-user-row--me {
+  background: #f8faf2;
+}
+
+.adm-user-row__icon {
+  color: #ccc;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.adm-user-row__name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #222;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adm-user-row__you {
+  background: #f2f6e0;
+  color: #5a6c1e;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 99px;
+  letter-spacing: 0.04em;
+}
+
+.adm-user-row__date {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #bbb;
+}
+
+.adm-user-row__btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid #eee;
+  background: #fafaf8;
+  color: #aaa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.adm-user-row__btn:hover {
+  background: #f2f6e0;
+  border-color: #d5e0a8;
+  color: #5a6c1e;
+}
+
+.adm-user-row__btn--del:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #c0392b;
+}
+
+.adm-user-row__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Change password inline */
+.adm-users__change {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f8faf2;
+  border: 1px solid #d5e0a8;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.adm-users__change-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Add user form */
+.adm-users__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adm-users__input {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 12px;
+  border: 1.5px solid #e0e4cc;
+  border-radius: 9px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  color: #222;
+  background: #fafaf8;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.adm-users__input:focus {
+  border-color: #7a8c2e;
+  background: #fff;
+}
+
+.adm-users__err {
+  color: #c0392b;
+  font-size: 12px;
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+}
+
+/* Small buttons */
+.adm-btn-sm {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #e0e4cc;
+  background: #fafaf8;
+  color: #666;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.adm-btn-sm:hover {
+  background: #f0f0f0;
+}
+
+.adm-btn-sm--green {
+  background: #7a8c2e;
+  border-color: #7a8c2e;
+  color: #fff;
+}
+
+.adm-btn-sm--green:hover {
+  background: #8fa030;
+}
+
+.adm-btn-sm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ─── Activities section ─────────────────────────────── */
+.adm-activities {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-act-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f5f5f5;
+  background: #fff;
+}
+
+.adm-act-row:last-child {
+  border-bottom: none;
+}
+
+.adm-act-row__icon {
+  width: 34px;
+  height: 34px;
+  background: #f2f6e0;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a8c2e;
+  flex-shrink: 0;
+  padding: 7px;
+}
+
+.adm-act-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-act-row__name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #222;
+  display: block;
+}
+
+.adm-act-row__when {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #aaa;
+  display: block;
+  margin-top: 2px;
+}
+
+.adm-act-badge {
+  background: #f2f6e0;
+  color: #5a6c1e;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 99px;
+  margin-left: 6px;
+  letter-spacing: 0.03em;
+}
+
+.adm-act-row--editing {
+  background: #f8faf2;
+  border-left: 3px solid #7a8c2e;
+}
+
+.adm-act-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: #f8faf2;
+  border: 1.5px solid #d5e0a8;
+  border-radius: 10px;
+}
+
+.adm-act-edit__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.adm-act-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.adm-act-form__preview {
+  width: 38px;
+  height: 38px;
+  background: #f2f6e0;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a8c2e;
+  flex-shrink: 0;
+  padding: 7px;
+  transition: background 0.15s;
+}
+
+.adm-act-form__name {
+  flex: 2 !important;
+  min-width: 160px !important;
+}
+
+.adm-act-form__field {
+  flex: 1 !important;
+  min-width: 110px !important;
+}
+
+.adm-act-rec-wrap {
+  display: flex;
+  gap: 6px;
+  flex: 2;
+  min-width: 220px;
+}
+
+.adm-act-rec-wrap .adm-users__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.adm-act-tipo {
+  display: flex;
+  border: 1.5px solid #e0e4cc;
+  border-radius: 9px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.adm-act-tipo button {
+  padding: 8px 12px;
+  border: none;
+  background: #fafaf8;
+  color: #888;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.adm-act-tipo button + button {
+  border-left: 1.5px solid #e0e4cc;
+}
+
+.adm-act-tipo button.active {
+  background: #7a8c2e;
+  color: #fff;
+}
+
+/* ─── Responsive ─────────────────────────────────────── */
+@media (max-width: 720px) {
+  .adm-grid4,
+  .adm-grid5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .adm-charts-row,
+  .adm-conv-row,
+  .adm-conv-row--3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .adm-dash__header {
+    padding: 12px 14px;
+  }
+  .adm-dash__body {
+    padding: 14px 14px 20px;
+  }
+  .adm-grid4,
+  .adm-grid5 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .adm-card__num {
+    font-size: 24px;
+  }
+  .adm-period-bar {
+    padding: 8px 14px;
+    overflow-x: auto;
+  }
+  .adm-login {
+    padding: 0 22px 24px;
+  }
+  .adm-login__accent {
+    margin: 0 -22px 22px;
+  }
+}

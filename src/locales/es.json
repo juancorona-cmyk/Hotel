@@ -1,0 +1,183 @@
+{
+  "nav": {
+    "inicio": "INICIO",
+    "nosotros": "NOSOTROS",
+    "habitaciones": "HABITACIONES",
+    "videos": "VIDEOS",
+    "restaurante": "RESTAURANTE",
+    "eventos": "SALÓN DE EVENTOS",
+    "ubicacion": "UBICACIÓN"
+  },
+"hero": {
+     "titulo": "MORELIA",
+      "subtitulo": "Un lugar de descanso",
+     "titulosDinamicos": ["TRADICIÓN", "NATURALEZA", "HOSPITALIDAD",
+     "COMODIDAD", "EXCLUSIVIDAD"],
+     "btn": "Reservar Ahora"
+   },
+
+  "nosotros": {
+    "lead": "Hotel Punta Galería, tu refugio en Morelia",
+    "p1": "Nuestra historia comenzó hace aproximadamente 40 años bajo el nombre de Hostal Real Camelinas. En febrero de 2011, evolucionamos para convertirnos en Hotel Punta Galería, manteniendo siempre nuestra esencia de hospitalidad.",
+    "p2": "Descansa en un ambiente tranquilo, rodeado de jardines, a solo minutos del Centro Histórico. Ya sea por negocios o por placer, aquí encontrarás la combinación perfecta de comodidad, ubicación y calidez."
+  },
+  "stats": {
+    "anos": "Años de experiencia",
+    "habitaciones": "Habitaciones",
+    "eventos": "Eventos realizados",
+    "calificacion": "Calificación promedio"
+  },
+  "amenidades": {
+    "eyebrow": "TODO LO QUE NECESITAS",
+    "titulo": "Servicios & Amenidades",
+    "wifi": "Wi-Fi gratuito",
+    "estacionamiento": "Estacionamiento",
+    "ac": "Aire acondicionado",
+    "restaurante": "Restaurante",
+    "salon": "Salón de eventos",
+    "desayuno": "Desayuno incluido",
+    "checkin": "Check-in 24 hrs",
+    "ubicacion": "Ubicación céntrica",
+    "jardines": "Jardines privados",
+    "reserva": "Reserva flexible",
+    "servicio": "Servicio amable",
+    "tv": "Smart TV en habitación",
+    "actividadesEyebrow": "ACTIVIDADES EN EL HOTEL",
+    "yoga": "Yoga",
+    "pilates": "Pilates",
+    "viernes": "Viernes",
+    "sabados": "Sábados",
+    "consultarDia": "Consultar",
+    "consultarHora": "horario"
+  },
+  "habitaciones": {
+    "titulo": "HABITACIONES",
+    "label": "HABITACIÓN",
+    "personas1": "1-2 personas",
+    "personas2": "1-4 personas",
+    "kingSize": "1 Cama King Size",
+    "dosMatrimoniales": "2 Camas matrimoniales",
+    "ac": "Aire acondicionado",
+    "wifi": "Wi-Fi gratuito",
+    "tv": "Smart TV",
+    "escritorio": "Escritorio de trabajo",
+    "btn": "Reservar por WhatsApp"
+  },
+  "videos": {
+    "eyebrow": "CONOCE EL HOTEL",
+    "titulo": "Descúbrelo en Video",
+    "v1titulo": "Bienvenido a Hotel Punta Galería",
+    "v1desc": "Descubre nuestras instalaciones y áreas comunes",
+    "v2titulo": "Jardines & Restaurante",
+    "v2desc": "Naturaleza, tranquilidad y sabores únicos",
+    "v3titulo": "Habitaciones",
+    "v3desc": "Espacios cómodos y elegantes para tu descanso"
+  },
+  "restaurante": {
+    "titulo": "RESTAURANTE",
+    "p1": "Disfruta de un espacio acogedor donde la frescura y el sabor se encuentran en cada platillo. Nuestro restaurante ofrece desayunos, comidas y cenas preparados con ingredientes de calidad, en un ambiente tranquilo rodeado de naturaleza.",
+    "p2Inicio": "Es el lugar ideal para ",
+    "p2Bold": "festejar cumpleaños, reuniones de amigos o de trabajo",
+    "p2Fin": ", o simplemente para disfrutar de una comida o un café en un ambiente de tranquilidad.",
+    "btn": "VER MENÚ"
+  },
+  "eventos": {
+    "titulo": "SALÓN DE EVENTOS",
+    "desc": "Celebra tus momentos más importantes en un espacio versátil y elegante, ideal para reuniones, conferencias, talleres o celebraciones sociales. Nuestro salón se adapta a tus necesidades, ofreciendo comodidad, privacidad y el servicio que hará de tu evento una experiencia memorable.",
+    "btn": "RESERVAR UN EVENTO"
+  },
+  "testimonios": {
+    "eyebrow": "LO QUE DICEN NUESTROS HUÉSPEDES",
+    "titulo": "Reseñas",
+    "r1nombre": "María González",
+    "r1origen": "Ciudad de México",
+    "r1texto": "Un lugar increíble. Los jardines son hermosos, las habitaciones muy cómodas y el personal muy atento. El restaurante tiene una comida deliciosa. Sin duda regresaremos.",
+    "r2nombre": "Carlos Ramírez",
+    "r2origen": "Guadalajara",
+    "r2texto": "Celebramos nuestro aniversario aquí y fue perfecto. La atención es excelente, el ambiente tranquilo y la ubicación muy conveniente para visitar el centro de Morelia.",
+    "r3nombre": "Laura Mendoza",
+    "r3origen": "Querétaro",
+    "r3texto": "El salón de eventos superó nuestras expectativas para la conferencia. Espacioso, bien equipado y el equipo del hotel nos apoyó en todo momento. Muy recomendable.",
+    "r4nombre": "Roberto Sánchez",
+    "r4origen": "León, Gto.",
+    "r4texto": "La combinación de naturaleza, comodidad y gastronomía hace de este hotel una joya en Morelia. La alberca y los jardines son un oasis de tranquilidad."
+  },
+  "ubicacion": {
+    "eyebrow": "ENCUÉNTRANOS",
+    "titulo": "RESERVA AHORA O VISÍTANOS",
+    "direccionLbl": "Dirección",
+    "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
+    "horariosLbl": "Check-in / Check-out",
+    "checkinVal": "Check-in desde las 2:00 pm",
+    "checkoutVal": "Check-out hasta las 12:00 pm",
+    "recepcionLbl": "Recepción 24 hrs",
+    "cercaLbl": "A minutos de",
+    "puntosCerca": "Centro Histórico · Zoológico Benito Juárez · Plaza Las Américas",
+    "btn": "Contáctanos por WhatsApp",
+    "googleMapsBtn": "Cómo llegar en Google Maps",
+    "comoLlegar": "Cómo llegar"
+  },
+  "modal": {
+    "titulo": "Reservar habitación",
+    "tipoHabitacion": "Tipo de habitación",
+    "deluxe": "Deluxe",
+    "doble": "Doble",
+    "habDeluxe": "1 Cama King Size",
+    "habDoble": "2 Camas Matrimoniales",
+    "adulto": "adulto",
+    "adultos": "adultos",
+    "nino": "niño",
+    "ninos": "niños",
+    "hastaNinos": "hasta {{count}} niños",
+    "fechas": "Fechas de estancia",
+    "noche": "noche",
+    "noches": "noches",
+    "huespedesYHabitaciones": "Huéspedes y habitaciones",
+    "adultosLbl": "Adultos",
+    "ninosLbl": "Niños",
+    "habitacionesLbl": "Habitaciones",
+    "maxPorHabitacion": "Máx. {{count}} por habitación",
+    "sujetaConfirmacion": "Disponibilidad sujeta a confirmación",
+    "confirmarBtn": "Confirmar por WhatsApp",
+    "waMsg": {
+      "hola": "Hola, quisiera hacer una reservación:",
+      "habitacion": "Habitación",
+      "llegada": "Llegada",
+      "salida": "Salida",
+      "gracias": "Muchas gracias."
+    }
+  },
+  "drp": {
+    "llegada": "Llegada",
+    "salida": "Salida",
+    "anadirFecha": "Añadir fecha",
+    "cuandoLlegas": "¿Cuándo llegas?",
+    "cuandoTeVas": "¿Cuándo te vas?",
+    "borrar": "Borrar fechas",
+    "listo": "Listo",
+    "meses": ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
+    "mesesCorto": ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"],
+    "dias": ["Lu","Ma","Mi","Ju","Vi","Sa","Do"]
+  },
+  "footer": {
+    "navegacion": "Navegación",
+    "contacto": "Contacto",
+    "recepcion": "Recepción 24 hrs",
+    "reservar": "Reservar ahora",
+    "privacidad": "Política de privacidad",
+    "terminos": "Términos de uso",
+    "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
+    "derechos": "Hotel Punta Galería · Todos los derechos reservados."
+  },
+  "nav": {
+    "inicio": "INICIO",
+    "nosotros": "NOSOTROS",
+    "habitaciones": "HABITACIONES",
+    "videos": "VIDEOS",
+    "restaurante": "RESTAURANTE",
+    "eventos": "SALÓN DE EVENTOS",
+    "ubicacion": "UBICACIÓN",
+    "menu": "Menú",
+    "cambiarIdioma": "Cambiar idioma"
+  }
+}

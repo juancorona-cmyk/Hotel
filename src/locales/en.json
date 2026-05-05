@@ -1,0 +1,181 @@
+{
+  "nav": {
+    "inicio": "HOME",
+    "nosotros": "ABOUT",
+    "habitaciones": "ROOMS",
+    "videos": "VIDEOS",
+    "restaurante": "RESTAURANT",
+    "eventos": "EVENT HALL",
+    "ubicacion": "LOCATION"
+  },
+  "hero": {
+  "titulo": "MORELIA",
+  "subtitulo": "A place to rest",
+  "titulosDinamicos": ["TRADITION", "NATURE", "HOSPITALITY", "COMFORT", "EXCLUSIVITY"],
+  "btn": "Book Now"
+},
+  "nosotros": {
+    "lead": "Hotel Punta Galería, your retreat in Morelia",
+    "p1": "Our history began approximately 40 years ago as Hostal Real Camelinas. In February 2011, we evolved to become Hotel Punta Galería, always maintaining our essence of hospitality.",
+    "p2": "Rest in a peaceful environment surrounded by gardens, just minutes from the Historic Center. Whether for business or leisure, here you will find the perfect combination of comfort, location, and warmth."
+  },
+  "stats": {
+    "anos": "Years of experience",
+    "habitaciones": "Rooms",
+    "eventos": "Events held",
+    "calificacion": "Average rating"
+  },
+  "amenidades": {
+    "eyebrow": "EVERYTHING YOU NEED",
+    "titulo": "Services & Amenities",
+    "wifi": "Free Wi-Fi",
+    "estacionamiento": "Parking",
+    "ac": "Air conditioning",
+    "restaurante": "Restaurant",
+    "salon": "Event hall",
+    "desayuno": "Breakfast included",
+    "checkin": "24-hr check-in",
+    "ubicacion": "Central location",
+    "jardines": "Private gardens",
+    "reserva": "Flexible booking",
+    "servicio": "Friendly service",
+    "tv": "In-room Smart TV",
+    "actividadesEyebrow": "HOTEL ACTIVITIES",
+    "yoga": "Yoga",
+    "pilates": "Pilates",
+    "viernes": "Fridays",
+    "sabados": "Saturdays",
+    "consultarDia": "Contact us",
+    "consultarHora": "for schedule"
+  },
+  "habitaciones": {
+    "titulo": "ROOMS",
+    "label": "ROOM",
+    "personas1": "1-2 guests",
+    "personas2": "1-4 guests",
+    "kingSize": "1 King Size Bed",
+    "dosMatrimoniales": "2 Double Beds",
+    "ac": "Air conditioning",
+    "wifi": "Free Wi-Fi",
+    "tv": "Smart TV",
+    "escritorio": "Work desk",
+    "btn": "Book via WhatsApp"
+  },
+  "videos": {
+    "eyebrow": "DISCOVER THE HOTEL",
+    "titulo": "See It in Video",
+    "v1titulo": "Welcome to Hotel Punta Galería",
+    "v1desc": "Discover our facilities and common areas",
+    "v2titulo": "Gardens & Restaurant",
+    "v2desc": "Nature, tranquility and unique flavors",
+    "v3titulo": "Rooms",
+    "v3desc": "Comfortable and elegant spaces for your rest"
+  },
+  "restaurante": {
+    "titulo": "RESTAURANT",
+    "p1": "Enjoy a welcoming space where freshness and flavor meet in every dish. Our restaurant offers breakfast, lunch and dinner prepared with quality ingredients, in a peaceful environment surrounded by nature.",
+    "p2Inicio": "It is the ideal place to ",
+    "p2Bold": "celebrate birthdays, friend or work gatherings",
+    "p2Fin": ", or simply to enjoy a meal or coffee in a tranquil atmosphere.",
+    "btn": "VIEW MENU"
+  },
+  "eventos": {
+    "titulo": "EVENT HALL",
+    "desc": "Celebrate your most important moments in a versatile and elegant space, ideal for meetings, conferences, workshops or social celebrations. Our hall adapts to your needs, offering comfort, privacy and the service that will make your event an unforgettable experience.",
+    "btn": "BOOK AN EVENT"
+  },
+  "testimonios": {
+    "eyebrow": "WHAT OUR GUESTS SAY",
+    "titulo": "Reviews",
+    "r1nombre": "María González",
+    "r1origen": "Mexico City",
+    "r1texto": "An incredible place. The gardens are beautiful, the rooms very comfortable and the staff very attentive. The restaurant has delicious food. We will definitely return.",
+    "r2nombre": "Carlos Ramírez",
+    "r2origen": "Guadalajara",
+    "r2texto": "We celebrated our anniversary here and it was perfect. The service is excellent, the atmosphere is peaceful and the location is very convenient to visit downtown Morelia.",
+    "r3nombre": "Laura Mendoza",
+    "r3origen": "Querétaro",
+    "r3texto": "The event hall exceeded our expectations for the conference. Spacious, well-equipped and the hotel team supported us throughout. Highly recommended.",
+    "r4nombre": "Roberto Sánchez",
+    "r4origen": "León, Gto.",
+    "r4texto": "The combination of nature, comfort and gastronomy makes this hotel a gem in Morelia. The gardens are an oasis of tranquility."
+  },
+  "ubicacion": {
+    "eyebrow": "FIND US",
+    "titulo": "BOOK NOW OR VISIT US",
+    "direccionLbl": "Address",
+    "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
+    "horariosLbl": "Check-in / Check-out",
+    "checkinVal": "Check-in from 2:00 pm",
+    "checkoutVal": "Check-out until 12:00 pm",
+    "recepcionLbl": "24-hr Reception",
+    "cercaLbl": "Minutes from",
+    "puntosCerca": "Historic Center · Benito Juárez Zoo · Plaza Las Américas",
+    "btn": "Contact us on WhatsApp",
+    "googleMapsBtn": "Directions on Google Maps",
+    "comoLlegar": "Directions"
+  },
+  "modal": {
+    "titulo": "Book a room",
+    "tipoHabitacion": "Room type",
+    "deluxe": "Deluxe",
+    "doble": "Double",
+    "habDeluxe": "1 King Size Bed",
+    "habDoble": "2 Double Beds",
+    "adulto": "adult",
+    "adultos": "adults",
+    "nino": "child",
+    "ninos": "children",
+    "hastaNinos": "up to {{count}} children",
+    "fechas": "Stay dates",
+    "noche": "night",
+    "noches": "nights",
+    "huespedesYHabitaciones": "Guests and rooms",
+    "adultosLbl": "Adults",
+    "ninosLbl": "Children",
+    "habitacionesLbl": "Rooms",
+    "maxPorHabitacion": "Max {{count}} per room",
+    "sujetaConfirmacion": "Availability subject to confirmation",
+    "confirmarBtn": "Confirm via WhatsApp",
+    "waMsg": {
+      "hola": "Hello, I would like to make a reservation:",
+      "habitacion": "Room",
+      "llegada": "Check-in",
+      "salida": "Check-out",
+      "gracias": "Thank you very much."
+    }
+  },
+  "drp": {
+    "llegada": "Check-in",
+    "salida": "Check-out",
+    "anadirFecha": "Add date",
+    "cuandoLlegas": "When are you arriving?",
+    "cuandoTeVas": "When are you leaving?",
+    "borrar": "Clear dates",
+    "listo": "Done",
+    "meses": ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    "mesesCorto": ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    "dias": ["Mo","Tu","We","Th","Fr","Sa","Su"]
+  },
+  "footer": {
+    "navegacion": "Navigation",
+    "contacto": "Contact",
+    "recepcion": "24-hr Reception",
+    "reservar": "Book now",
+    "privacidad": "Privacy Policy",
+    "terminos": "Terms of Use",
+    "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
+    "derechos": "Hotel Punta Galería · All rights reserved."
+  },
+  "nav": {
+    "inicio": "HOME",
+    "nosotros": "ABOUT",
+    "habitaciones": "ROOMS",
+    "videos": "VIDEOS",
+    "restaurante": "RESTAURANT",
+    "eventos": "EVENT HALL",
+    "ubicacion": "LOCATION",
+    "menu": "Menu",
+    "cambiarIdioma": "Change language"
+  }
+}

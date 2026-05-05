@@ -1,0 +1,139 @@
+.hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 500px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.hero__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.hero__title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.hero__title-main {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(52px, 10vw, 100px);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.45);
+  line-height: 1;
+}
+
+.hero__title-dynamic {
+  height: clamp(40px, 8vw, 70px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
+}
+
+.hero__dynamic-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(32px, 6vw, 60px);
+  font-weight: 800;
+  color: #b5c840; /* Color verde del hotel */
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  display: block;
+}
+
+.hero__subtitle {
+  font-size: clamp(13px, 2.5vw, 18px);
+  font-weight: 300;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.45);
+}
+
+.hero__btn {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 36px;
+  border: 2px solid #fff;
+  border-radius: 30px;
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hero__btn:hover {
+  background: #fff;
+  color: #2c3444;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.hero__btn-icon {
+  transition: transform 0.3s;
+}
+
+.hero__btn:hover .hero__btn-icon {
+  transform: translateX(4px);
+}
+
+.hero__scroll-arrow {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bounce 1.8s infinite;
+  text-decoration: none;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}

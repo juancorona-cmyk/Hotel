@@ -1,0 +1,298 @@
+/* ── Wrapper ─────────────────────────────────── */
+.drp { position: relative; }
+
+/* ── Field buttons ───────────────────────────── */
+.drp-fields {
+  display: flex;
+  align-items: stretch;
+  border: 2px solid #e5e8d8;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fafaf8;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.drp-fields:focus-within {
+  border-color: #7a8c2e;
+  box-shadow: 0 0 0 3px rgba(122,140,46,0.12);
+}
+
+.drp-field {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 13px 16px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: background 0.15s;
+  min-width: 0;
+}
+.drp-field:hover { background: #f4f7e8; }
+.drp-field--active { background: #eef3d6; }
+
+.drp-field__lbl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #888;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.drp-field__lbl svg { color: #7a8c2e; }
+
+.drp-field__val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drp-field__val--empty {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.drp-fields__sep {
+  display: flex;
+  align-items: center;
+  color: #ccc;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+/* ── Calendar panel — inline, no overflow issues ─ */
+.drp-panel {
+  margin-top: 10px;
+  background: #f7f9f0;
+  border: 2px solid #e5e8d8;
+  border-radius: 16px;
+  padding: 18px 20px 14px;
+  animation: drp-drop 0.2s cubic-bezier(0.34,1.4,0.64,1);
+}
+
+@keyframes drp-drop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* top row */
+.drp-panel__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.drp-panel__hint {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5a6c1e;
+  letter-spacing: 0.01em;
+}
+
+.drp-panel__nav {
+  display: flex;
+  gap: 4px;
+}
+
+.drp-nav {
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #e5e8d8;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  transition: border-color 0.15s, background 0.15s;
+}
+.drp-nav:hover:not(:disabled) { border-color: #7a8c2e; background: #f2f6e0; color: #5a6c1e; }
+.drp-nav:disabled { opacity: 0.3; cursor: default; }
+
+/* months container */
+.drp-months {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  column-gap: 16px;
+}
+
+/* ── Single month ────────────────────────────── */
+.drp-month__name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+
+.drp-month__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 2px;
+}
+
+.drp-dh {
+  font-size: 10px;
+  font-weight: 800;
+  color: #bbb;
+  text-align: center;
+  padding: 4px 0 6px;
+  letter-spacing: 0.06em;
+}
+
+/* ── Day cell ────────────────────────────────── */
+.drp-day {
+  position: relative;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The number circle */
+.drp-day__n {
+  position: relative;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  color: #222;
+  transition: background 0.12s, color 0.12s;
+}
+
+.drp-day:not(.is-off):not(.is-start):not(.is-end):not(.is-hover-end):hover .drp-day__n {
+  background: #eef3d6;
+  color: #3a4f10;
+}
+
+/* today ring */
+.drp-day.is-today .drp-day__n {
+  box-shadow: inset 0 0 0 1.5px #7a8c2e;
+  color: #5a6c1e;
+  font-weight: 700;
+}
+
+/* disabled */
+.drp-day.is-off {
+  cursor: default;
+  opacity: 0.28;
+}
+
+/* range fill — the horizontal bar behind numbers */
+.drp-day.is-range::before {
+  content: '';
+  position: absolute;
+  inset: 2px 0;
+  background: #eef3d6;
+  z-index: 1;
+}
+.drp-day.is-range.no-left::before  { border-radius: 50% 0 0 50%; }
+.drp-day.is-range.no-right::before { border-radius: 0 50% 50% 0; }
+
+/* start / end half-fills */
+.drp-day.is-start.is-start-ranged::after,
+.drp-day.is-end::after,
+.drp-day.is-hover-end::after {
+  content: '';
+  position: absolute;
+  inset: 2px 0;
+  z-index: 1;
+}
+
+.drp-day.is-start.is-start-ranged::after {
+  background: #eef3d6;
+  left: 50%;
+  right: 0;
+  border-radius: 0 50% 50% 0;
+}
+.drp-day.is-start.is-start-ranged.no-right::after { border-radius: 0; }
+
+.drp-day.is-end::after,
+.drp-day.is-hover-end::after {
+  background: #eef3d6;
+  left: 0;
+  right: 50%;
+  border-radius: 50% 0 0 50%;
+}
+.drp-day.is-end.no-left::after,
+.drp-day.is-hover-end.no-left::after { border-radius: 0; }
+
+/* selected circles */
+.drp-day.is-start .drp-day__n,
+.drp-day.is-end   .drp-day__n {
+  background: #7a8c2e;
+  color: #fff;
+  font-weight: 800;
+}
+
+.drp-day.is-hover-end .drp-day__n {
+  background: #b5c460;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── Footer ──────────────────────────────────── */
+.drp-panel__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0ec;
+}
+
+.drp-clear {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+  text-decoration: underline;
+  font-family: inherit;
+}
+.drp-clear:hover { color: #555; background: #f5f5f3; }
+
+.drp-done {
+  background: #7a8c2e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.03em;
+  transition: background 0.18s, transform 0.12s;
+}
+.drp-done:hover { background: #5a6c1e; transform: translateY(-1px); }
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 520px) {
+  .drp-panel { padding: 14px 10px 12px; }
+  .drp-months { grid-template-columns: 1fr; gap: 14px; }
+  .drp-panel__top { margin-bottom: 10px; }
+}
