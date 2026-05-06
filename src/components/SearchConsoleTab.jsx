@@ -113,15 +113,13 @@ function NotConfigured() {
       <div className="adm-gsc-setup__g">G</div>
       <p className="adm-gsc-setup__title">Google Search Console no configurado</p>
       <p className="adm-gsc-setup__desc">
-        Agrega estas variables en Netlify → Site settings → Environment variables y vuelve a desplegar:
+        Ejecuta el script de autorización una vez y luego agrega las variables en Netlify:
       </p>
       <div className="adm-gsc-setup__vars">
-        <div><code>GOOGLE_SERVICE_ACCOUNT_JSON</code> — contenido completo del JSON de la cuenta de servicio</div>
-        <div><code>GOOGLE_SITE_URL</code> — URL exacta del sitio en Search Console (ej: <code>https://hotelpuntagaleria.com/</code>)</div>
+        <div><strong>1.</strong> En Google Cloud → Credenciales → crear <code>ID de cliente OAuth 2.0</code> tipo <em>Aplicación de escritorio</em></div>
+        <div><strong>2.</strong> Ejecuta en terminal: <code>node scripts/gsc-auth.mjs CLIENT_ID CLIENT_SECRET</code></div>
+        <div><strong>3.</strong> Agrega en Netlify → Environment variables: <code>GSC_CLIENT_ID</code>, <code>GSC_CLIENT_SECRET</code>, <code>GSC_REFRESH_TOKEN</code>, <code>GOOGLE_SITE_URL</code></div>
       </div>
-      <p className="adm-gsc-setup__hint">
-        La cuenta de servicio debe agregarse como usuario con rol "Lector de datos" en Google Search Console → Configuración → Usuarios y permisos.
-      </p>
     </div>
   )
 }
