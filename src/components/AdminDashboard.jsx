@@ -3,6 +3,7 @@ import {
   getStats, clearEvents,
   adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword,
   getActivities, saveActivity, deleteActivity, updateActivity,
+  getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -655,6 +656,196 @@ function LoginScreen({ onLogin }) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────
+// ── Slug helper ──────────────────────────────────
+function toSlug(name) {
+  return name.toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+// ── Events section ────────────────────────────────
+function EventosSection() {
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [registrations, setRegistrations] = useState([])
+  const [regLoading, setRegLoading] = useState(false)
+  const [editItem, setEditItem] = useState(null)
+  const [newEventForm, setNewEventForm] = useState({ name: '', slug: '', price: '', date: '', description: '', capacity: '' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setEvents(await getEvents())
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const viewRegistrations = async (event) => {
+    setSelectedEvent(event)
+    setRegLoading(true)
+    setRegistrations(await getRegistrationsByEvent(event.id))
+    setRegLoading(false)
+  }
+
+  const startEdit = (e) => {
+    setEditItem({ id: e.id, name: e.name, slug: e.slug, price: e.price ?? '', date: e.date ?? '', description: e.description ?? '', capacity: e.capacity ?? '' })
+    setErr('')
+  }
+
+  const saveEdit = async (e) => {
+    e.preventDefault()
+    if (!editItem.name.trim() || !editItem.slug.trim()) return
+    setSaving(true); setErr('')
+    try {
+      await updateEvent(editItem.id, editItem.name.trim(), editItem.slug.trim(), parseFloat(editItem.price) || 0, editItem.description.trim(), editItem.date, parseInt(editItem.capacity) || 0)
+      setEditItem(null); load()
+    } catch { setErr('Error al guardar') }
+    finally { setSaving(false) }
+  }
+
+  const addEvent = async (e) => {
+    e.preventDefault()
+    if (!newEventForm.name.trim() || !newEventForm.slug.trim()) { setErr('Nombre y slug son requeridos'); return }
+    setSaving(true); setErr('')
+    try {
+      await createEvent(newEventForm.name.trim(), newEventForm.slug.trim(), parseFloat(newEventForm.price) || 0, newEventForm.description.trim(), newEventForm.date, parseInt(newEventForm.capacity) || 0)
+      setNewEventForm({ name: '', slug: '', price: '', date: '', description: '', capacity: '' }); load()
+    } catch (e) { setErr('Error al guardar: ' + e.message) }
+    finally { setSaving(false) }
+  }
+
+  const delEvent = async (id) => {
+    if (!confirm('¿Eliminar este evento?')) return
+    await deleteEvent(id); load()
+  }
+
+  const copyLink = (slug) => {
+    const link = `${window.location.origin}/evento/${slug}`
+    navigator.clipboard.writeText(link)
+    alert('Link copiado: ' + link)
+  }
+
+  const set = (k) => (e) => setEditItem(p => ({ ...p, [k]: e.target.value }))
+  const setNew = (k) => (e) => {
+    const val = e.target.value
+    setNewEventForm(p => ({ ...p, [k]: val, ...(k === 'name' && !p.slug ? { slug: toSlug(val) } : {}) }))
+  }
+
+  if (selectedEvent) {
+    return (
+      <div className="adm-eventos">
+        <div className="adm-users__header">
+          <button className="adm-btn-sm" onClick={() => setSelectedEvent(null)}>← Volver</button>
+          <span>{selectedEvent.name} — Inscritos</span>
+          <span className="adm-users__count">{registrations.length}</span>
+        </div>
+        {regLoading ? <p className="adm-users__loading">Cargando…</p> : (
+          <div className="adm-registrations-table">
+            {registrations.length === 0 ? (
+              <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin inscripciones aún</p>
+            ) : (
+              <table className="adm-table">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Notas</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrations.map(r => (
+                    <tr key={r.id}>
+                      <td>{r.full_name}</td>
+                      <td>{r.email}</td>
+                      <td>{r.phone}</td>
+                      <td>{r.notes}</td>
+                      <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="adm-eventos">
+      <div className="adm-users__header">
+        <span>Eventos</span>
+        <span className="adm-users__count">{events.length} evento{events.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {loading ? <p className="adm-users__loading">Cargando…</p> : (
+        <div className="adm-users__list">
+          {events.length === 0 && (
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin eventos. Agrega el primero abajo.</p>
+          )}
+          {events.map(e => (
+            <div key={e.id} className={`adm-evt-row ${editItem?.id === e.id ? 'adm-evt-row--editing' : ''}`}>
+              <div className="adm-evt-row__info">
+                <span className="adm-evt-row__name">{e.name}</span>
+                {e.date && <span className="adm-evt-row__when">{e.date}</span>}
+                {e.price && <span className="adm-evt-row__price">${e.price.toFixed(2)}</span>}
+              </div>
+              <button className="adm-user-row__btn" onClick={() => copyLink(e.slug)} title="Copiar link">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              </button>
+              <button className="adm-user-row__btn" onClick={() => viewRegistrations(e)} title="Ver inscritos">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </button>
+              <button className="adm-user-row__btn" onClick={() => startEdit(e)} title="Editar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => delEvent(e.id)} title="Eliminar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Inline edit form */}
+      {editItem && (
+        <form onSubmit={saveEdit} className="adm-evt-edit">
+          <span className="adm-users__change-title">Editando evento</span>
+          <input type="text" value={editItem.name} onChange={set('name')} placeholder="Nombre" className="adm-users__input" autoFocus />
+          <input type="text" value={editItem.slug} onChange={set('slug')} placeholder="Slug" className="adm-users__input" />
+          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio" className="adm-users__input" />
+          <input type="date" value={editItem.date} onChange={set('date')} className="adm-users__input" />
+          <input type="text" value={editItem.description} onChange={set('description')} placeholder="Descripción" className="adm-users__input" />
+          <input type="number" value={editItem.capacity} onChange={set('capacity')} placeholder="Capacidad" className="adm-users__input" />
+          <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Guardar'}</button>
+          <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
+          {err && <p className="adm-err-msg">{err}</p>}
+        </form>
+      )}
+
+      {/* New event form */}
+      <form onSubmit={addEvent} className="adm-evt-add">
+        <span className="adm-users__change-title">Nuevo evento</span>
+        <input type="text" value={newEventForm.name} onChange={setNew('name')} placeholder="Nombre" className="adm-users__input" />
+        <input type="text" value={newEventForm.slug} onChange={setNew('slug')} placeholder="Slug" className="adm-users__input" />
+        <input type="number" step="0.01" value={newEventForm.price} onChange={setNew('price')} placeholder="Precio" className="adm-users__input" />
+        <input type="date" value={newEventForm.date} onChange={setNew('date')} className="adm-users__input" />
+        <input type="text" value={newEventForm.description} onChange={setNew('description')} placeholder="Descripción" className="adm-users__input" />
+        <input type="number" value={newEventForm.capacity} onChange={setNew('capacity')} placeholder="Capacidad" className="adm-users__input" />
+        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Crear evento'}</button>
+        {err && <p className="adm-err-msg">{err}</p>}
+      </form>
+    </div>
+  )
+}
+
 export default function AdminDashboard({ onClose }) {
   const [currentUser, setCurrentUser] = useState(() => sessionStorage.getItem('adm_user') || null)
   const [fallback, setFallback]       = useState(false)
@@ -770,6 +961,9 @@ export default function AdminDashboard({ onClose }) {
             <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>
               Actividades
             </button>
+            <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>
+              Eventos
+            </button>
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
               <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
@@ -791,6 +985,8 @@ export default function AdminDashboard({ onClose }) {
               <UsersSection currentUser={currentUser} />
             ) : tab === 'actividades' ? (
               <ActivitiesSection />
+            ) : tab === 'eventos' ? (
+              <EventosSection />
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (

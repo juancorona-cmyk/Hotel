@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
@@ -15,33 +16,15 @@ import Footer from './components/Footer'
 import BookingModal from './components/BookingModal'
 import HotelBot from './components/HotelBot'
 import AdminDashboard from './components/AdminDashboard'
+import EventoPage from './components/EventoPage'
 import { setupDB, trackEvent } from './lib/turso'
 import './components/MaintenanceBanner.css'
 
-export default function App() {
-  const [bookingRoom, setBookingRoom] = useState(null)
-  const [showAdmin, setShowAdmin] = useState(false)
-  const [showMaintenance, setShowMaintenance] = useState(true)
-
+function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance }) {
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, room: roomId })
     setBookingRoom(roomId)
   }
-
-  useEffect(() => {
-    setupDB()
-  }, [])
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault()
-        setShowAdmin(a => !a)
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [])
 
   return (
     <>
@@ -69,5 +52,41 @@ export default function App() {
         <AdminDashboard onClose={() => setShowAdmin(false)} />
       )}
     </>
+  )
+}
+
+export default function App() {
+  const [bookingRoom, setBookingRoom] = useState(null)
+  const [showAdmin, setShowAdmin] = useState(false)
+  const [showMaintenance, setShowMaintenance] = useState(true)
+
+  useEffect(() => {
+    setupDB()
+  }, [])
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault()
+        setShowAdmin(a => !a)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
+  return (
+    <Routes>
+      <Route path="/evento/:slug" element={<EventoPage />} />
+      <Route path="/*" element={
+        <HomeApp
+          bookingRoom={bookingRoom}
+          setBookingRoom={setBookingRoom}
+          showAdmin={showAdmin}
+          setShowAdmin={setShowAdmin}
+          showMaintenance={showMaintenance}
+        />
+      } />
+    </Routes>
   )
 }

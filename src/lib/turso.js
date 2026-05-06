@@ -71,6 +71,30 @@ export async function setupDB() {
         created_at TEXT DEFAULT (datetime('now'))
       )
     `),
+    exec(`
+      CREATE TABLE IF NOT EXISTS hotel_events (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        name        TEXT NOT NULL,
+        slug        TEXT NOT NULL UNIQUE,
+        price       REAL,
+        description TEXT,
+        date        TEXT,
+        capacity    INTEGER,
+        active      INTEGER DEFAULT 1,
+        created_at  TEXT DEFAULT (datetime('now'))
+      )
+    `),
+    exec(`
+      CREATE TABLE IF NOT EXISTS event_registrations (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id    INTEGER,
+        full_name   TEXT NOT NULL,
+        email       TEXT NOT NULL,
+        phone       TEXT,
+        notes       TEXT,
+        created_at  TEXT DEFAULT (datetime('now'))
+      )
+    `),
   ])
   // migration: safe to run multiple times, SQLite ignores if column exists
   await exec(`ALTER TABLE activities ADD COLUMN semanas TEXT DEFAULT 'todas'`).catch(() => {})
@@ -100,6 +124,55 @@ export async function updateActivity(id, name, fecha, hora, semanas) {
     'UPDATE activities SET name = ?, fecha = ?, hora = ?, semanas = ? WHERE id = ?',
     [txt(name), txt(fecha ?? ''), txt(hora ?? ''), txt(semanas ?? 'todas'), int(id)]
   )
+}
+
+// ── Events ────────────────────────────────────────────
+export async function getEvents() {
+  const res = await exec(
+    'SELECT id, name, slug, price, description, date, capacity, active FROM hotel_events WHERE active = 1 ORDER BY date DESC, created_at DESC'
+  )
+  return parseRows(res)
+}
+
+export async function getEventBySlug(slug) {
+  const res = await exec(
+    'SELECT id, name, slug, price, description, date, capacity FROM hotel_events WHERE slug = ? AND active = 1 LIMIT 1',
+    [txt(slug)]
+  )
+  return parseRows(res)[0] ?? null
+}
+
+export async function createEvent(name, slug, price, description, date, capacity) {
+  return exec(
+    'INSERT INTO hotel_events (name, slug, price, description, date, capacity) VALUES (?, ?, ?, ?, ?, ?)',
+    [txt(name), txt(slug), { type: 'real', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
+  )
+}
+
+export async function updateEvent(id, name, slug, price, description, date, capacity) {
+  await exec(
+    'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
+    [txt(name), txt(slug), { type: 'real', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
+  )
+}
+
+export async function deleteEvent(id) {
+  await exec('DELETE FROM hotel_events WHERE id = ?', [int(id)])
+}
+
+export async function createRegistration(eventId, fullName, email, phone, notes) {
+  return exec(
+    'INSERT INTO event_registrations (event_id, full_name, email, phone, notes) VALUES (?, ?, ?, ?, ?)',
+    [int(eventId), txt(fullName), txt(email), txt(phone ?? ''), txt(notes ?? '')]
+  )
+}
+
+export async function getRegistrationsByEvent(eventId) {
+  const res = await exec(
+    'SELECT id, full_name, email, phone, notes, created_at FROM event_registrations WHERE event_id = ? ORDER BY created_at DESC',
+    [int(eventId)]
+  )
+  return parseRows(res)
 }
 
 // ── Track ────────────────────────────────────────────────
