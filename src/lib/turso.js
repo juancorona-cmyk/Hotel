@@ -3,7 +3,11 @@ const TOKEN = import.meta.env.VITE_TURSO_TOKEN
 
 async function pipeline(requests) {
   try {
-    const res = await fetch(`${BASE}/v2/pipeline`, {
+    const endpoint = typeof window !== 'undefined' && !window.location.hostname.includes('.netlify')
+      ? '/turso-api/v2/pipeline'
+      : `${BASE}/v2/pipeline`
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${TOKEN}`,
@@ -13,7 +17,8 @@ async function pipeline(requests) {
     })
     if (!res.ok) return null
     return await res.json()
-  } catch {
+  } catch (e) {
+    console.error('Turso error:', e)
     return null
   }
 }

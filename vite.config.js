@@ -15,6 +15,11 @@ export default defineConfig({
         target: 'http://localhost:8888',
         changeOrigin: true,
       },
+      '/turso-api': {
+        target: 'https://hotel-juanpa.aws-us-east-1.turso.io',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/turso-api/, ''),
+      },
     },
   },
 })
