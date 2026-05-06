@@ -5,3 +5,7 @@
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_OMIT_KEYS = "ADMIN_USERNAME,VITE_CLOUDINARY_CLOUD_NAME"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

@@ -1115,6 +1115,147 @@
   }
 }
 
+/* ─── Google Search Console tab ─────────────────────── */
+.adm-gsc-period {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.adm-gsc-loading {
+  margin-left: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #bbb;
+}
+
+/* Not configured */
+.adm-gsc-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 24px;
+  text-align: center;
+  gap: 14px;
+}
+
+.adm-gsc-setup__g {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285f4 0%, #34a853 33%, #fbbc05 66%, #ea4335 100%);
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adm-gsc-setup__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #222;
+  margin: 0;
+}
+
+.adm-gsc-setup__desc {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  color: #777;
+  margin: 0;
+  max-width: 460px;
+}
+
+.adm-gsc-setup__vars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8f9f8;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  padding: 14px 18px;
+  text-align: left;
+  max-width: 520px;
+  width: 100%;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  color: #555;
+}
+
+.adm-gsc-setup__vars code {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4285f4;
+}
+
+.adm-gsc-setup__hint {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: #aaa;
+  margin: 0;
+  max-width: 440px;
+}
+
+/* Queries table */
+.adm-gsc-table-wrap {
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.adm-gsc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+}
+
+.adm-gsc-table th {
+  background: #fafaf8;
+  color: #aaa;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.adm-gsc-table th:not(:first-child),
+.adm-gsc-table td:not(:first-child) {
+  text-align: right;
+}
+
+.adm-gsc-table td {
+  padding: 10px 14px;
+  color: #333;
+  border-bottom: 1px solid #f8f8f8;
+}
+
+.adm-gsc-table tr:last-child td {
+  border-bottom: none;
+}
+
+.adm-gsc-table tr:hover td {
+  background: #fafaf8;
+}
+
+.adm-gsc-query {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #222 !important;
+}
+
 @media (max-width: 480px) {
   .adm-dash__header {
     padding: 12px 14px;

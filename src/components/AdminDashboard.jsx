@@ -5,6 +5,7 @@ import {
   getActivities, saveActivity, deleteActivity, updateActivity,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
+import SearchConsoleTab from './SearchConsoleTab'
 import './AdminDashboard.css'
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -766,6 +767,9 @@ export default function AdminDashboard({ onClose }) {
             <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>
               Actividades
             </button>
+            <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>
+              Google
+            </button>
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
               <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
@@ -787,6 +791,8 @@ export default function AdminDashboard({ onClose }) {
               <UsersSection currentUser={currentUser} />
             ) : tab === 'actividades' ? (
               <ActivitiesSection />
+            ) : tab === 'google' ? (
+              <SearchConsoleTab />
             ) : loading && !stats ? (
               <p className="adm-loading">Cargando estadísticas…</p>
             ) : (
