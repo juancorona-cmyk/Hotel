@@ -1,6 +1,6 @@
 export default async (req) => {
   if (req.method !== 'POST') {
-    return { statusCode: 405, body: 'Method not allowed' }
+    return new Response('Method not allowed', { status: 405 })
   }
 
   const BASE = process.env.VITE_TURSO_URL
@@ -13,19 +13,19 @@ export default async (req) => {
         Authorization: `Bearer ${TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(JSON.parse(req.body)),
+      body: req.body,
     })
 
     const data = await res.json()
-    return {
-      statusCode: res.status,
+    return new Response(JSON.stringify(data), {
+      status: res.status,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    }
+    })
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    }
+    console.error('Turso proxy error:', err)
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 }
