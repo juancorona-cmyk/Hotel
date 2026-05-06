@@ -66,7 +66,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.ctrlKey && e.key === 'k') {
+      if (e.ctrlKey && e.key?.toLowerCase() === 'k') {
         e.preventDefault()
         setShowAdmin(a => !a)
       }

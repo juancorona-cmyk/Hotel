@@ -658,6 +658,7 @@ function LoginScreen({ onLogin }) {
 // ── Dashboard ─────────────────────────────────────────────
 // ── Slug helper ──────────────────────────────────
 function toSlug(name) {
+  if (!name || typeof name !== 'string') return ''
   return name.toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
