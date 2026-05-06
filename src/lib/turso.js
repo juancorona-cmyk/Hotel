@@ -26,8 +26,9 @@ function exec(sql, args = []) {
   ])
 }
 
-const txt = (v) => ({ type: 'text', value: String(v) })
-const int = (v) => ({ type: 'integer', value: String(v) })
+const txt  = (v) => ({ type: 'text',    value: String(v) })
+const int  = (v) => ({ type: 'integer', value: String(Math.round(Number(v) || 0)) })
+const flt  = (v) => ({ type: 'float',   value: parseFloat(v) || 0 })
 
 // ── Session ──────────────────────────────────────────────
 let _sid = null
@@ -146,14 +147,14 @@ export async function getEventBySlug(slug) {
 export async function createEvent(name, slug, price, description, date, capacity) {
   return exec(
     'INSERT INTO hotel_events (name, slug, price, description, date, capacity) VALUES (?, ?, ?, ?, ?, ?)',
-    [txt(name), txt(slug), { type: 'float', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
+    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
   )
 }
 
 export async function updateEvent(id, name, slug, price, description, date, capacity) {
   await exec(
     'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
-    [txt(name), txt(slug), { type: 'float', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
+    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
   )
 }
 
