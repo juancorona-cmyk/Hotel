@@ -143,6 +143,24 @@ export async function updateActivity(id, name, fecha, hora, semanas) {
   )
 }
 
+export async function upsertActivityEvent(activityId, activityName, price, description) {
+  const existing = await getEventByActivityId(activityId)
+  const slug = activityName.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (existing) {
+    await exec(
+      'UPDATE hotel_events SET name = ?, price = ?, description = ? WHERE id = ?',
+      [txt(activityName), flt(price ?? 0), txt(description ?? ''), int(existing.id)]
+    )
+  } else {
+    await exec(
+      'INSERT INTO hotel_events (name, slug, price, description, activity_id) VALUES (?, ?, ?, ?, ?)',
+      [txt(activityName), txt(slug + '-' + activityId), flt(price ?? 0), txt(description ?? ''), int(activityId)]
+    )
+  }
+}
+
 export async function getEventByActivityId(activityId) {
   const res = await exec(
     'SELECT id, name, slug, price, description, date, capacity FROM hotel_events WHERE activity_id = ? AND active = 1 ORDER BY date DESC, created_at DESC LIMIT 1',

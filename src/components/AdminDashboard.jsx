@@ -4,7 +4,7 @@ import {
   adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
-  getAllActivityRegistrations, getEventByActivityId,
+  getAllActivityRegistrations, getEventByActivityId, upsertActivityEvent,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -429,6 +429,9 @@ function ActivitiesSection() {
   const [saving, setSaving]         = useState(false)
   const [err, setErr]               = useState('')
 
+  // Event info per activity (price + description)
+  const [eventInfo, setEventInfo]   = useState({}) // { [actId]: { price, description, loading } }
+
   const load = useCallback(async () => {
     setLoading(true)
     setActivities(await getActivities())
@@ -437,11 +440,25 @@ function ActivitiesSection() {
 
   useEffect(() => { load() }, [load])
 
+  // Load linked event for each activity
+  useEffect(() => {
+    activities.forEach(async (a) => {
+      const numId = parseInt(a.id)
+      if (isNaN(numId)) return
+      const ev = await getEventByActivityId(numId)
+      setEventInfo(prev => ({
+        ...prev,
+        [a.id]: { price: ev?.price ?? '', description: ev?.description ?? '', hasEvent: !!ev }
+      }))
+    })
+  }, [activities])
+
   const startEdit = (a) => {
     const isDate = /^\d{4}-\d{2}-\d{2}$/.test(a.fecha ?? '')
     const tipo = isDate || !a.fecha ? 'fecha' : 'rec'
     const { diaRec: dr, frecRec: fr } = recoverRec(a)
-    setEditItem({ id: a.id, name: a.name, tipo, fecha: isDate ? (a.fecha ?? '') : '', diaRec: dr, frecRec: fr, hora: a.hora ?? '' })
+    const ev = eventInfo[a.id] ?? {}
+    setEditItem({ id: a.id, name: a.name, tipo, fecha: isDate ? (a.fecha ?? '') : '', diaRec: dr, frecRec: fr, hora: a.hora ?? '', price: ev.price ?? '', description: ev.description ?? '' })
     setErr('')
   }
 
@@ -453,6 +470,10 @@ function ActivitiesSection() {
     setSaving(true); setErr('')
     try {
       await updateActivity(editItem.id, editItem.name.trim(), fechaValue, editItem.hora, semanasValue)
+      // Save price/description to linked event
+      if (editItem.price || editItem.description) {
+        await upsertActivityEvent(editItem.id, editItem.name.trim(), parseFloat(editItem.price) || 0, editItem.description.trim())
+      }
       setEditItem(null); load()
     } catch { setErr('Error al guardar') }
     finally { setSaving(false) }
@@ -499,10 +520,20 @@ function ActivitiesSection() {
                   {a.semanas && a.semanas !== 'todas' && (
                     <span className="adm-act-badge">{FREC_LABEL[a.semanas]?.trim()}</span>
                   )}
+                  {eventInfo[a.id]?.hasEvent && (
+                    <span className="adm-act-badge" style={{ background: '#eef3d6', color: '#5a6c1e' }}>
+                      {eventInfo[a.id].price > 0 ? `$${parseFloat(eventInfo[a.id].price).toFixed(0)}` : 'Con evento'}
+                    </span>
+                  )}
                 </span>
                 {(a.fecha || a.hora) && (
                   <span className="adm-act-row__when">
                     {fmtFecha(a.fecha)}{a.hora ? ' · ' + fmtHora(a.hora) : ''}
+                  </span>
+                )}
+                {eventInfo[a.id]?.description && (
+                  <span className="adm-act-row__when" style={{ color: '#7a8c2e' }}>
+                    {eventInfo[a.id].description}
                   </span>
                 )}
               </div>
@@ -547,6 +578,10 @@ function ActivitiesSection() {
             </div>
           )}
           <input type="time" value={editItem.hora} onChange={set('hora')} className="adm-users__input adm-act-form__field" />
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e8d8', margin: '4px 0' }} />
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#7a8c2e', margin: 0, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Detalles del evento (visibles en el modal)</p>
+          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio ($)" className="adm-users__input" />
+          <input type="text" value={editItem.description} onChange={set('description')} placeholder="Descripción breve del evento" className="adm-users__input" />
           <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Guardar'}</button>
           <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
         </form>

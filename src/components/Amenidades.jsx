@@ -117,7 +117,8 @@ export default function Amenidades() {
                 key={a.id}
                 className="actividades__card actividades__card--clickable"
                 onClick={async () => {
-                  const ev = a.id && typeof a.id === 'number' ? await getEventByActivityId(a.id) : null
+                  const numId = parseInt(a.id)
+                  const ev = !isNaN(numId) && numId > 0 ? await getEventByActivityId(numId) : null
                   setLinkedEvent(ev)
                   setSelectedActivity(a)
                 }}
@@ -125,7 +126,8 @@ export default function Amenidades() {
                 tabIndex={0}
                 onKeyDown={async e => {
                   if (e.key === 'Enter') {
-                    const ev = a.id && typeof a.id === 'number' ? await getEventByActivityId(a.id) : null
+                    const numId = parseInt(a.id)
+                    const ev = !isNaN(numId) && numId > 0 ? await getEventByActivityId(numId) : null
                     setLinkedEvent(ev)
                     setSelectedActivity(a)
                   }
