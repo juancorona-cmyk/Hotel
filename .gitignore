@@ -4,3 +4,12 @@ dist
 .env.local
 .env.*.local
 .DS_Store
+
+# Local Netlify folder
+.netlify
+
+# Google service account keys
+*.json
+!package.json
+!package-lock.json
+!scripts/cdn-urls.mjs
