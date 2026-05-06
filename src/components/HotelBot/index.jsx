@@ -163,7 +163,7 @@ export default function HotelBot() {
       const tag = e.target.tagName
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable
       if (e.key === 'Escape') { setOpen(false); return }
-      if (e.key.toLowerCase() === 'f' && !typing) setOpen(o => { if (!o) trackEvent('bot_open'); return !o })
+      if (e.key?.toLowerCase() === 'f' && !typing) setOpen(o => { if (!o) trackEvent('bot_open'); return !o })
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)

@@ -146,14 +146,14 @@ export async function getEventBySlug(slug) {
 export async function createEvent(name, slug, price, description, date, capacity) {
   return exec(
     'INSERT INTO hotel_events (name, slug, price, description, date, capacity) VALUES (?, ?, ?, ?, ?, ?)',
-    [txt(name), txt(slug), { type: 'real', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
+    [txt(name), txt(slug), { type: 'float', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
   )
 }
 
 export async function updateEvent(id, name, slug, price, description, date, capacity) {
   await exec(
     'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
-    [txt(name), txt(slug), { type: 'real', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
+    [txt(name), txt(slug), { type: 'float', value: String(price ?? 0) }, txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
   )
 }
 
