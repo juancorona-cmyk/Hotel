@@ -76,6 +76,16 @@ export const handler = async (event) => {
       queryGSC(token, siteUrl, { startDate, endDate, dimensions: ['query'], rowLimit: 10 }),
     ])
 
+    // Surface API errors so the frontend can show them
+    const apiError = totalsRes.error ?? byDayRes.error ?? byQueryRes.error
+    if (apiError) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ error: `GSC API: ${apiError.message ?? JSON.stringify(apiError)}` }),
+      }
+    }
+
     return {
       statusCode: 200,
       headers,
