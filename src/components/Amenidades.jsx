@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
-import { getActivities } from '../lib/turso'
+import { getActivities, getEventByActivityId } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
@@ -64,6 +64,7 @@ export default function Amenidades() {
   const [isVisible, setIsVisible] = useState(false)
   const [dbActivities, setDbActivities] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
+  const [linkedEvent, setLinkedEvent] = useState(null)
   const sectionRef = useRef(null)
 
   useEffect(() => {
@@ -115,10 +116,20 @@ export default function Amenidades() {
               <div
                 key={a.id}
                 className="actividades__card actividades__card--clickable"
-                onClick={() => setSelectedActivity(a)}
+                onClick={async () => {
+                  const ev = a.id && typeof a.id === 'number' ? await getEventByActivityId(a.id) : null
+                  setLinkedEvent(ev)
+                  setSelectedActivity(a)
+                }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && setSelectedActivity(a)}
+                onKeyDown={async e => {
+                  if (e.key === 'Enter') {
+                    const ev = a.id && typeof a.id === 'number' ? await getEventByActivityId(a.id) : null
+                    setLinkedEvent(ev)
+                    setSelectedActivity(a)
+                  }
+                }}
               >
                 <div className="actividades__icon">{getActivityIcon(a.name)}</div>
                 <div className="actividades__info">
@@ -150,7 +161,8 @@ export default function Amenidades() {
       {selectedActivity && (
         <ActivityRegModal
           activity={selectedActivity}
-          onClose={() => setSelectedActivity(null)}
+          event={linkedEvent}
+          onClose={() => { setSelectedActivity(null); setLinkedEvent(null) }}
         />
       )}
     </section>

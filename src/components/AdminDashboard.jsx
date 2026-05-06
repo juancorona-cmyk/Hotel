@@ -4,7 +4,7 @@ import {
   adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
-  getAllActivityRegistrations,
+  getAllActivityRegistrations, getEventByActivityId,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -734,18 +734,21 @@ function toSlug(name) {
 // ── Events section ────────────────────────────────
 function EventosSection() {
   const [events, setEvents] = useState([])
+  const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [registrations, setRegistrations] = useState([])
   const [regLoading, setRegLoading] = useState(false)
   const [editItem, setEditItem] = useState(null)
-  const [newEventForm, setNewEventForm] = useState({ name: '', slug: '', price: '', date: '', description: '', capacity: '' })
+  const [newEventForm, setNewEventForm] = useState({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    setEvents(await getEvents())
+    const [evts, acts] = await Promise.all([getEvents(), getActivities()])
+    setEvents(evts)
+    setActivities(acts)
     setLoading(false)
   }, [])
 
@@ -759,7 +762,7 @@ function EventosSection() {
   }
 
   const startEdit = (e) => {
-    setEditItem({ id: e.id, name: e.name, slug: e.slug, price: e.price ?? '', date: e.date ?? '', description: e.description ?? '', capacity: e.capacity ?? '' })
+    setEditItem({ id: e.id, name: e.name, slug: e.slug, price: e.price ?? '', date: e.date ?? '', description: e.description ?? '', capacity: e.capacity ?? '', activity_id: e.activity_id ?? '' })
     setErr('')
   }
 
@@ -768,7 +771,7 @@ function EventosSection() {
     if (!editItem.name.trim() || !editItem.slug.trim()) return
     setSaving(true); setErr('')
     try {
-      await updateEvent(editItem.id, editItem.name.trim(), editItem.slug.trim(), parseFloat(editItem.price) || 0, editItem.description.trim(), editItem.date, parseInt(editItem.capacity) || 0)
+      await updateEvent(editItem.id, editItem.name.trim(), editItem.slug.trim(), parseFloat(editItem.price) || 0, editItem.description.trim(), editItem.date, parseInt(editItem.capacity) || 0, editItem.activity_id || null)
       setEditItem(null); load()
     } catch { setErr('Error al guardar') }
     finally { setSaving(false) }
@@ -779,8 +782,8 @@ function EventosSection() {
     if (!newEventForm.name.trim() || !newEventForm.slug.trim()) { setErr('Nombre y slug son requeridos'); return }
     setSaving(true); setErr('')
     try {
-      await createEvent(newEventForm.name.trim(), newEventForm.slug.trim(), parseFloat(newEventForm.price) || 0, newEventForm.description.trim(), newEventForm.date, parseInt(newEventForm.capacity) || 0)
-      setNewEventForm({ name: '', slug: '', price: '', date: '', description: '', capacity: '' }); load()
+      await createEvent(newEventForm.name.trim(), newEventForm.slug.trim(), parseFloat(newEventForm.price) || 0, newEventForm.description.trim(), newEventForm.date, parseInt(newEventForm.capacity) || 0, newEventForm.activity_id || null)
+      setNewEventForm({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '' }); load()
     } catch (e) { setErr('Error al guardar: ' + e.message) }
     finally { setSaving(false) }
   }
@@ -885,11 +888,15 @@ function EventosSection() {
         <form onSubmit={saveEdit} className="adm-evt-edit">
           <span className="adm-users__change-title">Editando evento</span>
           <input type="text" value={editItem.name} onChange={set('name')} placeholder="Nombre" className="adm-users__input" autoFocus />
-          <input type="text" value={editItem.slug} onChange={set('slug')} placeholder="Slug" className="adm-users__input" />
-          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio" className="adm-users__input" />
+          <input type="text" value={editItem.slug} onChange={set('slug')} placeholder="Slug (URL)" className="adm-users__input" />
+          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio ($)" className="adm-users__input" />
           <input type="date" value={editItem.date} onChange={set('date')} className="adm-users__input" />
           <input type="text" value={editItem.description} onChange={set('description')} placeholder="Descripción" className="adm-users__input" />
-          <input type="number" value={editItem.capacity} onChange={set('capacity')} placeholder="Capacidad" className="adm-users__input" />
+          <input type="number" value={editItem.capacity} onChange={set('capacity')} placeholder="Capacidad (personas)" className="adm-users__input" />
+          <select value={editItem.activity_id ?? ''} onChange={set('activity_id')} className="adm-users__input">
+            <option value="">— Sin vincular a actividad —</option>
+            {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
           <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Guardar'}</button>
           <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
           {err && <p className="adm-err-msg">{err}</p>}
@@ -898,13 +905,17 @@ function EventosSection() {
 
       {/* New event form */}
       <form onSubmit={addEvent} className="adm-evt-add">
-        <span className="adm-users__change-title">Nuevo evento</span>
-        <input type="text" value={newEventForm.name} onChange={setNew('name')} placeholder="Nombre" className="adm-users__input" />
-        <input type="text" value={newEventForm.slug} onChange={setNew('slug')} placeholder="Slug" className="adm-users__input" />
-        <input type="number" step="0.01" value={newEventForm.price} onChange={setNew('price')} placeholder="Precio" className="adm-users__input" />
+        <span className="adm-users__change-title">Nuevo evento / clase</span>
+        <input type="text" value={newEventForm.name} onChange={setNew('name')} placeholder="Nombre (ej: Yoga Mayo)" className="adm-users__input" />
+        <input type="text" value={newEventForm.slug} onChange={setNew('slug')} placeholder="Slug (URL)" className="adm-users__input" />
+        <input type="number" step="0.01" value={newEventForm.price} onChange={setNew('price')} placeholder="Precio ($)" className="adm-users__input" />
         <input type="date" value={newEventForm.date} onChange={setNew('date')} className="adm-users__input" />
-        <input type="text" value={newEventForm.description} onChange={setNew('description')} placeholder="Descripción" className="adm-users__input" />
-        <input type="number" value={newEventForm.capacity} onChange={setNew('capacity')} placeholder="Capacidad" className="adm-users__input" />
+        <input type="text" value={newEventForm.description} onChange={setNew('description')} placeholder="Descripción del evento" className="adm-users__input" />
+        <input type="number" value={newEventForm.capacity} onChange={setNew('capacity')} placeholder="Capacidad (personas)" className="adm-users__input" />
+        <select value={newEventForm.activity_id} onChange={setNew('activity_id')} className="adm-users__input">
+          <option value="">— Vincular a actividad (opcional) —</option>
+          {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
         <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Crear evento'}</button>
         {err && <p className="adm-err-msg">{err}</p>}
       </form>

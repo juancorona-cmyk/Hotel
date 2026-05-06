@@ -110,8 +110,11 @@ export async function setupDB() {
       )
     `),
   ])
-  // migration: safe to run multiple times, SQLite ignores if column exists
+  // migrations: safe to run multiple times
   await exec(`ALTER TABLE activities ADD COLUMN semanas TEXT DEFAULT 'todas'`).catch(() => {})
+  await exec(`ALTER TABLE hotel_events ADD COLUMN activity_id INTEGER`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN event_id INTEGER`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN event_name TEXT`).catch(() => {})
 }
 
 // ── Activities ────────────────────────────────────────────
@@ -140,11 +143,19 @@ export async function updateActivity(id, name, fecha, hora, semanas) {
   )
 }
 
+export async function getEventByActivityId(activityId) {
+  const res = await exec(
+    'SELECT id, name, slug, price, description, date, capacity FROM hotel_events WHERE activity_id = ? AND active = 1 ORDER BY date DESC, created_at DESC LIMIT 1',
+    [int(activityId)]
+  )
+  return parseRows(res)[0] ?? null
+}
+
 // ── Activity Registrations ────────────────────────────
-export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp) {
+export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp, eventId, eventName) {
   return exec(
-    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp) VALUES (?, ?, ?, ?, ?, ?)',
-    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? '')]
+    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), int(eventId ?? 0), txt(eventName ?? '')]
   )
 }
 
@@ -158,7 +169,7 @@ export async function getActivityRegistrations(activityId) {
 
 export async function getAllActivityRegistrations() {
   const res = await exec(
-    'SELECT id, activity_id, activity_name, full_name, phone, how_found, whatsapp, created_at FROM activity_registrations ORDER BY created_at DESC'
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, created_at FROM activity_registrations ORDER BY created_at DESC'
   )
   return parseRows(res)
 }
@@ -166,30 +177,30 @@ export async function getAllActivityRegistrations() {
 // ── Events ────────────────────────────────────────────
 export async function getEvents() {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity, active FROM hotel_events WHERE active = 1 ORDER BY date DESC, created_at DESC'
+    'SELECT id, name, slug, price, description, date, capacity, active, activity_id FROM hotel_events WHERE active = 1 ORDER BY date DESC, created_at DESC'
   )
   return parseRows(res)
 }
 
 export async function getEventBySlug(slug) {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity FROM hotel_events WHERE slug = ? AND active = 1 LIMIT 1',
+    'SELECT id, name, slug, price, description, date, capacity, activity_id FROM hotel_events WHERE slug = ? AND active = 1 LIMIT 1',
     [txt(slug)]
   )
   return parseRows(res)[0] ?? null
 }
 
-export async function createEvent(name, slug, price, description, date, capacity) {
+export async function createEvent(name, slug, price, description, date, capacity, activityId) {
   return exec(
-    'INSERT INTO hotel_events (name, slug, price, description, date, capacity) VALUES (?, ?, ?, ?, ?, ?)',
-    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0)]
+    'INSERT INTO hotel_events (name, slug, price, description, date, capacity, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), activityId ? int(activityId) : { type: 'null' }]
   )
 }
 
-export async function updateEvent(id, name, slug, price, description, date, capacity) {
+export async function updateEvent(id, name, slug, price, description, date, capacity, activityId) {
   await exec(
-    'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
-    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(id)]
+    'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ?, activity_id = ? WHERE id = ?',
+    [txt(name), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), activityId ? int(activityId) : { type: 'null' }, int(id)]
   )
 }
 
