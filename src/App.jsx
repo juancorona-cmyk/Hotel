@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
+import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
 import About from './components/About'
 import Stats from './components/Stats'
@@ -15,10 +16,12 @@ import BookingModal from './components/BookingModal'
 import HotelBot from './components/HotelBot'
 import AdminDashboard from './components/AdminDashboard'
 import { setupDB, trackEvent } from './lib/turso'
+import './components/MaintenanceBanner.css'
 
 export default function App() {
   const [bookingRoom, setBookingRoom] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [showMaintenance, setShowMaintenance] = useState(true)
 
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, room: roomId })
@@ -42,6 +45,7 @@ export default function App() {
 
   return (
     <>
+      <MaintenanceBanner show={showMaintenance} />
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} />
       <About />

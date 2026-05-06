@@ -143,6 +143,13 @@ export default function HotelBotSection() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  useEffect(() => {
+    // Don't auto-focus input on mobile when bot opens
+    if (window.innerWidth > 768 && !showQuick) {
+      inputRef.current?.focus()
+    }
+  }, [showQuick])
+
   const sendMessage = async (text) => {
     const userText = (text || input).trim()
     if (!userText || loading) return

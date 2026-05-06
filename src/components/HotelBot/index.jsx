@@ -171,7 +171,10 @@ export default function HotelBot() {
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100)
+      // Only auto-focus on desktop, not on mobile
+      if (window.innerWidth > 768) {
+        setTimeout(() => inputRef.current?.focus(), 100)
+      }
     }
   }, [open])
 
@@ -218,6 +221,11 @@ export default function HotelBot() {
       {open && (
         <div className="hb-window">
           <div className="hb-header">
+            <button className="hb-close" onClick={() => setOpen(false)} aria-label="Regresar">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+              </svg>
+            </button>
             <div className="hb-header-info">
               <div className="hb-avatar">
                 <img src="/icono.svg" alt="HotelBot" width="32" height="32" style={{ objectFit: 'contain' }} />
@@ -230,11 +238,6 @@ export default function HotelBot() {
                 </div>
               </div>
             </div>
-            <button className="hb-close" onClick={() => setOpen(false)} aria-label="Cerrar">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              </svg>
-            </button>
           </div>
 
           <div className="hb-messages">
@@ -300,21 +303,17 @@ export default function HotelBot() {
         </div>
       )}
 
-      <button
-        className={`hb-fab ${open ? 'hb-fab--open' : ''}`}
-        onClick={() => { setOpen(o => { if (!o) trackEvent('bot_open'); return !o }) }}
-        aria-label="Abrir asistente HotelBot (tecla F)"
-        title="HotelBot · tecla F"
-      >
-        {open ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
-        ) : (
+      {!open && (
+        <button
+          className="hb-fab"
+          onClick={() => { setOpen(o => { if (!o) trackEvent('bot_open'); return !o }) }}
+          aria-label="Abrir asistente HotelBot (tecla F)"
+          title="HotelBot · tecla F"
+        >
           <img src="/icono.svg" alt="HotelBot" width="36" height="36" style={{ objectFit: 'contain' }} />
-        )}
-        {!open && <span className="hb-fab-badge" />}
-      </button>
+          <span className="hb-fab-badge" />
+        </button>
+      )}
     </>
   )
 }

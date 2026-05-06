@@ -292,7 +292,12 @@
 
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 520px) {
-  .drp-panel { padding: 14px 10px 12px; }
+  .drp-panel {
+    padding: 14px 10px 12px;
+    margin-top: 80px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
   .drp-months { grid-template-columns: 1fr; gap: 14px; }
   .drp-panel__top { margin-bottom: 10px; }
 }

@@ -11,7 +11,6 @@ export default function Navbar() {
     { key: 'nav.inicio',       href: '#inicio' },
     { key: 'nav.nosotros',     href: '#nosotros' },
     { key: 'nav.habitaciones', href: '#habitaciones' },
-    { key: 'nav.videos',       href: '#videos' },
     { key: 'nav.restaurante',  href: '#restaurante' },
     { key: 'nav.eventos',      href: '#eventos' },
     { key: 'nav.ubicacion',    href: '#ubicacion' },

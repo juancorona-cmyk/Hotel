@@ -1,0 +1,144 @@
+/* Full screen maintenance lock */
+.maintenance-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.maintenance-lock__bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #4a5a1e 0%, #2c3444 50%, #1a1f29 100%);
+  z-index: -1;
+}
+
+.maintenance-lock__container {
+  width: 100%;
+  max-width: 420px;
+}
+
+.maintenance-lock__card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 48px 32px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  animation: lock-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes lock-pop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.maintenance-lock__icon {
+  color: #7a8c2e;
+  margin: 0 auto 24px;
+  display: block;
+  animation: lock-bounce 2s infinite;
+}
+
+@keyframes lock-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.maintenance-lock__title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+}
+
+.maintenance-lock__subtitle {
+  font-size: 14px;
+  color: #888;
+  margin: 0 0 32px;
+  font-weight: 500;
+}
+
+.maintenance-lock__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.maintenance-lock__input {
+  padding: 14px 16px;
+  border: 2px solid #e5e8d8;
+  border-radius: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: 0.2em;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.maintenance-lock__input:focus {
+  outline: none;
+  border-color: #7a8c2e;
+  box-shadow: 0 0 0 3px rgba(122, 140, 46, 0.1);
+}
+
+.maintenance-lock__btn {
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #4a5a1e 0%, #7a8c2e 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(74, 90, 30, 0.25);
+}
+
+.maintenance-lock__btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 90, 30, 0.35);
+}
+
+.maintenance-lock__btn:active {
+  transform: translateY(0);
+}
+
+.maintenance-lock__error {
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.maintenance-lock__hint {
+  font-size: 12px;
+  color: #aaa;
+  margin: 0;
+  font-style: italic;
+}
+
+@media (max-width: 560px) {
+  .maintenance-lock__card {
+    padding: 36px 24px;
+  }
+
+  .maintenance-lock__title {
+    font-size: 24px;
+  }
+
+  .maintenance-lock__icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .maintenance-lock__input,
+  .maintenance-lock__btn {
+    font-size: 15px;
+  }
+}

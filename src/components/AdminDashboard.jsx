@@ -761,14 +761,14 @@ export default function AdminDashboard({ onClose }) {
             <button className={`adm-period-btn adm-tab-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>
               Estadísticas
             </button>
+            <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>
+              Google
+            </button>
             <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>
               Usuarios
             </button>
             <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>
               Actividades
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>
-              Google
             </button>
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
