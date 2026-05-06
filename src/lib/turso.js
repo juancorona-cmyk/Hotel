@@ -97,6 +97,18 @@ export async function setupDB() {
         created_at  TEXT DEFAULT (datetime('now'))
       )
     `),
+    exec(`
+      CREATE TABLE IF NOT EXISTS activity_registrations (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        activity_id  INTEGER,
+        activity_name TEXT,
+        full_name    TEXT NOT NULL,
+        phone        TEXT NOT NULL,
+        how_found    TEXT,
+        whatsapp     TEXT,
+        created_at   TEXT DEFAULT (datetime('now'))
+      )
+    `),
   ])
   // migration: safe to run multiple times, SQLite ignores if column exists
   await exec(`ALTER TABLE activities ADD COLUMN semanas TEXT DEFAULT 'todas'`).catch(() => {})
@@ -126,6 +138,29 @@ export async function updateActivity(id, name, fecha, hora, semanas) {
     'UPDATE activities SET name = ?, fecha = ?, hora = ?, semanas = ? WHERE id = ?',
     [txt(name), txt(fecha ?? ''), txt(hora ?? ''), txt(semanas ?? 'todas'), int(id)]
   )
+}
+
+// ── Activity Registrations ────────────────────────────
+export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp) {
+  return exec(
+    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp) VALUES (?, ?, ?, ?, ?, ?)',
+    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? '')]
+  )
+}
+
+export async function getActivityRegistrations(activityId) {
+  const res = await exec(
+    'SELECT id, activity_name, full_name, phone, how_found, whatsapp, created_at FROM activity_registrations WHERE activity_id = ? ORDER BY created_at DESC',
+    [int(activityId)]
+  )
+  return parseRows(res)
+}
+
+export async function getAllActivityRegistrations() {
+  const res = await exec(
+    'SELECT id, activity_id, activity_name, full_name, phone, how_found, whatsapp, created_at FROM activity_registrations ORDER BY created_at DESC'
+  )
+  return parseRows(res)
 }
 
 // ── Events ────────────────────────────────────────────

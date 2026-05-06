@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import { getActivities } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
+import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -62,6 +63,7 @@ export default function Amenidades() {
   const { t } = useTranslation()
   const [isVisible, setIsVisible] = useState(false)
   const [dbActivities, setDbActivities] = useState(null)
+  const [selectedActivity, setSelectedActivity] = useState(null)
   const sectionRef = useRef(null)
 
   useEffect(() => {
@@ -110,7 +112,14 @@ export default function Amenidades() {
           <p className="actividades__eyebrow">{t('amenidades.actividadesEyebrow')}</p>
           <div className="actividades__cards">
             {activities.map((a) => (
-              <div key={a.id} className="actividades__card">
+              <div
+                key={a.id}
+                className="actividades__card actividades__card--clickable"
+                onClick={() => setSelectedActivity(a)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && setSelectedActivity(a)}
+              >
                 <div className="actividades__icon">{getActivityIcon(a.name)}</div>
                 <div className="actividades__info">
                   <h3>{a.name}</h3>
@@ -131,11 +140,19 @@ export default function Amenidades() {
                     </ul>
                   )}
                 </div>
+                <span className="actividades__cta">Inscribirme →</span>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {selectedActivity && (
+        <ActivityRegModal
+          activity={selectedActivity}
+          onClose={() => setSelectedActivity(null)}
+        />
+      )}
     </section>
   )
 }

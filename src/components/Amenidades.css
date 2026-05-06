@@ -129,6 +129,32 @@
   transform: translateY(-4px);
 }
 
+.actividades__card--clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.actividades__card--clickable:hover {
+  border-color: #7a8c2e;
+  box-shadow: 0 10px 32px rgba(122,140,46,0.22);
+}
+
+.actividades__cta {
+  position: absolute;
+  bottom: 14px;
+  right: 18px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #7a8c2e;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.actividades__card--clickable:hover .actividades__cta {
+  opacity: 1;
+}
+
 .actividades__icon {
   width: 48px;
   height: 48px;

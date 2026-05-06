@@ -4,6 +4,7 @@ import {
   adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
+  getAllActivityRegistrations,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -579,6 +580,70 @@ function ActivitiesSection() {
   )
 }
 
+// ── Activity Registrations view ──────────────────────────
+function ActivityRegistrationsSection() {
+  const [regs, setRegs]     = useState([])
+  const [loading, setLoading] = useState(false)
+  const [filter, setFilter] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    getAllActivityRegistrations().then(d => { setRegs(d); setLoading(false) })
+  }, [])
+
+  const names = [...new Set(regs.map(r => r.activity_name).filter(Boolean))]
+  const filtered = filter ? regs.filter(r => r.activity_name === filter) : regs
+
+  return (
+    <div className="adm-activities">
+      <div className="adm-users__header">
+        <span>Inscripciones a actividades</span>
+        <span className="adm-users__count">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+      {names.length > 1 && (
+        <div className="adm-act-tipo" style={{ padding: '0 16px 4px' }}>
+          <button type="button" className={!filter ? 'active' : ''} onClick={() => setFilter('')}>Todas</button>
+          {names.map(n => (
+            <button key={n} type="button" className={filter === n ? 'active' : ''} onClick={() => setFilter(n)}>{n}</button>
+          ))}
+        </div>
+      )}
+      {loading ? <p className="adm-users__loading">Cargando…</p> : (
+        <div className="adm-registrations-table">
+          {filtered.length === 0 ? (
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin inscripciones aún</p>
+          ) : (
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>Actividad</th>
+                  <th>Nombre</th>
+                  <th>Teléfono</th>
+                  <th>¿Cómo se enteró?</th>
+                  <th>WhatsApp</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(r => (
+                  <tr key={r.id}>
+                    <td><strong>{r.activity_name}</strong></td>
+                    <td>{r.full_name}</td>
+                    <td>{r.phone}</td>
+                    <td>{r.how_found}</td>
+                    <td>{r.whatsapp}</td>
+                    <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString('es-MX')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Login ─────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [user, setUser]   = useState('')
@@ -965,6 +1030,9 @@ export default function AdminDashboard({ onClose }) {
             <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>
               Eventos
             </button>
+            <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>
+              Inscripciones
+            </button>
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
               <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
@@ -988,6 +1056,8 @@ export default function AdminDashboard({ onClose }) {
               <ActivitiesSection />
             ) : tab === 'eventos' ? (
               <EventosSection />
+            ) : tab === 'inscripciones' ? (
+              <ActivityRegistrationsSection />
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (
