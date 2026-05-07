@@ -56,86 +56,84 @@ function getSession() {
 
 // ── Setup ────────────────────────────────────────────────
 export async function setupDB() {
-  await Promise.all([
-    exec(`
-      CREATE TABLE IF NOT EXISTS bot_events (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_type  TEXT NOT NULL,
-        session_id  TEXT,
-        metadata    TEXT,
-        created_at  TEXT DEFAULT (datetime('now'))
-      )
-    `),
-    exec(`
-      CREATE TABLE IF NOT EXISTS admin_users (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        username   TEXT NOT NULL UNIQUE,
-        hash       TEXT NOT NULL,
-        salt       TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `),
-    exec(`
-      CREATE TABLE IF NOT EXISTS activities (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        name       TEXT NOT NULL,
-        fecha      TEXT,
-        hora       TEXT,
-        active     INTEGER DEFAULT 1,
-        created_at TEXT DEFAULT (datetime('now'))
-      )
-    `),
-    exec(`
-      CREATE TABLE IF NOT EXISTS hotel_events (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT NOT NULL,
-        slug        TEXT NOT NULL UNIQUE,
-        price       REAL,
-        description TEXT,
-        date        TEXT,
-        capacity    INTEGER,
-        active      INTEGER DEFAULT 1,
-        created_at  TEXT DEFAULT (datetime('now'))
-      )
-    `),
-    exec(`
-      CREATE TABLE IF NOT EXISTS event_registrations (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_id    INTEGER,
-        full_name   TEXT NOT NULL,
-        email       TEXT NOT NULL,
-        phone       TEXT,
-        notes       TEXT,
-        created_at  TEXT DEFAULT (datetime('now'))
-      )
-    `),
-    exec(`
-      CREATE TABLE IF NOT EXISTS activity_registrations (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        activity_id  INTEGER,
-        activity_name TEXT,
-        full_name    TEXT NOT NULL,
-        phone        TEXT NOT NULL,
-        how_found    TEXT,
-        whatsapp     TEXT,
-        created_at   TEXT DEFAULT (datetime('now'))
-      )
-    `),
-  ])
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS bot_events (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type  TEXT NOT NULL,
+      session_id  TEXT,
+      metadata    TEXT,
+      created_at  TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS admin_users (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      username   TEXT NOT NULL UNIQUE,
+      hash       TEXT NOT NULL,
+      salt       TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS activities (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL,
+      fecha      TEXT,
+      hora       TEXT,
+      active     INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS hotel_events (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL,
+      slug        TEXT NOT NULL UNIQUE,
+      price       REAL,
+      description TEXT,
+      date        TEXT,
+      capacity    INTEGER,
+      active      INTEGER DEFAULT 1,
+      created_at  TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS event_registrations (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id    INTEGER,
+      full_name   TEXT NOT NULL,
+      email       TEXT NOT NULL,
+      phone       TEXT,
+      notes       TEXT,
+      created_at  TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS activity_registrations (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      activity_id  INTEGER,
+      activity_name TEXT,
+      full_name    TEXT NOT NULL,
+      phone        TEXT NOT NULL,
+      how_found    TEXT,
+      whatsapp     TEXT,
+      created_at   TEXT DEFAULT (datetime('now'))
+    )`
+  ]
+
+  for (const sql of tables) {
+    await exec(sql).catch(e => console.warn('Table creation failed (expected if exists):', e.message))
+  }
+
   // migrations: safe to run multiple times
-  await exec(`ALTER TABLE activities ADD COLUMN semanas TEXT DEFAULT 'todas'`).catch(() => {})
-  await exec(`ALTER TABLE hotel_events ADD COLUMN activity_id INTEGER`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN event_id INTEGER`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN event_name TEXT`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN payment_method TEXT DEFAULT NULL`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN paid INTEGER DEFAULT 0`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN paid_at TEXT DEFAULT NULL`).catch(() => {})
-  await exec(`ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'editor'`).catch(() => {})
-  await exec(`ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`).catch(() => {})
-  await exec(`ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`).catch(() => {})
-  // Promote oldest user to admin (runs once; safe to repeat)
-  await exec(`UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`).catch(() => {})
+  const migrations = [
+    `ALTER TABLE activities ADD COLUMN semanas TEXT DEFAULT 'todas'`,
+    `ALTER TABLE hotel_events ADD COLUMN activity_id INTEGER`,
+    `ALTER TABLE activity_registrations ADD COLUMN event_id INTEGER`,
+    `ALTER TABLE activity_registrations ADD COLUMN event_name TEXT`,
+    `ALTER TABLE activity_registrations ADD COLUMN payment_method TEXT DEFAULT NULL`,
+    `ALTER TABLE activity_registrations ADD COLUMN paid INTEGER DEFAULT 0`,
+    `ALTER TABLE activity_registrations ADD COLUMN paid_at TEXT DEFAULT NULL`,
+    `ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'editor'`,
+    `ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`,
+    `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
+    `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
+    `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`
+  ]
+
+  for (const sql of migrations) {
+    await exec(sql).catch(() => {}) // Ignore if column already exists
+  }
 }
 
 // ── Activities ────────────────────────────────────────────

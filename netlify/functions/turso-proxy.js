@@ -49,21 +49,20 @@ export default async (req) => {
   }
 
   const RAW_URL = process.env.TURSO_URL || process.env.VITE_TURSO_URL || ''
-  const TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
 
   if (!RAW_URL || !TOKEN) {
-    console.error('Turso configuration missing:', { 
-      hasUrl: !!RAW_URL, 
-      hasToken: !!TOKEN,
-      urlPrefix: RAW_URL.slice(0, 10) + '...' 
-    })
-    return new Response(JSON.stringify({ 
-      error: 'Database configuration missing in Netlify environment variables',
-      detail: `URL present: ${!!RAW_URL}, Token present: ${!!TOKEN}`
-    }), {
+    const msg = `Config missing: URL=${!!RAW_URL}, Token=${!!TOKEN}`
+    console.error(msg)
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
+  }
+
+  // Handle case where user included "Bearer " in the env var
+  if (TOKEN.startsWith('Bearer ')) {
+    TOKEN = TOKEN.replace('Bearer ', '').trim()
   }
 
   // Convert libsql:// to https:// and cleanup
@@ -76,10 +75,10 @@ export default async (req) => {
     const bodyText = await req.text()
     const target = `${normalizedUrl}/v2/pipeline`
 
-    console.log(`DB Proxy: Fetching ${target.split('.')[0]}...`)
+    console.log(`DB Proxy: Fetching ${target.split('.').slice(-2).join('.')}...`)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000) // 15s
+    const timeout = setTimeout(() => controller.abort(), 20000) // Increase to 20s
 
     try {
       const res = await fetch(target, {
@@ -95,9 +94,14 @@ export default async (req) => {
       if (!res.ok) {
         const errorText = await res.text()
         console.error('Turso upstream error:', res.status, errorText)
+        
+        // Try to parse JSON error from Turso
+        let detail = errorText
+        try { const j = JSON.parse(errorText); detail = j.error || j.message || errorText } catch {}
+
         return new Response(JSON.stringify({ 
-          error: `Turso API Error ${res.status}`, 
-          detail: errorText 
+          error: `Turso API ${res.status}`, 
+          detail: detail
         }), {
           status: res.status,
           headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -116,8 +120,8 @@ export default async (req) => {
     const isTimeout = err.name === 'AbortError'
     console.error('Turso proxy exception:', err.name, err.message)
     return new Response(JSON.stringify({ 
-      error: isTimeout ? 'Database request timed out (15s)' : `Connection failed: ${err.message}`,
-      hint: 'Check if TURSO_URL is correct and the database is accessible.'
+      error: isTimeout ? 'Database request timed out (20s)' : `Connection failed: ${err.message}`,
+      hint: 'Verify TURSO_URL and TURSO_TOKEN in Netlify. Ensure the database is active.'
     }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
