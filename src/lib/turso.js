@@ -162,15 +162,16 @@ export async function upsertActivityEvent(activityId, activityName, price, descr
   const slug = activityName.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    + '-' + activityId
   if (existing) {
     await exec(
-      'UPDATE hotel_events SET name = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
-      [txt(activityName), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(existing.id)]
+      'UPDATE hotel_events SET name = ?, slug = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
+      [txt(activityName), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(existing.id)]
     )
   } else {
     await exec(
       'INSERT INTO hotel_events (name, slug, price, description, date, capacity, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [txt(activityName), txt(slug + '-' + activityId), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(activityId)]
+      [txt(activityName), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(activityId)]
     )
   }
 }

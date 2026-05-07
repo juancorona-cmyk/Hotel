@@ -696,13 +696,16 @@ function ActivitiesSection() {
               {editItem.tipo === 'fecha' ? (
                 <DatePicker key="edit-fecha" value={editItem.fecha} onChange={v => setEditItem(p => ({...p, fecha: v}))} placeholder="Fecha específica" />
               ) : (
-                <div className="adm-act-rec-wrap">
-                  <select value={editItem.diaRec} onChange={setE('diaRec')} className="adm-users__input">
-                    {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  <select value={editItem.frecRec} onChange={setE('frecRec')} className="adm-users__input">
-                    {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
-                  </select>
+                <div className="adm-act-rec-fields">
+                  <div className="adm-act-rec-wrap">
+                    <select value={editItem.diaRec} onChange={setE('diaRec')} className="adm-users__input">
+                      {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <select value={editItem.frecRec} onChange={setE('frecRec')} className="adm-users__input">
+                      {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
+                    </select>
+                  </div>
+                  <DatePicker key="edit-evt-fecha" value={editItem.evtDate} onChange={v => setEditItem(p => ({...p, evtDate: v}))} placeholder="Próxima fecha (ej: viernes 9)" />
                 </div>
               )}
               <TimePicker value={editItem.hora} onChange={v => setEditItem(p => ({...p, hora: v}))} placeholder="Hora" variant="input" />
@@ -747,13 +750,16 @@ function ActivitiesSection() {
         {newAct.fechaTipo === 'fecha' ? (
           <DatePicker key="new-fecha" value={newAct.fecha} onChange={setN('fecha')} placeholder="Fecha específica" />
         ) : (
-          <div className="adm-act-rec-wrap">
-            <select value={newAct.diaRec} onChange={setN('diaRec')} className="adm-users__input">
-              {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select value={newAct.frecRec} onChange={setN('frecRec')} className="adm-users__input">
-              {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
-            </select>
+          <div className="adm-act-rec-fields">
+            <div className="adm-act-rec-wrap">
+              <select value={newAct.diaRec} onChange={setN('diaRec')} className="adm-users__input">
+                {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select value={newAct.frecRec} onChange={setN('frecRec')} className="adm-users__input">
+                {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
+              </select>
+            </div>
+            <DatePicker key="new-evt-fecha" value={newAct.evtDate} onChange={setN('evtDate')} placeholder="Próxima fecha (ej: viernes 9)" />
           </div>
         )}
         <TimePicker value={newAct.hora} onChange={setN('hora')} placeholder="Hora" variant="input" />

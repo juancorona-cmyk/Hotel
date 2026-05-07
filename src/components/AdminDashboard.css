@@ -2387,3 +2387,15 @@
     margin: 0 -22px 22px;
   }
 }
+
+/* ── Activity Recurrence Fields Grid ──────────────── */
+.adm-act-rec-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.adm-act-rec-fields .adm-dp {
+  width: 100%;
+}
