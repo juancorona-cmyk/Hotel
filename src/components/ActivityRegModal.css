@@ -180,10 +180,29 @@
   background: #fff;
 }
 
-.arm-input--sm {
-  padding: 10px 14px;
-  font-size: 14px;
-  margin-top: 4px;
+.arm-input--ok {
+  border-color: #7a8c2e;
+  background: #fbfdf5;
+}
+.arm-input--ok:focus {
+  border-color: #7a8c2e;
+  box-shadow: 0 0 0 3px rgba(122,140,46,0.12);
+}
+
+.arm-input--error {
+  border-color: #dc2626;
+  background: #fff9f9;
+}
+.arm-input--error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+}
+
+.arm-phone-hint {
+  font-size: 11px;
+  color: #aaa;
+  margin: -10px 0 0;
+  font-weight: 500;
 }
 
 /* ── Radio group ─────────────────────────────────── */

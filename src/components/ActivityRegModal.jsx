@@ -10,6 +10,15 @@ function fmtDate(s) {
   return s
 }
 
+// Validates Mexican numbers (10 digits, starts 2-9) or international (+XX...)
+function isValidPhone(raw) {
+  const digits = raw.replace(/[\s\-().+]/g, '')
+  if (raw.trim().startsWith('+')) return /^\+\d{7,15}$/.test(raw.trim().replace(/[\s\-().]/g, ''))
+  if (/^[2-9]\d{9}$/.test(digits)) return true
+  if (/^\d{7}$/.test(digits)) return true
+  return false
+}
+
 export default function ActivityRegModal({ activity, event, onClose }) {
   const [step, setStep]                   = useState(1)
   const [fullName, setFullName]           = useState('')
@@ -43,6 +52,7 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     setError('')
     if (!fullName.trim()) { setError('Por favor ingresa tu nombre completo'); return }
     if (!phone.trim())    { setError('Por favor ingresa tu número de teléfono'); return }
+    if (!isValidPhone(phone)) { setError('Ingresa un número válido (ej: 667 123 4567 o +1 555 000 1234)'); return }
     if (!howFound)        { setError('Por favor indica cómo te enteraste'); return }
     if (!whatsapp)        { setError('Por favor responde la pregunta de WhatsApp'); return }
     setStep(2)
@@ -81,6 +91,10 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     : spotsLeft <= 8 ? '#d97706'
     : '#5a6c1e'
     : '#5a6c1e'
+
+  const phoneTyped = phone.trim().length > 0
+  const phoneOk    = phoneTyped && isValidPhone(phone)
+  const phoneBad   = phoneTyped && !phoneOk
 
   return (
     <div className="arm-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -185,11 +199,12 @@ export default function ActivityRegModal({ activity, event, onClose }) {
               <label className="arm-label">Número de teléfono *</label>
               <input
                 type="tel"
-                className="arm-input"
+                className={`arm-input${phoneOk ? ' arm-input--ok' : phoneBad ? ' arm-input--error' : ''}`}
                 value={phone}
                 onChange={e => { setPhone(e.target.value); setError('') }}
                 placeholder="Ej: 667 123 4567"
               />
+              {phoneBad && <p className="arm-phone-hint">Ej: 667 123 4567 · +1 555 000 1234 · +52 667 123 4567</p>}
             </div>
 
             <div className="arm-field">
