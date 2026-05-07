@@ -65,7 +65,7 @@ const server = createServer(async (req, res) => {
     console.log(`GSC_CLIENT_ID=${CLIENT_ID}`)
     console.log(`GSC_CLIENT_SECRET=${CLIENT_SECRET}`)
     console.log(`GSC_REFRESH_TOKEN=${tokens.refresh_token}`)
-    console.log(`GOOGLE_SITE_URL=${process.env.GOOGLE_SITE_URL || 'https://hotelpuntagaleria.mx/'}`)
+    console.log(`GOOGLE_SITE_URL=${process.env.GOOGLE_SITE_URL || ''}`)
     console.log('\nY también en tu .env local para desarrollo.\n')
   } else {
     console.error('\n❌ No se recibió refresh_token:', JSON.stringify(tokens))

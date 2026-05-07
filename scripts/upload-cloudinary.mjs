@@ -74,7 +74,7 @@ async function uploadAll() {
   }
 
   // ── Generar archivo de URLs para copiar al código ─────────
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dfuzfdrat'
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME
   const lines = Object.entries(URL_MAP).map(([local, cdn]) =>
     `  '${local}': \`${cdn.replace(cloudName, '${CN}')}\`,`
   ).join('\n')
@@ -82,7 +82,7 @@ async function uploadAll() {
   const output = `// URLs generadas por upload-cloudinary.mjs
 // Copia estas URLs a tus componentes
 
-const CN = process.env.VITE_CLOUDINARY_CLOUD_NAME || '${cloudName}'
+const CN = process.env.VITE_CLOUDINARY_CLOUD_NAME
 
 export const CDN = {
 ${lines}

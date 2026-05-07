@@ -1,7 +1,7 @@
 // URLs generadas por upload-cloudinary.mjs
 // Copia estas URLs a tus componentes
 
-const CN = process.env.VITE_CLOUDINARY_CLOUD_NAME || 'dfuzfdrat'
+const CN = process.env.VITE_CLOUDINARY_CLOUD_NAME
 
 export const CDN = {
   '/videos/FONDO-VIDEO.mp4': `https://res.cloudinary.com/${CN}/video/upload/v1778023499/hotel/videos/fondo-video.mp4`,
