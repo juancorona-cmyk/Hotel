@@ -48,49 +48,69 @@ export default async (req) => {
     })
   }
 
-  const BASE = process.env.TURSO_URL || process.env.VITE_TURSO_URL
-  const TOKEN = process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN
+  const BASE = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
+  const TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
 
   if (!BASE || !TOKEN) {
     console.error('Turso configuration missing:', { hasBase: !!BASE, hasToken: !!TOKEN })
-    return new Response(JSON.stringify({ error: 'Database configuration missing' }), {
+    return new Response(JSON.stringify({ error: 'Database configuration missing (BASE/TOKEN)' }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   }
 
-  // Convert libsql:// to https:// for standard fetch compatibility
-  const normalizedUrl = BASE.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '')
+  // Ensure protocol is https:// and no trailing slash
+  let normalizedUrl = BASE
+  if (normalizedUrl.startsWith('libsql://')) {
+    normalizedUrl = normalizedUrl.replace('libsql://', 'https://')
+  }
+  if (!normalizedUrl.startsWith('http')) {
+    normalizedUrl = 'https://' + normalizedUrl
+  }
+  normalizedUrl = normalizedUrl.replace(/\/$/, '')
 
   try {
     const bodyText = await req.text()
 
-    const res = await fetch(`${normalizedUrl}/v2/pipeline`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: bodyText,
-    })
+    // Add a reasonable timeout to the fetch
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
-    if (!res.ok) {
-      const errorText = await res.text()
-      console.error('Turso upstream error:', res.status, errorText, 'URL:', normalizedUrl.split('.')[0] + '...')
-      return new Response(JSON.stringify({ error: `Upstream error: ${res.status}`, detail: errorText }), {
-        status: res.status,
+    try {
+      const res = await fetch(`${normalizedUrl}/v2/pipeline`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: bodyText,
+        signal: controller.signal
+      })
+
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Turso upstream error:', res.status, errorText, 'URL:', normalizedUrl.split('.')[0] + '...')
+        return new Response(JSON.stringify({ error: `Upstream error: ${res.status}`, detail: errorText }), {
+          status: res.status,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const data = await res.json()
+      return new Response(JSON.stringify(data), {
+        status: 200,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
+    } finally {
+      clearTimeout(timeout)
     }
-
-    const data = await res.json()
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
   } catch (err) {
-    console.error('Turso proxy exception:', err.message, 'URL:', normalizedUrl.split('.')[0] + '...')
-    return new Response(JSON.stringify({ error: err.message }), {
+    const isTimeout = err.name === 'AbortError'
+    console.error('Turso proxy exception:', err.message, 'IsTimeout:', isTimeout, 'URL:', normalizedUrl.split('.')[0] + '...')
+    return new Response(JSON.stringify({ 
+      error: isTimeout ? 'Database request timed out' : `Internal fetch failed: ${err.message}`,
+      hint: 'Check if TURSO_URL is correct and reachable'
+    }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
