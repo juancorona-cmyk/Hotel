@@ -59,10 +59,13 @@ export default async (req) => {
     })
   }
 
+  // Convert libsql:// to https:// for standard fetch compatibility
+  const normalizedUrl = BASE.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '')
+
   try {
     const bodyText = await req.text()
 
-    const res = await fetch(`${BASE.replace(/\/$/, '')}/v2/pipeline`, {
+    const res = await fetch(`${normalizedUrl}/v2/pipeline`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${TOKEN}`,
@@ -73,7 +76,7 @@ export default async (req) => {
 
     if (!res.ok) {
       const errorText = await res.text()
-      console.error('Turso upstream error:', res.status, errorText)
+      console.error('Turso upstream error:', res.status, errorText, 'URL:', normalizedUrl.split('.')[0] + '...')
       return new Response(JSON.stringify({ error: `Upstream error: ${res.status}`, detail: errorText }), {
         status: res.status,
         headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -86,7 +89,7 @@ export default async (req) => {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    console.error('Turso proxy exception:', err)
+    console.error('Turso proxy exception:', err.message, 'URL:', normalizedUrl.split('.')[0] + '...')
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
