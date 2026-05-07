@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CDN } from '../lib/cdn'
 import './Rooms.css'
@@ -16,6 +16,17 @@ const icons = {
 export default function Rooms({ onBook }) {
   const { t } = useTranslation()
   const [current, setCurrent] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
+  const sectionRef = useRef(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    )
+    if (sectionRef.current) observer.observe(sectionRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const rooms = [
     {
@@ -51,7 +62,7 @@ export default function Rooms({ onBook }) {
   const room = rooms[current]
 
   return (
-    <section id="habitaciones" className="rooms">
+    <section id="habitaciones" className={`rooms ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
       <video
         className="rooms__video-bg"
         autoPlay

@@ -1,223 +1,384 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getEventBySlug, createRegistration } from '../lib/turso'
+import { getEventBySlug, createActivityRegistration, getRegistrationCountByEvent } from '../lib/turso'
 import './EventoPage.css'
+
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+function fmtDate(s) {
+  if (!s) return ''
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m) return `${parseInt(m[3])} de ${MESES[parseInt(m[2]) - 1]} ${m[1]}`
+  return s
+}
+
+// Validates Mexican numbers (10 digits, starts 2-9) or international (+XX...)
+// Strips spaces, dashes, dots, parentheses before checking
+function isValidPhone(raw) {
+  const digits = raw.replace(/[\s\-().+]/g, '')
+  // International with country code: + followed by 7-15 digits
+  if (raw.trim().startsWith('+')) return /^\+\d{7,15}$/.test(raw.trim().replace(/[\s\-().]/g, ''))
+  // Mexico / nearby NANP (10 digits, first digit 2-9)
+  if (/^[2-9]\d{9}$/.test(digits)) return true
+  // 7-digit local (some rural MX towns) — allow
+  if (/^\d{7}$/.test(digits)) return true
+  return false
+}
 
 export default function EventoPage() {
   const { slug } = useParams()
-  const navigate = useNavigate()
-  const [event, setEvent] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    notes: '',
-  })
+  const navigate  = useNavigate()
+
+  const [event, setEvent]       = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [spotsLeft, setSpotsLeft] = useState(null)
+
+  const [step, setStep]         = useState(1)
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone]       = useState('')
+  const [notes, setNotes]       = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [error, setError]       = useState('')
+  const [success, setSuccess]   = useState(false)
+  const [copied, setCopied]     = useState(false)
+
+  const pageUrl = window.location.href
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(pageUrl)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = pageUrl
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+  }
+
+  const shareWhatsApp = () => {
+    const msg = `¡Te invito al evento *${event?.name}* en Hotel Punta Galería!\n\nRegístrate aquí: ${pageUrl}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+  }
 
   useEffect(() => {
-    const loadEvent = async () => {
+    const load = async () => {
       setLoading(true)
-      const eventData = await getEventBySlug(slug)
-      if (eventData) {
-        setEvent(eventData)
+      const ev = await getEventBySlug(slug)
+      setEvent(ev)
+      if (ev?.id && ev?.capacity > 0) {
+        const count = await getRegistrationCountByEvent(ev.id)
+        setSpotsLeft(Math.max(0, Number(ev.capacity) - count))
       }
       setLoading(false)
     }
-    loadEvent()
+    load()
   }, [slug])
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    setError('')
-  }
+  const capacity  = Number(event?.capacity ?? 0)
+  const isSoldOut = capacity > 0 && spotsLeft === 0
 
-  const handleSubmit = async (e) => {
+  const handleStep1 = (e) => {
     e.preventDefault()
     setError('')
+    if (!fullName.trim()) { setError('Por favor ingresa tu nombre completo'); return }
+    if (!phone.trim())    { setError('Por favor ingresa tu número de teléfono'); return }
+    if (!isValidPhone(phone)) { setError('Ingresa un número válido (ej: 667 123 4567 o +1 555 000 1234)'); return }
+    setStep(2)
+  }
 
-    if (!formData.fullName.trim()) {
-      setError('Por favor ingresa tu nombre completo')
-      return
-    }
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      setError('Por favor ingresa un email válido')
-      return
-    }
-    if (!formData.phone.trim()) {
-      setError('Por favor ingresa tu teléfono')
-      return
-    }
-
+  const handlePayment = async (method) => {
+    setError('')
     setSubmitting(true)
     try {
-      await createRegistration(
+      await createActivityRegistration(
+        event.activity_id ?? 0,
+        event.name,
+        fullName.trim(),
+        phone.trim(),
+        '',
+        '',
         event.id,
-        formData.fullName,
-        formData.email,
-        formData.phone,
-        formData.notes
+        event.name,
+        method
       )
+      if (spotsLeft !== null) setSpotsLeft(s => Math.max(0, s - 1))
       setSuccess(true)
-      setFormData({ fullName: '', email: '', phone: '', notes: '' })
-      setTimeout(() => {
-        navigate('/')
-      }, 2000)
-    } catch (err) {
+    } catch {
       setError('Ocurrió un error al registrarte. Intenta nuevamente.')
+      setStep(1)
     } finally {
       setSubmitting(false)
     }
   }
 
+  // ── Loading ──────────────────────────────────────────
   if (loading) {
     return (
-      <div className="evento-page">
-        <div className="evento-container">
-          <div className="evento-loading">Cargando evento...</div>
+      <>
+        <header className="ep-header">
+          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ep-logo" />
+        </header>
+        <div className="ep-page">
+          <div className="ep-container">
+            <div className="ep-loading">
+              <div className="ep-spinner"/>
+              <p>Cargando evento…</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
+  // ── Not found ────────────────────────────────────────
   if (!event) {
     return (
-      <div className="evento-page">
-        <div className="evento-container">
-          <div className="evento-error">
-            <h2>Evento no disponible</h2>
-            <p>El evento que buscas no existe o no está disponible en este momento.</p>
-            <button className="evento-back-btn" onClick={() => navigate('/')}>
-              ← Volver al inicio
-            </button>
+      <>
+        <header className="ep-header">
+          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ep-logo" />
+        </header>
+        <div className="ep-page">
+          <div className="ep-container">
+            <button className="ep-back" onClick={() => navigate('/')}>← Volver al inicio</button>
+            <div className="ep-not-found">
+              <div className="ep-not-found__icon">🌴</div>
+              <h2>Evento no disponible</h2>
+              <p>El evento que buscas no existe o ya no está activo.</p>
+              <button className="ep-back-btn" onClick={() => navigate('/')}>Ir al inicio</button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
+  const spotsColor = spotsLeft !== null && capacity > 0
+    ? spotsLeft <= 3 ? '#dc2626' : spotsLeft <= 8 ? '#d97706' : '#5a6c1e'
+    : '#5a6c1e'
+
+  const phoneTyped = phone.trim().length > 0
+  const phoneOk    = phoneTyped && isValidPhone(phone)
+  const phoneBad   = phoneTyped && !phoneOk
+
   return (
-    <div className="evento-page">
-      <div className="evento-container">
-        {/* Event Details */}
-        <div className="evento-header">
-          <button className="evento-back-btn" onClick={() => navigate('/')}>
-            ← Volver al inicio
-          </button>
-          <h1 className="evento-title">{event.name}</h1>
-        </div>
+    <>
+      <header className="ep-header">
+        <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ep-logo" />
+      </header>
 
-        <div className="evento-details">
-          {event.date && (
-            <div className="evento-detail-item">
-              <span className="evento-detail-label">Fecha:</span>
-              <span className="evento-detail-value">{event.date}</span>
-            </div>
-          )}
-          {event.price && (
-            <div className="evento-detail-item">
-              <span className="evento-detail-label">Precio:</span>
-              <span className="evento-detail-value">${event.price.toFixed(2)}</span>
-            </div>
-          )}
-          {event.capacity && (
-            <div className="evento-detail-item">
-              <span className="evento-detail-label">Capacidad:</span>
-              <span className="evento-detail-value">{event.capacity} personas</span>
-            </div>
-          )}
-        </div>
+      <div className="ep-page">
+        <div className="ep-container">
 
-        {event.description && (
-          <div className="evento-description">
-            <p>{event.description}</p>
-          </div>
-        )}
+          <button className="ep-back" onClick={() => navigate('/')}>← Volver al inicio</button>
 
-        {/* Registration Form */}
-        <div className="evento-form-wrapper">
-          <h2 className="evento-form-title">Regístrate al evento</h2>
+          <div className="ep-grid">
 
-          {success ? (
-            <div className="evento-success">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-              <p>¡Registrado con éxito!</p>
-              <small>Redirecting...</small>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="evento-form">
-              <div className="evento-form-group">
-                <label htmlFor="fullName" className="evento-label">Nombre completo *</label>
-                <input
-                  type="text"
-                  id="fullName"
-                  name="fullName"
-                  className="evento-input"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  placeholder="Tu nombre completo"
-                />
+            {/* ── Left: event info ── */}
+            <div className="ep-col-info">
+              <div className="ep-hero">
+                <p className="ep-eyebrow">Hotel Punta Galería · Evento</p>
+                <h1 className="ep-title">{event.name}</h1>
               </div>
 
-              <div className="evento-form-group">
-                <label htmlFor="email" className="evento-label">Email *</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  className="evento-input"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="tu@email.com"
-                />
+              <div className="ep-pills">
+                {event.date && (
+                  <div className="ep-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {fmtDate(event.date)}
+                  </div>
+                )}
+                {event.price > 0 && (
+                  <div className="ep-pill ep-pill--price">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    ${parseFloat(event.price).toFixed(2)}
+                  </div>
+                )}
+                {capacity > 0 && (
+                  <div className="ep-pill ep-pill--spots" style={{ borderColor: spotsColor, color: spotsColor }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    {spotsLeft === null
+                      ? `${capacity} lugares`
+                      : isSoldOut
+                        ? 'Sin lugares disponibles'
+                        : spotsLeft <= 3
+                          ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'}!`
+                          : `${spotsLeft} de ${capacity} disponibles`
+                    }
+                  </div>
+                )}
               </div>
 
-              <div className="evento-form-group">
-                <label htmlFor="phone" className="evento-label">Teléfono *</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  className="evento-input"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Tu teléfono"
-                />
+              {event.description && (
+                <div className="ep-desc">
+                  <p>{event.description}</p>
+                </div>
+              )}
+
+              <div className="ep-share">
+                <button
+                  className={`ep-share__copy${copied ? ' ep-share__copy--ok' : ''}`}
+                  onClick={copyLink}
+                >
+                  {copied ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      ¡Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                      Copiar enlace
+                    </>
+                  )}
+                </button>
+
+                <button className="ep-share__wa" onClick={shareWhatsApp}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  Enviar por WhatsApp
+                </button>
               </div>
+            </div>
 
-              <div className="evento-form-group">
-                <label htmlFor="notes" className="evento-label">Comentarios (opcional)</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  className="evento-input evento-textarea"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Algún comentario adicional..."
-                  rows="4"
-                />
-              </div>
+            {/* ── Right: form / soldout / success ── */}
+            <div className="ep-col-form">
+              {isSoldOut ? (
+                <div className="ep-soldout">
+                  <div className="ep-soldout__icon">🌴</div>
+                  <h2>¡Lugares agotados!</h2>
+                  <p>Este evento está lleno. Mantente al tanto de próximos eventos en nuestras redes.</p>
+                  <a href="https://wa.me/526677154727" target="_blank" rel="noopener noreferrer" className="ep-soldout__wa">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Avisarme del próximo evento
+                  </a>
+                </div>
+              ) : success ? (
+                <div className="ep-success">
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <h2>¡Registro exitoso!</h2>
+                  <p>Te esperamos. ¡Nos vemos pronto! 🌿</p>
+                  <button className="ep-back-btn" onClick={() => navigate('/')}>Volver al inicio</button>
+                </div>
+              ) : step === 1 ? (
+                <div className="ep-form-wrap">
+                  <div className="ep-steps">
+                    <span className="ep-step ep-step--active">1</span>
+                    <span className="ep-step-line"/>
+                    <span className="ep-step">2</span>
+                  </div>
+                  <h2 className="ep-form-title">Tus datos</h2>
 
-              {error && <p className="evento-error-msg">{error}</p>}
+                  <form onSubmit={handleStep1} className="ep-form">
+                    <div className="ep-field">
+                      <label className="ep-label">Nombre completo *</label>
+                      <input
+                        type="text"
+                        className="ep-input"
+                        value={fullName}
+                        onChange={e => { setFullName(e.target.value); setError('') }}
+                        placeholder="Tu nombre completo"
+                        autoFocus
+                      />
+                    </div>
 
-              <button
-                type="submit"
-                className="evento-submit-btn"
-                disabled={submitting}
-              >
-                {submitting ? 'Registrando...' : 'Registrarse al evento'}
-              </button>
-            </form>
-          )}
+                    <div className="ep-field">
+                      <label className="ep-label">Número de teléfono *</label>
+                      <input
+                        type="tel"
+                        className={`ep-input${phoneOk ? ' ep-input--ok' : phoneBad ? ' ep-input--error' : ''}`}
+                        value={phone}
+                        onChange={e => { setPhone(e.target.value); setError('') }}
+                        placeholder="Ej: 667 123 4567"
+                      />
+                      {phoneBad && <p className="ep-phone-hint">Ej: 667 123 4567 · +1 555 000 1234 · +52 667 123 4567</p>}
+                    </div>
+
+                    <div className="ep-field">
+                      <label className="ep-label">Comentario adicional <span>(opcional)</span></label>
+                      <textarea
+                        className="ep-input ep-textarea"
+                        value={notes}
+                        onChange={e => setNotes(e.target.value)}
+                        placeholder="Algún comentario o pregunta…"
+                        rows="3"
+                      />
+                    </div>
+
+                    {error && <p className="ep-error">{error}</p>}
+
+                    <button type="submit" className="ep-submit">
+                      Continuar al pago →
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="ep-form-wrap">
+                  <div className="ep-steps">
+                    <span className="ep-step ep-step--done">✓</span>
+                    <span className="ep-step-line ep-step-line--done"/>
+                    <span className="ep-step ep-step--active">2</span>
+                  </div>
+                  <h2 className="ep-form-title">Método de pago</h2>
+                  <p className="ep-pay-sub">¿Cómo realizarás tu pago{event.price > 0 ? ` de $${parseFloat(event.price).toFixed(2)}` : ''}?</p>
+
+                  <div className="ep-pay-options">
+                    <button
+                      type="button"
+                      className="ep-pay-card"
+                      onClick={() => handlePayment('transferencia')}
+                      disabled={submitting}
+                    >
+                      <div className="ep-pay-card__icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="5" width="20" height="14" rx="2"/>
+                          <line x1="2" y1="10" x2="22" y2="10"/>
+                        </svg>
+                      </div>
+                      <div className="ep-pay-card__info">
+                        <strong>Transferencia bancaria</strong>
+                        <span>Te enviamos los datos por WhatsApp</span>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ep-pay-card"
+                      onClick={() => handlePayment('presencial')}
+                      disabled={submitting}
+                    >
+                      <div className="ep-pay-card__icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                          <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                      </div>
+                      <div className="ep-pay-card__info">
+                        <strong>Pago presencial</strong>
+                        <span>Paga en recepción el día del evento</span>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+
+                  {error && <p className="ep-error" style={{ marginTop: 12 }}>{error}</p>}
+                  {submitting && <p style={{ textAlign:'center', color:'#888', fontSize:13, marginTop:12 }}>Registrando…</p>}
+
+                  <button type="button" className="ep-back-btn" onClick={() => setStep(1)} style={{ marginTop: 16 }}>
+                    ← Regresar
+                  </button>
+                </div>
+              )}
+            </div>
+
+          </div>{/* ep-grid */}
         </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { createActivityRegistration } from '../lib/turso'
+import { useState, useEffect } from 'react'
+import { createActivityRegistration, getRegistrationCountByEvent } from '../lib/turso'
 import './ActivityRegModal.css'
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -11,26 +11,47 @@ function fmtDate(s) {
 }
 
 export default function ActivityRegModal({ activity, event, onClose }) {
-  const [fullName, setFullName]       = useState('')
-  const [phone, setPhone]             = useState('')
-  const [howFound, setHowFound]       = useState('')
+  const [step, setStep]                   = useState(1)
+  const [fullName, setFullName]           = useState('')
+  const [phone, setPhone]                 = useState('')
+  const [howFound, setHowFound]           = useState('')
   const [howFoundOther, setHowFoundOther] = useState('')
-  const [whatsapp, setWhatsapp]       = useState('')
-  const [error, setError]             = useState('')
-  const [saving, setSaving]           = useState(false)
-  const [success, setSuccess]         = useState(false)
+  const [whatsapp, setWhatsapp]           = useState('')
+  const [error, setError]                 = useState('')
+  const [saving, setSaving]               = useState(false)
+  const [success, setSuccess]             = useState(false)
 
-  const handleSubmit = async (e) => {
+  // Capacity tracking
+  const [spotsLeft, setSpotsLeft]   = useState(null)
+  const [spotsLoading, setSpotsLoading] = useState(false)
+
+  const capacity = event?.capacity > 0 ? Number(event.capacity) : 0
+
+  useEffect(() => {
+    if (!event?.id || !capacity) return
+    setSpotsLoading(true)
+    getRegistrationCountByEvent(event.id)
+      .then(count => setSpotsLeft(Math.max(0, capacity - count)))
+      .catch(() => setSpotsLeft(null))
+      .finally(() => setSpotsLoading(false))
+  }, [event?.id, capacity])
+
+  const isSoldOut = capacity > 0 && spotsLeft === 0 && !spotsLoading
+
+  const handleStep1 = (e) => {
     e.preventDefault()
     setError('')
     if (!fullName.trim()) { setError('Por favor ingresa tu nombre completo'); return }
     if (!phone.trim())    { setError('Por favor ingresa tu número de teléfono'); return }
     if (!howFound)        { setError('Por favor indica cómo te enteraste'); return }
     if (!whatsapp)        { setError('Por favor responde la pregunta de WhatsApp'); return }
+    setStep(2)
+  }
 
-    const howFoundFinal = howFound === 'Otros' ? `Otros: ${howFoundOther.trim() || '?'}` : howFound
-
+  const handlePayment = async (method) => {
+    setError('')
     setSaving(true)
+    const howFoundFinal = howFound === 'Otros' ? `Otros: ${howFoundOther.trim() || '?'}` : howFound
     try {
       await createActivityRegistration(
         activity.id,
@@ -41,15 +62,25 @@ export default function ActivityRegModal({ activity, event, onClose }) {
         whatsapp,
         event?.id ?? null,
         event?.name ?? '',
+        method,
       )
+      if (spotsLeft !== null) setSpotsLeft(s => Math.max(0, s - 1))
       setSuccess(true)
-      setTimeout(onClose, 2500)
+      setTimeout(onClose, 2600)
     } catch {
       setError('Error al registrar. Intenta nuevamente.')
+      setStep(1)
     } finally {
       setSaving(false)
     }
   }
+
+  // Spots badge config
+  const spotsColor = spotsLeft !== null && capacity > 0
+    ? spotsLeft <= 3 ? '#dc2626'
+    : spotsLeft <= 8 ? '#d97706'
+    : '#5a6c1e'
+    : '#5a6c1e'
 
   return (
     <div className="arm-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -84,10 +115,22 @@ export default function ActivityRegModal({ activity, event, onClose }) {
                   ${parseFloat(event.price).toFixed(2)}
                 </span>
               )}
-              {event.capacity > 0 && (
-                <span className="arm-event-banner__pill">
+              {capacity > 0 && (
+                <span
+                  className="arm-event-banner__pill arm-spots-pill"
+                  style={{ borderColor: spotsColor, color: spotsColor }}
+                >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                  {event.capacity} lugares
+                  {spotsLoading
+                    ? `${capacity} lugares`
+                    : spotsLeft !== null
+                      ? spotsLeft <= 3 && spotsLeft > 0
+                        ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'}!`
+                        : spotsLeft === 0
+                          ? 'Sin lugares'
+                          : `${spotsLeft} de ${capacity} disponibles`
+                      : `${capacity} lugares`
+                  }
                 </span>
               )}
             </div>
@@ -97,7 +140,20 @@ export default function ActivityRegModal({ activity, event, onClose }) {
           </div>
         )}
 
-        {success ? (
+        {/* Sold out screen */}
+        {isSoldOut ? (
+          <div className="arm-soldout">
+            <div className="arm-soldout__icon">🌴</div>
+            <p className="arm-soldout__title">¡Lugares agotados!</p>
+            <p className="arm-soldout__msg">
+              Este evento se llenó. Síguenos para enterarte de los próximos eventos y clases.
+            </p>
+            <button className="arm-soldout__wa" onClick={() => window.open('https://wa.me/526677154727', '_blank')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Avisarme del próximo evento
+            </button>
+          </div>
+        ) : success ? (
           <div className="arm-success">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -106,8 +162,13 @@ export default function ActivityRegModal({ activity, event, onClose }) {
             <p>¡Registro exitoso!</p>
             <small>Nos vemos pronto 🌿</small>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="arm-form">
+        ) : step === 1 ? (
+          <form onSubmit={handleStep1} className="arm-form">
+            <div className="arm-steps">
+              <span className="arm-step arm-step--active">1</span>
+              <span className="arm-step-line"/>
+              <span className="arm-step">2</span>
+            </div>
 
             <div className="arm-field">
               <label className="arm-label">Nombre completo <span>(Persona que tomará la clase)</span> *</label>
@@ -164,10 +225,67 @@ export default function ActivityRegModal({ activity, event, onClose }) {
 
             {error && <p className="arm-error">{error}</p>}
 
-            <button type="submit" className="arm-submit" disabled={saving}>
-              {saving ? 'Registrando…' : 'Confirmar inscripción'}
+            <button type="submit" className="arm-submit">
+              Continuar al pago →
             </button>
           </form>
+        ) : (
+          <div className="arm-form">
+            <div className="arm-steps">
+              <span className="arm-step arm-step--done">✓</span>
+              <span className="arm-step-line arm-step-line--done"/>
+              <span className="arm-step arm-step--active">2</span>
+            </div>
+
+            <p className="arm-pay-sub">¿Cómo realizarás tu pago{event?.price > 0 ? ` de $${parseFloat(event.price).toFixed(2)}` : ''}?</p>
+
+            <div className="arm-pay-options">
+              <button
+                type="button"
+                className="arm-pay-card"
+                onClick={() => handlePayment('transferencia')}
+                disabled={saving}
+              >
+                <div className="arm-pay-card__icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                    <line x1="2" y1="10" x2="22" y2="10"/>
+                  </svg>
+                </div>
+                <div className="arm-pay-card__info">
+                  <strong>Transferencia bancaria</strong>
+                  <span>Te enviamos los datos por WhatsApp</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+
+              <button
+                type="button"
+                className="arm-pay-card"
+                onClick={() => handlePayment('presencial')}
+                disabled={saving}
+              >
+                <div className="arm-pay-card__icon">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+                <div className="arm-pay-card__info">
+                  <strong>Pago presencial</strong>
+                  <span>Paga en recepción el día del evento</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            {error && <p className="arm-error" style={{ marginTop: 4 }}>{error}</p>}
+            {saving && <p style={{ textAlign:'center', color:'#888', fontSize:13, marginTop:8 }}>Registrando…</p>}
+
+            <button type="button" className="arm-back-link" onClick={() => setStep(1)}>
+              ← Regresar
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -29,7 +29,12 @@ export default function Hero({ onBook }) {
       <div className="hero__overlay" />
       
       <div className="hero__content">
-        <h1 className="hero__title">
+        <motion.h1
+          className="hero__title"
+          initial={{ opacity: 0, y: 36 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="hero__title-main">{t('hero.titulo')}</span>
           <span className="hero__title-dynamic">
             <AnimatePresence mode="wait">
@@ -45,21 +50,42 @@ export default function Hero({ onBook }) {
               </motion.span>
             </AnimatePresence>
           </span>
-        </h1>
-        
-        <p className="hero__subtitle">{t('hero.subtitulo')}</p>
-        
-        <button type="button" className="hero__btn" onClick={onBook}>
+        </motion.h1>
+
+        <motion.p
+          className="hero__subtitle"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {t('hero.subtitulo')}
+        </motion.p>
+
+        <motion.button
+          type="button"
+          className="hero__btn"
+          onClick={onBook}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.48, ease: [0.16, 1, 0.3, 1] }}
+        >
           {t('hero.btn')}
           <MoveRight className="hero__btn-icon" size={18} />
-        </button>
+        </motion.button>
       </div>
 
-      <a href="#nosotros" className="hero__scroll-arrow" aria-label="Bajar">
+      <motion.a
+        href="#nosotros"
+        className="hero__scroll-arrow"
+        aria-label="Bajar"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.9 }}
+      >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
           <polyline points="6 9 12 15 18 9" />
         </svg>
-      </a>
+      </motion.a>
     </section>
   )
 }

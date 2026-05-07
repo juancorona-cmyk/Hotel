@@ -115,6 +115,11 @@ export async function setupDB() {
   await exec(`ALTER TABLE hotel_events ADD COLUMN activity_id INTEGER`).catch(() => {})
   await exec(`ALTER TABLE activity_registrations ADD COLUMN event_id INTEGER`).catch(() => {})
   await exec(`ALTER TABLE activity_registrations ADD COLUMN event_name TEXT`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN payment_method TEXT DEFAULT NULL`).catch(() => {})
+  await exec(`ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'editor'`).catch(() => {})
+  await exec(`ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`).catch(() => {})
+  // Promote oldest user to admin (runs once; safe to repeat)
+  await exec(`UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`).catch(() => {})
 }
 
 // ── Activities ────────────────────────────────────────────
@@ -126,10 +131,12 @@ export async function getActivities() {
 }
 
 export async function saveActivity(name, fecha, hora, semanas = 'todas') {
-  return exec(
+  const res = await exec(
     'INSERT INTO activities (name, fecha, hora, semanas) VALUES (?, ?, ?, ?)',
     [txt(name), txt(fecha ?? ''), txt(hora ?? ''), txt(semanas)]
   )
+  const rawId = res?.results?.[0]?.response?.result?.last_insert_rowid
+  return rawId ? Number(rawId) : null
 }
 
 export async function deleteActivity(id) {
@@ -143,20 +150,27 @@ export async function updateActivity(id, name, fecha, hora, semanas) {
   )
 }
 
-export async function upsertActivityEvent(activityId, activityName, price, description) {
+export async function linkEventToActivity(eventId, activityId) {
+  await exec(
+    'UPDATE hotel_events SET activity_id = ? WHERE id = ?',
+    [activityId ? int(activityId) : { type: 'null' }, int(eventId)]
+  )
+}
+
+export async function upsertActivityEvent(activityId, activityName, price, description, date, capacity) {
   const existing = await getEventByActivityId(activityId)
   const slug = activityName.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   if (existing) {
     await exec(
-      'UPDATE hotel_events SET name = ?, price = ?, description = ? WHERE id = ?',
-      [txt(activityName), flt(price ?? 0), txt(description ?? ''), int(existing.id)]
+      'UPDATE hotel_events SET name = ?, price = ?, description = ?, date = ?, capacity = ? WHERE id = ?',
+      [txt(activityName), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(existing.id)]
     )
   } else {
     await exec(
-      'INSERT INTO hotel_events (name, slug, price, description, activity_id) VALUES (?, ?, ?, ?, ?)',
-      [txt(activityName), txt(slug + '-' + activityId), flt(price ?? 0), txt(description ?? ''), int(activityId)]
+      'INSERT INTO hotel_events (name, slug, price, description, date, capacity, activity_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [txt(activityName), txt(slug + '-' + activityId), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(activityId)]
     )
   }
 }
@@ -170,10 +184,10 @@ export async function getEventByActivityId(activityId) {
 }
 
 // ── Activity Registrations ────────────────────────────
-export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp, eventId, eventName) {
+export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp, eventId, eventName, paymentMethod) {
   return exec(
-    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), int(eventId ?? 0), txt(eventName ?? '')]
+    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), int(eventId ?? 0), txt(eventName ?? ''), txt(paymentMethod ?? '')]
   )
 }
 
@@ -185,11 +199,27 @@ export async function getActivityRegistrations(activityId) {
   return parseRows(res)
 }
 
+export async function deleteActivityRegistration(id) {
+  await exec('DELETE FROM activity_registrations WHERE id = ?', [int(id)])
+}
+
 export async function getAllActivityRegistrations() {
   const res = await exec(
-    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, created_at FROM activity_registrations ORDER BY created_at DESC'
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, payment_method, created_at FROM activity_registrations ORDER BY created_at DESC'
   )
   return parseRows(res)
+}
+
+export async function getRegistrationCountByEvent(eventId) {
+  const [r1, r2] = await Promise.all([
+    exec('SELECT COUNT(*) as cnt FROM activity_registrations WHERE event_id = ?', [int(eventId)]),
+    exec('SELECT COUNT(*) as cnt FROM event_registrations WHERE event_id = ?', [int(eventId)])
+  ])
+  return Number(parseRows(r1)[0]?.cnt ?? 0) + Number(parseRows(r2)[0]?.cnt ?? 0)
+}
+
+export async function deleteEventRegistration(id) {
+  await exec('DELETE FROM event_registrations WHERE id = ?', [int(id)])
 }
 
 // ── Events ────────────────────────────────────────────
@@ -202,8 +232,8 @@ export async function getEvents() {
 
 export async function getEventBySlug(slug) {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity, activity_id FROM hotel_events WHERE slug = ? AND active = 1 LIMIT 1',
-    [txt(slug)]
+    'SELECT id, name, slug, price, description, date, capacity, activity_id FROM hotel_events WHERE (slug = ? OR slug LIKE ? || \'-%\') AND active = 1 ORDER BY length(slug) ASC LIMIT 1',
+    [txt(slug), txt(slug)]
   )
   return parseRows(res)[0] ?? null
 }
@@ -241,6 +271,14 @@ export async function getRegistrationsByEvent(eventId) {
   return parseRows(res)
 }
 
+export async function getActivityRegistrationsByEvent(eventId) {
+  const res = await exec(
+    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
+    [int(eventId)]
+  )
+  return parseRows(res)
+}
+
 // ── Track ────────────────────────────────────────────────
 export function trackEvent(eventType, metadata = {}) {
   exec(
@@ -254,7 +292,11 @@ function parseRows(result) {
   const rows = result?.results?.[0]?.response?.result?.rows ?? []
   const cols = result?.results?.[0]?.response?.result?.cols ?? []
   return rows.map(row =>
-    Object.fromEntries(cols.map((c, i) => [c.name, row[i]?.value ?? row[i]]))
+    Object.fromEntries(cols.map((c, i) => {
+      const cell = row[i]
+      if (!cell || cell.type === 'null') return [c.name, null]
+      return [c.name, cell.value ?? cell]
+    }))
   )
 }
 
@@ -285,30 +327,46 @@ export async function adminHasUsers() {
 
 export async function adminLogin(username, password) {
   const res = await exec(
-    'SELECT hash, salt FROM admin_users WHERE username = ? LIMIT 1',
+    'SELECT hash, salt, role, permissions FROM admin_users WHERE username = ? LIMIT 1',
     [txt(username)]
   )
   const row = parseRows(res)[0]
-  if (!row) return false
+  if (!row) return { ok: false }
   const hash = await pbkdf2(password, hexToBytes(row.salt))
-  return hash === row.hash
+  if (hash !== row.hash) return { ok: false }
+  let permissions = null
+  try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}
+  return { ok: true, role: row.role ?? 'editor', permissions }
 }
 
 export async function adminCreateUser(username, password) {
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
   const saltHex   = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')
   const hash      = await pbkdf2(password, saltBytes)
+  const adminCheck = await exec(`SELECT COUNT(*) as cnt FROM admin_users WHERE role = 'admin'`)
+  const hasAdmin = Number(parseRows(adminCheck)[0]?.cnt ?? 0) > 0
+  const role = hasAdmin ? 'editor' : 'admin'
   return exec(
-    'INSERT OR REPLACE INTO admin_users (username, hash, salt) VALUES (?, ?, ?)',
-    [txt(username), txt(hash), txt(saltHex)]
+    'INSERT OR REPLACE INTO admin_users (username, hash, salt, role) VALUES (?, ?, ?, ?)',
+    [txt(username), txt(hash), txt(saltHex), txt(role)]
   )
 }
 
 export async function adminGetUsers() {
   const res = await exec(
-    'SELECT id, username, created_at FROM admin_users ORDER BY created_at ASC'
+    'SELECT id, username, created_at, role, permissions FROM admin_users ORDER BY created_at ASC'
   )
-  return parseRows(res)
+  return parseRows(res).map(u => ({
+    ...u,
+    permissions: u.permissions ? (() => { try { return JSON.parse(u.permissions) } catch { return null } })() : null,
+  }))
+}
+
+export async function adminSetPermissions(id, permissions) {
+  await exec(
+    'UPDATE admin_users SET permissions = ? WHERE id = ?',
+    [txt(JSON.stringify(permissions)), int(id)]
+  )
 }
 
 export async function adminDeleteUser(id) {

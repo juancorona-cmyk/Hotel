@@ -1,6 +1,9 @@
+/* ── Sequel Design System ─────────────────────────────────────────────────── */
+/* Midnight Void #000000 · Cloud Whisper #ffffff · achromatic only */
+
 .videos {
-  background: #1a1a1a;
-  padding: 88px 32px;
+  background: #000000;
+  padding: 80px 32px;
   text-align: center;
   overflow: hidden;
 }
@@ -11,34 +14,58 @@
 }
 
 .videos__eyebrow {
+  display: inline-block;
+  font-family: 'Montserrat', sans-serif;
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.28em;
-  color: #b5c840;
-  margin-bottom: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: rgba(200, 200, 200, 0.1);
+  border-radius: 9999px;
+  padding: 5px 16px;
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.videos.is-visible .videos__eyebrow {
+  animation: videosFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .videos__title {
   font-family: 'Montserrat', sans-serif;
   font-size: 36px;
   font-weight: 800;
-  color: #fff;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  color: #ffffff;
   margin-bottom: 52px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.videos.is-visible .videos__title {
+  animation: videosFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+}
+
+@keyframes videosFadeUp {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .videos__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
-/* ── Ambient Video Card ─────────────────────────── */
+/* ── Ambient Video Card ────────────────────────── */
 .vambient {
   position: relative;
   height: 480px;
-  border-radius: 16px;
+  border-radius: 10px;
   overflow: hidden;
-  background: #242424;
+  background: #202020;
   opacity: 0;
   transform: translateY(30px);
 }
@@ -47,15 +74,12 @@
   animation: videoReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.videos.is-visible .vambient:nth-child(1) { animation-delay: 0.1s; }
-.videos.is-visible .vambient:nth-child(2) { animation-delay: 0.3s; }
+.videos.is-visible .vambient:nth-child(1) { animation-delay: 0.2s; }
+.videos.is-visible .vambient:nth-child(2) { animation-delay: 0.35s; }
 .videos.is-visible .vambient:nth-child(3) { animation-delay: 0.5s; }
 
 @keyframes videoReveal {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .vambient__media {
@@ -76,16 +100,35 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0,0,0,0.2) 0%,
-    rgba(0,0,0,0.4) 50%,
-    rgba(0,0,0,0.85) 100%
+    rgba(0,0,0,0.1) 0%,
+    rgba(0,0,0,0.35) 50%,
+    rgba(0,0,0,0.88) 100%
   );
   z-index: 2;
   transition: opacity 0.4s;
 }
 
 .vambient:hover .vambient__overlay {
-  opacity: 0.7;
+  opacity: 0.75;
+}
+
+/* Sequel lozenge badge */
+.vambient__badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 4;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  background: rgba(200, 200, 200, 0.15);
+  border-radius: 9999px;
+  padding: 5px 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
 }
 
 .vambient__info {
@@ -93,11 +136,11 @@
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 32px 24px;
+  padding: 28px 24px;
   z-index: 3;
   text-align: left;
-  transform: translateY(10px);
-  transition: transform 0.4s;
+  transform: translateY(8px);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .vambient:hover .vambient__info {
@@ -106,34 +149,37 @@
 
 .vambient__info h3 {
   font-family: 'Montserrat', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
-  color: #fff;
-  margin-bottom: 8px;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin-bottom: 8px;
+  line-height: 1.2;
 }
 
 .vambient__info p {
-  font-size: 14px;
-  color: rgba(255,255,255,0.8);
-  line-height: 1.5;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
   font-weight: 300;
+  letter-spacing: 0.02em;
+  color: #c0c0c0;
+  line-height: 1.5;
 }
 
 @media (max-width: 940px) {
-  .vambient {
-    height: 380px;
-  }
+  .vambient { height: 380px; }
 }
 
 @media (max-width: 820px) {
+  .videos { padding: 64px 20px; }
+
+  .videos__title { font-size: 30px; }
+
   .videos__grid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 16px;
   }
-  
-  .vambient {
-    height: 300px;
-  }
+
+  .vambient { height: 300px; }
 }

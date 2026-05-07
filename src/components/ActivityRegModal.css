@@ -87,6 +87,7 @@
   border-bottom: 1px solid #d4dfa8;
   padding: 14px 24px;
   flex-shrink: 0;
+  text-align: center;
 }
 
 .arm-event-banner__name {
@@ -102,6 +103,7 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 6px;
+  justify-content: center;
 }
 
 .arm-event-banner__pill {
@@ -129,6 +131,7 @@
   color: #666;
   margin: 4px 0 0;
   line-height: 1.5;
+  text-align: center;
 }
 
 /* ── Form ────────────────────────────────────────── */
@@ -276,6 +279,203 @@
   color: #7a8c2e;
   font-weight: 600;
 }
+
+/* ── Spots pill dynamic color ────────────────────── */
+.arm-spots-pill {
+  transition: color 0.3s, border-color 0.3s;
+}
+
+/* ── Sold out ─────────────────────────────────────── */
+.arm-soldout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 44px 28px 40px;
+  text-align: center;
+  background: linear-gradient(160deg, #fafaf8 0%, #f5f7ec 100%);
+  flex: 1;
+}
+
+.arm-soldout__icon {
+  font-size: 52px;
+  line-height: 1;
+  margin-bottom: 4px;
+  animation: arm-sway 3s ease-in-out infinite;
+}
+
+@keyframes arm-sway {
+  0%, 100% { transform: rotate(-4deg) }
+  50%       { transform: rotate(4deg) }
+}
+
+.arm-soldout__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.arm-soldout__msg {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.55;
+  max-width: 300px;
+}
+
+.arm-soldout__wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+  box-shadow: 0 4px 14px rgba(37,211,102,0.32);
+}
+.arm-soldout__wa:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37,211,102,0.42);
+}
+
+/* ── Steps indicator ─────────────────────────────── */
+.arm-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.arm-step {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  border: 2px solid #d4dfa8;
+  color: #aaa;
+  background: #fafaf8;
+  flex-shrink: 0;
+}
+
+.arm-step--active {
+  border-color: #7a8c2e;
+  background: #7a8c2e;
+  color: #fff;
+}
+
+.arm-step--done {
+  border-color: #7a8c2e;
+  background: #f2f6e0;
+  color: #7a8c2e;
+}
+
+.arm-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e5e8d8;
+  border-radius: 2px;
+}
+
+.arm-step-line--done {
+  background: #7a8c2e;
+}
+
+/* ── Payment step ─────────────────────────────────── */
+.arm-pay-sub {
+  font-size: 14px;
+  color: #555;
+  margin: 0;
+  font-weight: 500;
+}
+
+.arm-pay-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arm-pay-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px;
+  border: 2px solid #e5e8d8;
+  border-radius: 14px;
+  background: #fafaf8;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+  font-family: inherit;
+  width: 100%;
+}
+
+.arm-pay-card:hover:not(:disabled) {
+  border-color: #7a8c2e;
+  background: #f8faf2;
+  transform: translateY(-2px);
+}
+
+.arm-pay-card:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.arm-pay-card__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #f2f6e0;
+  color: #7a8c2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.arm-pay-card__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arm-pay-card__info strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.arm-pay-card__info span {
+  font-size: 12px;
+  color: #777;
+  font-weight: 500;
+}
+
+.arm-back-link {
+  background: none;
+  border: none;
+  color: #7a8c2e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+  margin-top: 4px;
+  transition: color 0.15s;
+}
+.arm-back-link:hover { color: #4a5a1e; }
 
 /* ── Mobile ──────────────────────────────────────── */
 @media (max-width: 560px) {

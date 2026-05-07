@@ -95,7 +95,7 @@ export default function Amenidades() {
     .filter(isActivityVisible)
 
   return (
-    <section id="amenidades" className="amenidades" ref={sectionRef}>
+    <section id="amenidades" className={`amenidades ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
       <div className="amenidades__inner">
         <p className="amenidades__eyebrow">{t('amenidades.eyebrow')}</p>
         <h2 className="amenidades__title">{t('amenidades.titulo')}</h2>

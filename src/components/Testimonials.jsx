@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import './Testimonials.css'
 
@@ -15,6 +15,17 @@ const Stars = ({ n }) => (
 export default function Testimonials() {
   const { t } = useTranslation()
   const [current, setCurrent] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
+  const sectionRef = useRef(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    )
+    if (sectionRef.current) observer.observe(sectionRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const reviews = [
     { id: 1, nameKey: 'testimonios.r1nombre', originKey: 'testimonios.r1origen', textKey: 'testimonios.r1texto', initials: 'MG', rating: 5 },
@@ -27,7 +38,7 @@ export default function Testimonials() {
   const next = () => setCurrent((c) => (c + 1) % reviews.length)
 
   return (
-    <section id="testimonios" className="testimonials">
+    <section id="testimonios" className={`testimonials ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
       <div className="testimonials__inner">
         <p className="testimonials__eyebrow">{t('testimonios.eyebrow')}</p>
         <h2 className="testimonials__title">{t('testimonios.titulo')}</h2>

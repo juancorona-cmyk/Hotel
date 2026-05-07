@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   getStats, clearEvents,
-  adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword,
+  adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword, adminSetPermissions,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
   getAllActivityRegistrations, getEventByActivityId, upsertActivityEvent,
+  deleteActivityRegistration, getActivityRegistrationsByEvent,
+  deleteEventRegistration,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -37,6 +39,14 @@ const PERIODS = [
   { label: '28D', days: 28 },
   { label: '3M',  days: 90 },
   { label: 'Todo', days: 0 },
+]
+
+const PERMS_CONFIG = [
+  { key: 'stats',         label: 'Estadísticas'  },
+  { key: 'google',        label: 'Google'         },
+  { key: 'actividades',   label: 'Actividades'    },
+  { key: 'eventos',       label: 'Eventos'        },
+  { key: 'inscripciones', label: 'Inscripciones'  },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -268,6 +278,8 @@ function UsersSection({ currentUser }) {
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
   const [changePwd, setChangePwd] = useState({ open: false, user: '', val: '', show: false })
+  const [permModal, setPermModal] = useState(null)
+  const [savingPerms, setSavingPerms] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setLoadingU(true)
@@ -305,6 +317,14 @@ function UsersSection({ currentUser }) {
     finally { setCreating(false) }
   }
 
+  const togglePerm = async (key) => {
+    if (!permModal) return
+    const updated = { ...(permModal.permissions ?? {}), [key]: !(permModal.permissions?.[key]) }
+    setPermModal(p => ({ ...p, permissions: updated }))
+    setSavingPerms(true)
+    try { await adminSetPermissions(permModal.id, updated) } finally { setSavingPerms(false); loadUsers() }
+  }
+
   return (
     <div className="adm-users">
       <div className="adm-users__header">
@@ -324,10 +344,17 @@ function UsersSection({ currentUser }) {
               <span className="adm-user-row__name">
                 {u.username}
                 {u.username === currentUser && <span className="adm-user-row__you">tú</span>}
+                <span className={`adm-role-badge${u.role === 'admin' ? ' adm-role-badge--admin' : ''}`}>{u.role === 'admin' ? 'Admin' : 'Editor'}</span>
               </span>
               <span className="adm-user-row__date">
                 {String(u.created_at ?? '').slice(0, 10)}
               </span>
+              {u.role !== 'admin' && (
+                <button className="adm-user-row__btn" title="Permisos"
+                  onClick={() => setPermModal({ ...u })}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </button>
+              )}
               <button className="adm-user-row__btn" title="Cambiar contraseña"
                 onClick={() => setChangePwd({ open: true, user: u.username, val: '', show: false })}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -361,6 +388,41 @@ function UsersSection({ currentUser }) {
           <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating}>Guardar</button>
           <button type="button" className="adm-btn-sm" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false })}>Cancelar</button>
         </form>
+      )}
+
+      {/* Permissions modal */}
+      {permModal && (
+        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setPermModal(null)}>
+          <div className="adm-evt-modal">
+            <div className="adm-evt-modal__head">
+              <span className="adm-users__change-title" style={{ margin: 0 }}>
+                Permisos — <strong>{permModal.username}</strong>
+              </span>
+              <button className="adm-evt-modal__close" onClick={() => setPermModal(null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <p className="adm-perms__hint">Activa las secciones a las que este usuario puede acceder.</p>
+            <div className="adm-perms__list">
+              {PERMS_CONFIG.map(({ key, label }) => {
+                const active = !!permModal.permissions?.[key]
+                return (
+                  <button key={key} type="button"
+                    className={`adm-perms__row${active ? ' adm-perms__row--on' : ''}`}
+                    onClick={() => togglePerm(key)}
+                    disabled={savingPerms}>
+                    <span className="adm-perms__label">{label}</span>
+                    <span className={`adm-toggle${active ? ' adm-toggle--on' : ''}`}>
+                      <span className="adm-toggle__knob"/>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add user */}
@@ -415,22 +477,30 @@ function recoverRec(a) {
   return { diaRec, frecRec: a.semanas ?? 'todas' }
 }
 
+function actSlug(name, id) {
+  return name.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + id
+}
+
 // ── Activities section ────────────────────────────────────
 function ActivitiesSection() {
   const [activities, setActivities] = useState([])
   const [loading, setLoading]       = useState(false)
   const [editItem, setEditItem]     = useState(null)
-  const [name, setName]             = useState('')
-  const [fechaTipo, setFechaTipo]   = useState('fecha')
-  const [fecha, setFecha]           = useState('')
-  const [diaRec, setDiaRec]         = useState('Viernes')
-  const [frecRec, setFrecRec]       = useState('todas')
-  const [hora, setHora]             = useState('')
   const [saving, setSaving]         = useState(false)
   const [err, setErr]               = useState('')
+  const [createdModal, setCreatedModal] = useState(null)
+  const [linkCopied, setLinkCopied]    = useState(false)
 
-  // Event info per activity (price + description)
-  const [eventInfo, setEventInfo]   = useState({}) // { [actId]: { price, description, loading } }
+  // New activity form state
+  const [newAct, setNewAct] = useState({
+    name: '', fechaTipo: 'rec', fecha: '', diaRec: 'Viernes', frecRec: 'todas', hora: '',
+    price: '', capacity: '', evtDate: '', description: '', showEvt: false,
+  })
+
+  // Event info per activity
+  const [eventInfo, setEventInfo] = useState({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -440,7 +510,6 @@ function ActivitiesSection() {
 
   useEffect(() => { load() }, [load])
 
-  // Load linked event for each activity
   useEffect(() => {
     activities.forEach(async (a) => {
       const numId = parseInt(a.id)
@@ -448,7 +517,13 @@ function ActivitiesSection() {
       const ev = await getEventByActivityId(numId)
       setEventInfo(prev => ({
         ...prev,
-        [a.id]: { price: ev?.price ?? '', description: ev?.description ?? '', hasEvent: !!ev }
+        [a.id]: {
+          price: ev?.price ?? '',
+          description: ev?.description ?? '',
+          date: ev?.date ?? '',
+          capacity: ev?.capacity ? String(ev.capacity) : '',
+          hasEvent: !!ev,
+        }
       }))
     })
   }, [activities])
@@ -458,7 +533,13 @@ function ActivitiesSection() {
     const tipo = isDate || !a.fecha ? 'fecha' : 'rec'
     const { diaRec: dr, frecRec: fr } = recoverRec(a)
     const ev = eventInfo[a.id] ?? {}
-    setEditItem({ id: a.id, name: a.name, tipo, fecha: isDate ? (a.fecha ?? '') : '', diaRec: dr, frecRec: fr, hora: a.hora ?? '', price: ev.price ?? '', description: ev.description ?? '' })
+    setEditItem({
+      id: a.id, name: a.name, tipo,
+      fecha: isDate ? (a.fecha ?? '') : '',
+      diaRec: dr, frecRec: fr, hora: a.hora ?? '',
+      price: ev.price ?? '', description: ev.description ?? '',
+      evtDate: ev.date ?? '', capacity: ev.capacity ?? '',
+    })
     setErr('')
   }
 
@@ -470,9 +551,15 @@ function ActivitiesSection() {
     setSaving(true); setErr('')
     try {
       await updateActivity(editItem.id, editItem.name.trim(), fechaValue, editItem.hora, semanasValue)
-      // Save price/description to linked event
-      if (editItem.price || editItem.description) {
-        await upsertActivityEvent(editItem.id, editItem.name.trim(), parseFloat(editItem.price) || 0, editItem.description.trim())
+      const hasEvtData = editItem.price || editItem.description || editItem.capacity || editItem.evtDate || eventInfo[editItem.id]?.hasEvent
+      if (hasEvtData) {
+        await upsertActivityEvent(
+          editItem.id, editItem.name.trim(),
+          parseFloat(editItem.price) || 0,
+          editItem.description.trim(),
+          editItem.tipo === 'fecha' ? editItem.fecha : editItem.evtDate,
+          parseInt(editItem.capacity) || 0,
+        )
       }
       setEditItem(null); load()
     } catch { setErr('Error al guardar') }
@@ -481,13 +568,26 @@ function ActivitiesSection() {
 
   const add = async (e) => {
     e.preventDefault()
-    if (!name.trim()) { setErr('Escribe el nombre de la actividad'); return }
-    const fechaValue = fechaTipo === 'fecha' ? fecha : buildFecha(diaRec, frecRec)
-    const semanasValue = fechaTipo === 'rec' ? frecRec : 'todas'
+    if (!newAct.name.trim()) { setErr('Escribe el nombre de la actividad'); return }
+    const fechaValue = newAct.fechaTipo === 'fecha' ? newAct.fecha : buildFecha(newAct.diaRec, newAct.frecRec)
+    const semanasValue = newAct.fechaTipo === 'rec' ? newAct.frecRec : 'todas'
     setSaving(true); setErr('')
     try {
-      await saveActivity(name.trim(), fechaValue, hora, semanasValue)
-      setName(''); setFecha(''); setHora(''); load()
+      const newId = await saveActivity(newAct.name.trim(), fechaValue, newAct.hora, semanasValue)
+      const hasEvt = !!(newAct.price || newAct.capacity || newAct.description || newAct.evtDate)
+      if (newId && hasEvt) {
+        await upsertActivityEvent(
+          newId, newAct.name.trim(),
+          parseFloat(newAct.price) || 0,
+          newAct.description.trim(),
+          newAct.fechaTipo === 'fecha' ? newAct.fecha : newAct.evtDate,
+          parseInt(newAct.capacity) || 0,
+        )
+      }
+      const slug = newId ? actSlug(newAct.name.trim(), newId) : null
+      setCreatedModal({ name: newAct.name.trim(), slug, hasEvt: !!(newId && hasEvt) })
+      setNewAct({ name: '', fechaTipo: 'rec', fecha: '', diaRec: 'Viernes', frecRec: 'todas', hora: '', price: '', capacity: '', evtDate: '', description: '', showEvt: false })
+      load()
     } catch { setErr('Error al guardar') }
     finally { setSaving(false) }
   }
@@ -497,12 +597,23 @@ function ActivitiesSection() {
     await deleteActivity(id); load()
   }
 
-  const set = (k) => (e) => setEditItem(p => ({ ...p, [k]: e.target.value }))
+  const setE = (k) => (e) => setEditItem(p => ({ ...p, [k]: e.target.value }))
+  const setN = (k) => (v) => setNewAct(p => ({ ...p, [k]: typeof v === 'object' ? v.target.value : v }))
+
+  const EventFieldsDivider = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 2px' }}>
+      <div style={{ flex: 1, height: 1, background: '#e5e8d8' }}/>
+      <span style={{ fontSize: 10, fontWeight: 800, color: '#7a8c2e', letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        Evento vinculado
+      </span>
+      <div style={{ flex: 1, height: 1, background: '#e5e8d8' }}/>
+    </div>
+  )
 
   return (
     <div className="adm-activities">
       <div className="adm-users__header">
-        <span>Actividades en el hotel</span>
+        <span>Actividades</span>
         <span className="adm-users__count">{activities.length} activa{activities.length !== 1 ? 's' : ''}</span>
       </div>
 
@@ -511,163 +622,386 @@ function ActivitiesSection() {
           {activities.length === 0 && (
             <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin actividades. Agrega la primera abajo.</p>
           )}
-          {activities.map(a => (
-            <div key={a.id} className={`adm-act-row ${editItem?.id === a.id ? 'adm-act-row--editing' : ''}`}>
-              <span className="adm-act-row__icon">{getActivityIcon(a.name)}</span>
-              <div className="adm-act-row__info">
-                <span className="adm-act-row__name">
-                  {a.name}
-                  {a.semanas && a.semanas !== 'todas' && (
-                    <span className="adm-act-badge">{FREC_LABEL[a.semanas]?.trim()}</span>
-                  )}
-                  {eventInfo[a.id]?.hasEvent && (
-                    <span className="adm-act-badge" style={{ background: '#eef3d6', color: '#5a6c1e' }}>
-                      {eventInfo[a.id].price > 0 ? `$${parseFloat(eventInfo[a.id].price).toFixed(0)}` : 'Con evento'}
+          {activities.map(a => {
+            const ev = eventInfo[a.id]
+            return (
+              <div key={a.id} className="adm-act-row">
+                <span className="adm-act-row__icon">{getActivityIcon(a.name)}</span>
+                <div className="adm-act-row__info">
+                  <span className="adm-act-row__name">
+                    {a.name}
+                    {a.semanas && a.semanas !== 'todas' && (
+                      <span className="adm-act-badge">{FREC_LABEL[a.semanas]?.trim()}</span>
+                    )}
+                    {ev?.hasEvent && (
+                      <span className="adm-act-badge adm-act-badge--evt">
+                        {ev.price > 0 ? `$${parseFloat(ev.price).toFixed(0)}` : ''}
+                        {ev.price > 0 && ev.capacity > 0 ? ' · ' : ''}
+                        {ev.capacity > 0 ? `${ev.capacity} lugares` : ''}
+                        {!ev.price && !ev.capacity ? 'Con evento' : ''}
+                      </span>
+                    )}
+                  </span>
+                  {(a.fecha || a.hora) && (
+                    <span className="adm-act-row__when">
+                      {fmtFecha(a.fecha)}{a.hora ? ' · ' + fmtHora(a.hora) : ''}
                     </span>
                   )}
-                </span>
-                {(a.fecha || a.hora) && (
-                  <span className="adm-act-row__when">
-                    {fmtFecha(a.fecha)}{a.hora ? ' · ' + fmtHora(a.hora) : ''}
-                  </span>
-                )}
-                {eventInfo[a.id]?.description && (
-                  <span className="adm-act-row__when" style={{ color: '#7a8c2e' }}>
-                    {eventInfo[a.id].description}
-                  </span>
-                )}
+                  {ev?.description && (
+                    <span className="adm-act-row__when" style={{ color: '#7a8c2e', fontStyle: 'italic' }}>
+                      {ev.description}
+                    </span>
+                  )}
+                </div>
+                <button className="adm-user-row__btn" onClick={() => startEdit(a)} title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => del(a.id)} title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                  </svg>
+                </button>
               </div>
-              <button className="adm-user-row__btn" onClick={() => startEdit(a)} title="Editar">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              </button>
-              <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => del(a.id)} title="Eliminar">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                </svg>
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Inline edit form */}
+      {/* ── Edit modal ── */}
       {editItem && (
-        <form onSubmit={saveEdit} className="adm-act-edit">
-          <div className="adm-act-edit__head">
-            <span className="adm-act-form__preview">{getActivityIcon(editItem.name)}</span>
-            <span className="adm-users__change-title">Editando actividad</span>
-          </div>
-          <input type="text" value={editItem.name} onChange={set('name')} placeholder="Nombre" className="adm-users__input adm-act-form__name" autoFocus />
-          <div className="adm-act-tipo">
-            <button type="button" className={editItem.tipo === 'fecha' ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'fecha'}))}>Fecha</button>
-            <button type="button" className={editItem.tipo === 'rec'   ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'rec'}))}>Recurrente</button>
-          </div>
-          {editItem.tipo === 'fecha' ? (
-            <input type="date" value={editItem.fecha} onChange={set('fecha')} className="adm-users__input adm-act-form__field" />
-          ) : (
-            <div className="adm-act-rec-wrap">
-              <select value={editItem.diaRec} onChange={set('diaRec')} className="adm-users__input">
-                {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <select value={editItem.frecRec} onChange={set('frecRec')} className="adm-users__input">
-                {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
-              </select>
+        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setEditItem(null)}>
+          <div className="adm-evt-modal">
+            <div className="adm-evt-modal__head">
+              <span className="adm-users__change-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>{getActivityIcon(editItem.name)}</span>
+                {editItem.name}
+              </span>
+              <button className="adm-evt-modal__close" onClick={() => setEditItem(null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
-          )}
-          <input type="time" value={editItem.hora} onChange={set('hora')} className="adm-users__input adm-act-form__field" />
-          <hr style={{ border: 'none', borderTop: '1px solid #e5e8d8', margin: '4px 0' }} />
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#7a8c2e', margin: 0, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Detalles del evento (visibles en el modal)</p>
-          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio ($)" className="adm-users__input" />
-          <input type="text" value={editItem.description} onChange={set('description')} placeholder="Descripción breve del evento" className="adm-users__input" />
-          <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Guardar'}</button>
-          <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
-        </form>
+
+            <form onSubmit={saveEdit} className="adm-act-edit">
+              <input type="text" value={editItem.name} onChange={setE('name')} placeholder="Nombre" className="adm-users__input adm-act-form__name" autoFocus />
+
+              <div className="adm-act-tipo">
+                <button type="button" className={editItem.tipo === 'fecha' ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'fecha', evtDate: ''}))}>Fecha específica</button>
+                <button type="button" className={editItem.tipo === 'rec'   ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'rec',   fecha: ''}))}>Recurrente</button>
+              </div>
+              {editItem.tipo === 'fecha' ? (
+                <DatePicker key="edit-fecha" value={editItem.fecha} onChange={v => setEditItem(p => ({...p, fecha: v}))} placeholder="Fecha específica" />
+              ) : (
+                <div className="adm-act-rec-wrap">
+                  <select value={editItem.diaRec} onChange={setE('diaRec')} className="adm-users__input">
+                    {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select value={editItem.frecRec} onChange={setE('frecRec')} className="adm-users__input">
+                    {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
+                  </select>
+                </div>
+              )}
+              <TimePicker value={editItem.hora} onChange={v => setEditItem(p => ({...p, hora: v}))} placeholder="Hora" variant="input" />
+
+              <EventFieldsDivider />
+              <div className="adm-act-evt-grid">
+                <input type="number" step="0.01" min="0" value={editItem.price} onChange={setE('price')} placeholder="Precio ($)" className="adm-users__input" />
+                <input type="number" min="0" value={editItem.capacity} onChange={setE('capacity')} placeholder="Lugares (capacidad)" className="adm-users__input" />
+              </div>
+              <DescField
+                value={editItem.description}
+                onChange={setE('description')}
+                name={editItem.name}
+                price={editItem.price}
+                date={editItem.tipo === 'fecha' ? editItem.fecha : editItem.evtDate}
+              />
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving} style={{ flex: 1 }}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>
+                <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
+              </div>
+              {err && <p className="adm-users__err">{err}</p>}
+            </form>
+          </div>
+        </div>
       )}
 
-      {/* Add form */}
+      {/* ── Add form ── */}
       <form onSubmit={add} className="adm-act-form">
-        <span className="adm-act-form__preview">{getActivityIcon(name)}</span>
-        <input type="text" value={name} onChange={e => { setName(e.target.value); setErr('') }} placeholder="Nombre (ej: Yoga, Pilates, Zumba…)" className="adm-users__input adm-act-form__name" />
-        <div className="adm-act-tipo">
-          <button type="button" className={fechaTipo === 'fecha' ? 'active' : ''} onClick={() => setFechaTipo('fecha')}>Fecha</button>
-          <button type="button" className={fechaTipo === 'rec'   ? 'active' : ''} onClick={() => setFechaTipo('rec')}>Recurrente</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="adm-act-form__preview">{getActivityIcon(newAct.name)}</span>
+          <input type="text" value={newAct.name}
+            onChange={e => { setN('name')(e); setErr('') }}
+            placeholder="Nombre de la actividad (ej: Yoga, Pilates…)"
+            className="adm-users__input adm-act-form__name" style={{ flex: 1 }} />
         </div>
-        {fechaTipo === 'fecha' ? (
-          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="adm-users__input adm-act-form__field" />
+
+        <div className="adm-act-tipo">
+          <button type="button" className={newAct.fechaTipo === 'fecha' ? 'active' : ''} onClick={() => setNewAct(p => ({...p, fechaTipo: 'fecha', evtDate: ''}))}>Fecha específica</button>
+          <button type="button" className={newAct.fechaTipo === 'rec'   ? 'active' : ''} onClick={() => setNewAct(p => ({...p, fechaTipo: 'rec',   fecha:   ''}))}>Recurrente</button>
+        </div>
+        {newAct.fechaTipo === 'fecha' ? (
+          <DatePicker key="new-fecha" value={newAct.fecha} onChange={setN('fecha')} placeholder="Fecha específica" />
         ) : (
           <div className="adm-act-rec-wrap">
-            <select value={diaRec} onChange={e => setDiaRec(e.target.value)} className="adm-users__input">
+            <select value={newAct.diaRec} onChange={setN('diaRec')} className="adm-users__input">
               {DIAS_REC.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <select value={frecRec} onChange={e => setFrecRec(e.target.value)} className="adm-users__input">
+            <select value={newAct.frecRec} onChange={setN('frecRec')} className="adm-users__input">
               {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
             </select>
           </div>
         )}
-        <input type="time" value={hora} onChange={e => setHora(e.target.value)} className="adm-users__input adm-act-form__field" />
-        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : '+ Agregar'}</button>
+        <TimePicker value={newAct.hora} onChange={setN('hora')} placeholder="Hora" variant="input" />
+
+        <button type="button"
+          className="adm-act-toggle-evt"
+          onClick={() => setN('showEvt')(!newAct.showEvt)}>
+          {newAct.showEvt ? '▾ Ocultar detalles del evento' : '▸ Agregar precio / capacidad / fecha de evento'}
+        </button>
+
+        {newAct.showEvt && (
+          <>
+            <EventFieldsDivider />
+            <div className="adm-act-evt-grid">
+              <input type="number" step="0.01" min="0" value={newAct.price} onChange={setN('price')} placeholder="Precio ($)" className="adm-users__input" />
+              <input type="number" min="0" value={newAct.capacity} onChange={setN('capacity')} placeholder="Lugares" className="adm-users__input" />
+            </div>
+            <DescField
+              value={newAct.description}
+              onChange={setN('description')}
+              name={newAct.name}
+              price={newAct.price}
+              date={newAct.fechaTipo === 'fecha' ? newAct.fecha : newAct.evtDate}
+            />
+          </>
+        )}
+
+        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving} style={{ marginTop: 4 }}>
+          {saving ? 'Guardando…' : '+ Crear actividad'}
+        </button>
+        {err && <p className="adm-users__err">{err}</p>}
       </form>
-      {err && <p className="adm-users__err">{err}</p>}
+
+      {/* ── Created modal ── */}
+      {createdModal && (
+        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setCreatedModal(null)}>
+          <div className="adm-evt-modal adm-created-modal">
+            <button className="adm-evt-modal__close" style={{ alignSelf: 'flex-end' }} onClick={() => { setCreatedModal(null); setLinkCopied(false) }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <div className="adm-created-modal__check">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h3 className="adm-created-modal__title">¡{createdModal.name} creada!</h3>
+            {createdModal.hasEvt ? (
+              <>
+                <p className="adm-created-modal__sub">Comparte el enlace de inscripción con tus clientes.</p>
+                <div className="adm-created-modal__actions">
+                  <button
+                    className={`adm-created-modal__copy${linkCopied ? ' adm-created-modal__copy--ok' : ''}`}
+                    onClick={() => {
+                      const link = `${window.location.origin}/evento/${createdModal.slug}`
+                      if (navigator.clipboard) { navigator.clipboard.writeText(link) }
+                      else { const ta = document.createElement('textarea'); ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta) }
+                      setLinkCopied(true)
+                      setTimeout(() => setLinkCopied(false), 2200)
+                    }}>
+                    {linkCopied
+                      ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Copiado!</>
+                      : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copiar enlace</>
+                    }
+                  </button>
+                  <button
+                    className="adm-created-modal__wa"
+                    onClick={() => {
+                      const link = `${window.location.origin}/evento/${createdModal.slug}`
+                      const msg = `¡Apúntate a *${createdModal.name}*! Regístrate aquí: ${link}`
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+                    }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.559 4.14 1.535 5.874L0 24l6.294-1.51A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.805 9.805 0 0 1-5.002-1.368l-.36-.214-3.733.895.944-3.624-.234-.373A9.808 9.808 0 0 1 2.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
+                    Compartir por WhatsApp
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="adm-created-modal__sub">La actividad se agregó a la lista.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Activity Registrations view ──────────────────────────
-function ActivityRegistrationsSection() {
-  const [regs, setRegs]     = useState([])
-  const [loading, setLoading] = useState(false)
-  const [filter, setFilter] = useState('')
+function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
+  const [regs, setRegs]           = useState([])
+  const [loading, setLoading]     = useState(false)
+  const [evtFilter, setEvtFilter] = useState('')
+  const [howFilter, setHowFilter] = useState('')
+  const [sortKey, setSortKey]     = useState('date')
+  const [sortDir, setSortDir]     = useState('desc')
 
-  useEffect(() => {
+  const loadRegs = useCallback(async () => {
     setLoading(true)
-    getAllActivityRegistrations().then(d => { setRegs(d); setLoading(false) })
+    const d = await getAllActivityRegistrations()
+    setRegs(d)
+    setLoading(false)
   }, [])
 
-  const names = [...new Set(regs.map(r => r.activity_name).filter(Boolean))]
-  const filtered = filter ? regs.filter(r => r.activity_name === filter) : regs
+  useEffect(() => {
+    loadRegs()
+  }, [loadRegs])
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`¿Eliminar la inscripción de ${name}?`)) return
+    try {
+      await deleteActivityRegistration(id)
+      loadRegs()
+    } catch {
+      alert('Error al eliminar')
+    }
+  }
+
+  const getLabel = (r) => r.event_name?.trim() || r.activity_name?.trim() || 'Sin evento'
+
+  const evtCounts = regs.reduce((acc, r) => { const k = getLabel(r); acc[k] = (acc[k] || 0) + 1; return acc }, {})
+  const howCounts = regs.reduce((acc, r) => { const k = r.how_found || '—'; acc[k] = (acc[k] || 0) + 1; return acc }, {})
+
+  const evtLabels = Object.keys(evtCounts).sort()
+  const howLabels = Object.keys(howCounts).sort()
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const sortIcon = (key) => sortKey !== key ? ' ↕' : sortDir === 'asc' ? ' ↑' : ' ↓'
+
+  const afterFilters = regs.filter(r => {
+    if (evtFilter && getLabel(r) !== evtFilter) return false
+    if (howFilter && (r.how_found || '—') !== howFilter) return false
+    if (dateFrom || dateTo) {
+      const d = r.created_at ? r.created_at.slice(0, 10) : ''
+      if (dateFrom && d < dateFrom) return false
+      if (dateTo   && d > dateTo)   return false
+    }
+    return true
+  })
+
+  const sorted = [...afterFilters].sort((a, b) => {
+    let va, vb
+    if (sortKey === 'event')     { va = getLabel(a);        vb = getLabel(b) }
+    else if (sortKey === 'name') { va = a.full_name ?? '';  vb = b.full_name ?? '' }
+    else if (sortKey === 'how')  { va = a.how_found ?? '';  vb = b.how_found ?? '' }
+    else                         { va = a.created_at ?? ''; vb = b.created_at ?? '' }
+    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+  })
+
+  const hasFilters = evtFilter || howFilter || dateFrom || dateTo
 
   return (
     <div className="adm-activities">
       <div className="adm-users__header">
-        <span>Inscripciones a actividades</span>
-        <span className="adm-users__count">{filtered.length} registro{filtered.length !== 1 ? 's' : ''}</span>
+        <span>Inscripciones</span>
+        <span className="adm-users__count">
+          {sorted.length}{hasFilters ? ` de ${regs.length}` : ' en total'}
+        </span>
       </div>
-      {names.length > 1 && (
-        <div className="adm-act-tipo" style={{ padding: '0 16px 4px' }}>
-          <button type="button" className={!filter ? 'active' : ''} onClick={() => setFilter('')}>Todas</button>
-          {names.map(n => (
-            <button key={n} type="button" className={filter === n ? 'active' : ''} onClick={() => setFilter(n)}>{n}</button>
-          ))}
+
+      {!loading && evtLabels.length > 0 && (
+        <div className="adm-ins-filters">
+          <div className="adm-ins-group">
+            <p className="adm-ins-group-label">Evento</p>
+            <div className="adm-ins-summary">
+              {evtLabels.map(label => (
+                <button key={label}
+                  className={`adm-ins-card ${evtFilter === label ? 'adm-ins-card--active' : ''}`}
+                  onClick={() => setEvtFilter(f => f === label ? '' : label)}>
+                  <span className="adm-ins-card__count">{evtCounts[label]}</span>
+                  <span className="adm-ins-card__label">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="adm-ins-group">
+            <p className="adm-ins-group-label">Canal</p>
+            <div className="adm-ins-summary">
+              {howLabels.map(label => (
+                <button key={label}
+                  className={`adm-ins-card adm-ins-card--how ${howFilter === label ? 'adm-ins-card--active' : ''}`}
+                  onClick={() => setHowFilter(f => f === label ? '' : label)}>
+                  <span className="adm-ins-card__count">{howCounts[label]}</span>
+                  <span className="adm-ins-card__label">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
       )}
+
+      {/* Filtros activos */}
+      {hasFilters && (
+        <div className="adm-ins-filterbar">
+          {evtFilter && <span className="adm-ins-chip">Evento: <strong>{evtFilter}</strong><button onClick={() => setEvtFilter('')}>✕</button></span>}
+          {howFilter && <span className="adm-ins-chip adm-ins-chip--how">Canal: <strong>{howFilter}</strong><button onClick={() => setHowFilter('')}>✕</button></span>}
+          {(dateFrom || dateTo) && (
+            <span className="adm-ins-chip adm-ins-chip--date">
+              {dateFrom || '…'} → {dateTo || '…'}
+            </span>
+          )}
+          <button className="adm-ins-clear" onClick={() => { setEvtFilter(''); setHowFilter('') }}>Limpiar filtros</button>
+        </div>
+      )}
+
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
         <div className="adm-registrations-table">
-          {filtered.length === 0 ? (
-            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin inscripciones aún</p>
+          {sorted.length === 0 ? (
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin inscripciones con estos filtros</p>
           ) : (
             <table className="adm-table">
               <thead>
                 <tr>
-                  <th>Actividad</th>
-                  <th>Nombre</th>
+                  <th className="adm-th-sort" onClick={() => toggleSort('event')}>Evento{sortIcon('event')}</th>
+                  <th className="adm-th-sort" onClick={() => toggleSort('name')}>Nombre{sortIcon('name')}</th>
                   <th>Teléfono</th>
-                  <th>¿Cómo se enteró?</th>
-                  <th>WhatsApp</th>
-                  <th>Fecha</th>
+                  <th>Pago</th>
+                  <th className="adm-th-sort" onClick={() => toggleSort('how')}>¿Cómo se enteró?{sortIcon('how')}</th>
+                  <th className="adm-th-sort" onClick={() => toggleSort('date')}>Fecha{sortIcon('date')}</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(r => (
+                {sorted.map(r => (
                   <tr key={r.id}>
-                    <td><strong>{r.activity_name}</strong></td>
+                    <td><strong>{getLabel(r)}</strong></td>
                     <td>{r.full_name}</td>
                     <td>{r.phone}</td>
-                    <td>{r.how_found}</td>
-                    <td>{r.whatsapp}</td>
+                    <td>
+                      {r.payment_method === 'transferencia'
+                        ? <span className="adm-pay-badge adm-pay-badge--transfer">Transferencia</span>
+                        : r.payment_method === 'presencial'
+                          ? <span className="adm-pay-badge adm-pay-badge--presencial">Presencial</span>
+                          : <span className="adm-pay-badge">—</span>
+                      }
+                    </td>
+                    <td>
+                      <span className="adm-how-badge">{r.how_found || '—'}</span>
+                    </td>
                     <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString('es-MX')}</td>
+                    <td>
+                      <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id, r.full_name)} title="Eliminar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -675,6 +1009,53 @@ function ActivityRegistrationsSection() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── AI Description Field ─────────────────────────────────
+const DESC_MAX = 200
+
+function DescField({ value, onChange, name, price, date }) {
+  const [loading, setLoading] = useState(false)
+  const remaining = DESC_MAX - (value?.length ?? 0)
+
+  const generate = async () => {
+    if (!name?.trim()) { alert('Escribe primero el nombre'); return }
+    setLoading(true)
+    try {
+      const res = await fetch('/.netlify/functions/ai-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, price: parseFloat(price) || 0, date, maxLen: DESC_MAX }),
+      })
+      const data = await res.json()
+      if (data.description) onChange({ target: { value: data.description } })
+    } catch { alert('Error al generar') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="adm-desc-wrap">
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder="Descripción"
+        className="adm-users__input"
+        maxLength={DESC_MAX}
+      />
+      <div className="adm-desc-bar">
+        <span className={`adm-desc-count ${remaining < 30 ? 'adm-desc-count--warn' : ''}`}>
+          {remaining} car.
+        </span>
+        <button type="button" className="adm-desc-ai" onClick={generate} disabled={loading}>
+          {loading
+            ? <span className="adm-desc-spin"/>
+            : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> IA</>
+          }
+        </button>
+      </div>
     </div>
   )
 }
@@ -693,16 +1074,15 @@ function LoginScreen({ onLogin }) {
     setBusy(true); setErr('')
     try {
       const hasUsers = await adminHasUsers()
-      let ok = false
-      let fallback = false
       if (!hasUsers) {
-        ok = pwd === FALLBACK_PWD
-        fallback = ok
+        const ok = pwd === FALLBACK_PWD
+        if (ok) onLogin(user.trim(), true, 'admin', null)
+        else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
       } else {
-        ok = await adminLogin(user.trim(), pwd)
+        const result = await adminLogin(user.trim(), pwd)
+        if (result.ok) onLogin(user.trim(), false, result.role, result.permissions)
+        else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
       }
-      if (ok) onLogin(user.trim(), fallback)
-      else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
     } catch { setErr('Error de conexión') }
     finally { setBusy(false) }
   }
@@ -711,7 +1091,7 @@ function LoginScreen({ onLogin }) {
     <div className="adm-login">
       <div className="adm-login__accent"/>
       <div className="adm-login__logo-wrap">
-        <img src="/logo/logo.svg" alt="Hotel Punta Galería" className="adm-login__logo"/>
+        <img src="/logo/logoNegro.svg" alt="Hotel Punta Galería" className="adm-login__logo"/>
       </div>
       <h2 className="adm-login__title">PANEL ADMIN</h2>
       <p className="adm-login__sub">
@@ -775,9 +1155,11 @@ function EventosSection() {
   const [registrations, setRegistrations] = useState([])
   const [regLoading, setRegLoading] = useState(false)
   const [editItem, setEditItem] = useState(null)
-  const [newEventForm, setNewEventForm] = useState({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '' })
+  const [showNewModal, setShowNewModal] = useState(false)
+  const [newEventForm, setNewEventForm] = useState({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '', slugManual: false })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [copiedId, setCopiedId] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -792,8 +1174,28 @@ function EventosSection() {
   const viewRegistrations = async (event) => {
     setSelectedEvent(event)
     setRegLoading(true)
-    setRegistrations(await getRegistrationsByEvent(event.id))
+    const [r1, r2] = await Promise.all([
+      getRegistrationsByEvent(event.id),
+      getActivityRegistrationsByEvent(event.id)
+    ])
+    // Combine and normalize
+    const combined = [
+      ...r1.map(r => ({ ...r, source: 'event' })),
+      ...r2.map(r => ({ ...r, source: 'activity', email: '—', notes: r.how_found || '—' }))
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    setRegistrations(combined)
     setRegLoading(false)
+  }
+
+  const handleDeleteReg = async (id, name, source) => {
+    if (!confirm(`¿Eliminar la inscripción de ${name}?`)) return
+    try {
+      if (source === 'activity') await deleteActivityRegistration(id)
+      else if (source === 'event') await deleteEventRegistration(id)
+      viewRegistrations(selectedEvent)
+    } catch {
+      alert('Error al eliminar')
+    }
   }
 
   const startEdit = (e) => {
@@ -818,7 +1220,9 @@ function EventosSection() {
     setSaving(true); setErr('')
     try {
       await createEvent(newEventForm.name.trim(), newEventForm.slug.trim(), parseFloat(newEventForm.price) || 0, newEventForm.description.trim(), newEventForm.date, parseInt(newEventForm.capacity) || 0, newEventForm.activity_id || null)
-      setNewEventForm({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '' }); load()
+      setNewEventForm({ name: '', slug: '', price: '', date: '', description: '', capacity: '', activity_id: '', slugManual: false })
+      setShowNewModal(false)
+      load()
     } catch (e) { setErr('Error al guardar: ' + e.message) }
     finally { setSaving(false) }
   }
@@ -828,16 +1232,34 @@ function EventosSection() {
     await deleteEvent(id); load()
   }
 
-  const copyLink = (slug) => {
-    const link = `${window.location.origin}/evento/${slug}`
-    navigator.clipboard.writeText(link)
-    alert('Link copiado: ' + link)
+  const copyLink = (id, slug) => {
+    const cleanSlug = slug.replace(/-\d+$/, '')
+    const link = `${window.location.origin}/evento/${cleanSlug}`
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+    }
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2200)
+  }
+
+  const shareWhatsApp = (slug, name) => {
+    const cleanSlug = slug.replace(/-\d+$/, '')
+    const link = `${window.location.origin}/evento/${cleanSlug}`
+    const msg = `¡Apúntate a *${name}*! Regístrate aquí: ${link}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   const set = (k) => (e) => setEditItem(p => ({ ...p, [k]: e.target.value }))
   const setNew = (k) => (e) => {
     const val = e.target.value
-    setNewEventForm(p => ({ ...p, [k]: val, ...(k === 'name' && !p.slug ? { slug: toSlug(val) } : {}) }))
+    setNewEventForm(p => {
+      if (k === 'name' && !p.slugManual) return { ...p, name: val, slug: toSlug(val) }
+      if (k === 'slug') return { ...p, slug: val, slugManual: val.length > 0 }
+      return { ...p, [k]: val }
+    })
   }
 
   if (selectedEvent) {
@@ -857,20 +1279,32 @@ function EventosSection() {
                 <thead>
                   <tr>
                     <th>Nombre</th>
-                    <th>Email</th>
+                    <th>Email / Canal</th>
                     <th>Teléfono</th>
                     <th>Notas</th>
+                    <th>Tipo</th>
                     <th>Fecha</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {registrations.map(r => (
-                    <tr key={r.id}>
+                    <tr key={`${r.source}-${r.id}`}>
                       <td>{r.full_name}</td>
-                      <td>{r.email}</td>
+                      <td>{r.email !== '—' ? r.email : <span className="adm-how-badge">{r.notes}</span>}</td>
                       <td>{r.phone}</td>
-                      <td>{r.notes}</td>
+                      <td>{r.email !== '—' ? r.notes : '—'}</td>
+                      <td>
+                        <span className={`adm-pay-badge ${r.source === 'activity' ? 'adm-pay-badge--transfer' : ''}`}>
+                          {r.source === 'activity' ? 'Actividad' : 'Evento'}
+                        </span>
+                      </td>
                       <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDeleteReg(r.id, r.full_name, r.source)} title="Eliminar">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -882,92 +1316,373 @@ function EventosSection() {
     )
   }
 
+  // ── Form shared between modal (new) and inline (edit) ──
+  const EventForm = ({ isNew }) => (
+    <form onSubmit={isNew ? addEvent : saveEdit} className="adm-evt-form-inner">
+      <input type="text" value={isNew ? newEventForm.name : editItem.name}
+        onChange={isNew ? setNew('name') : set('name')}
+        placeholder="Nombre del evento" className="adm-users__input" autoFocus />
+      <input type="text" value={isNew ? newEventForm.slug : editItem.slug}
+        onChange={isNew ? setNew('slug') : set('slug')}
+        placeholder="Slug (URL automático)" className="adm-users__input" />
+      <div className="adm-evt-row2">
+        <input type="number" step="0.01" value={isNew ? newEventForm.price : editItem.price}
+          onChange={isNew ? setNew('price') : set('price')} placeholder="Precio ($)" className="adm-users__input" />
+        <input type="number" value={isNew ? newEventForm.capacity : editItem.capacity}
+          onChange={isNew ? setNew('capacity') : set('capacity')} placeholder="Lugares" className="adm-users__input" />
+      </div>
+      <DatePicker
+        value={isNew ? newEventForm.date : editItem.date}
+        onChange={v => isNew ? setNewEventForm(p => ({...p, date: v})) : setEditItem(p => ({...p, date: v}))}
+        placeholder="Fecha del evento"
+      />
+      <DescField
+        value={isNew ? newEventForm.description : editItem.description}
+        onChange={isNew ? setNew('description') : set('description')}
+        name={isNew ? newEventForm.name : editItem?.name}
+        price={isNew ? newEventForm.price : editItem?.price}
+        date={isNew ? newEventForm.date : editItem?.date}
+      />
+      <select value={isNew ? newEventForm.activity_id : (editItem?.activity_id ?? '')}
+        onChange={isNew ? setNew('activity_id') : set('activity_id')} className="adm-users__input">
+        <option value="">{isNew ? '— Vincular a actividad (opcional) —' : '— Sin vincular a actividad —'}</option>
+        {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+      </select>
+      {err && <p className="adm-err-msg">{err}</p>}
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving} style={{ flex: 1 }}>
+          {saving ? 'Guardando…' : isNew ? 'Crear evento' : 'Guardar cambios'}
+        </button>
+        <button type="button" className="adm-btn-sm"
+          onClick={() => isNew ? (setShowNewModal(false), setErr('')) : setEditItem(null)}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  )
+
   return (
     <div className="adm-eventos">
+      {/* Header with "+ Nuevo evento" button */}
       <div className="adm-users__header">
         <span>Eventos</span>
-        <span className="adm-users__count">{events.length} evento{events.length !== 1 ? 's' : ''}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="adm-users__count">{events.length} evento{events.length !== 1 ? 's' : ''}</span>
+          <button className="adm-btn-sm adm-btn-sm--green" onClick={() => { setShowNewModal(true); setErr('') }} style={{ padding: '4px 12px', fontSize: 12 }}>
+            + Nuevo evento
+          </button>
+        </div>
       </div>
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
         <div className="adm-users__list">
           {events.length === 0 && (
-            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin eventos. Agrega el primero abajo.</p>
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin eventos. Crea el primero con "+ Nuevo evento".</p>
           )}
-          {events.map(e => (
-            <div key={e.id} className={`adm-evt-row ${editItem?.id === e.id ? 'adm-evt-row--editing' : ''}`}>
-              <div className="adm-evt-row__info">
-                <span className="adm-evt-row__name">{e.name}</span>
-                {e.date && <span className="adm-evt-row__when">{e.date}</span>}
-                {e.price && <span className="adm-evt-row__price">${e.price.toFixed(2)}</span>}
+          {events.map(e => {
+            const linkedAct = activities.find(a => String(a.id) === String(e.activity_id))
+            return (
+              <div key={e.id} className="adm-evt-row">
+                <div className="adm-evt-row__info">
+                  <span className="adm-evt-row__name">
+                    {e.name}
+                    {linkedAct && (
+                      <span className="adm-act-badge adm-act-badge--linked">
+                        <span className="adm-badge-icon">{getActivityIcon(linkedAct.name)}</span>
+                        {linkedAct.name}
+                      </span>
+                    )}
+                  </span>
+                  {e.date && <span className="adm-evt-row__when">{fmtFecha(e.date)}</span>}
+                  <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                    {e.price > 0 && <span className="adm-act-badge adm-act-badge--evt">${parseFloat(e.price).toFixed(0)}</span>}
+                    {e.capacity > 0 && <span className="adm-act-badge" style={{ fontSize: 10 }}>{e.capacity} lugares</span>}
+                  </span>
+                </div>
+                <button className={`adm-user-row__btn${copiedId === e.id ? ' adm-user-row__btn--copied' : ''}`} onClick={() => copyLink(e.id, e.slug)} title="Copiar link">
+                  {copiedId === e.id
+                    ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  }
+                </button>
+                <button className="adm-user-row__btn adm-user-row__btn--wa" onClick={() => shareWhatsApp(e.slug, e.name)} title="Compartir por WhatsApp">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.559 4.14 1.535 5.874L0 24l6.294-1.51A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.805 9.805 0 0 1-5.002-1.368l-.36-.214-3.733.895.944-3.624-.234-.373A9.808 9.808 0 0 1 2.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
+                </button>
+                <button className="adm-user-row__btn" onClick={() => viewRegistrations(e)} title="Ver inscritos">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </button>
+                <button className="adm-user-row__btn" onClick={() => { startEdit(e); setShowNewModal(false) }} title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => delEvent(e.id)} title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                </button>
               </div>
-              <button className="adm-user-row__btn" onClick={() => copyLink(e.slug)} title="Copiar link">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-              </button>
-              <button className="adm-user-row__btn" onClick={() => viewRegistrations(e)} title="Ver inscritos">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </button>
-              <button className="adm-user-row__btn" onClick={() => startEdit(e)} title="Editar">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-              <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => delEvent(e.id)} title="Eliminar">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Inline edit form */}
+      {/* Edit event modal */}
       {editItem && (
-        <form onSubmit={saveEdit} className="adm-evt-edit">
-          <span className="adm-users__change-title">Editando evento</span>
-          <input type="text" value={editItem.name} onChange={set('name')} placeholder="Nombre" className="adm-users__input" autoFocus />
-          <input type="text" value={editItem.slug} onChange={set('slug')} placeholder="Slug (URL)" className="adm-users__input" />
-          <input type="number" step="0.01" value={editItem.price} onChange={set('price')} placeholder="Precio ($)" className="adm-users__input" />
-          <input type="date" value={editItem.date} onChange={set('date')} className="adm-users__input" />
-          <input type="text" value={editItem.description} onChange={set('description')} placeholder="Descripción" className="adm-users__input" />
-          <input type="number" value={editItem.capacity} onChange={set('capacity')} placeholder="Capacidad (personas)" className="adm-users__input" />
-          <select value={editItem.activity_id ?? ''} onChange={set('activity_id')} className="adm-users__input">
-            <option value="">— Sin vincular a actividad —</option>
-            {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Guardar'}</button>
-          <button type="button" className="adm-btn-sm" onClick={() => setEditItem(null)}>Cancelar</button>
-          {err && <p className="adm-err-msg">{err}</p>}
-        </form>
+        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setEditItem(null)}>
+          <div className="adm-evt-modal">
+            <div className="adm-evt-modal__head">
+              <span className="adm-users__change-title" style={{ margin: 0 }}>Editar — {editItem.name}</span>
+              <button className="adm-evt-modal__close" onClick={() => setEditItem(null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <EventForm isNew={false} />
+          </div>
+        </div>
       )}
 
-      {/* New event form */}
-      <form onSubmit={addEvent} className="adm-evt-add">
-        <span className="adm-users__change-title">Nuevo evento / clase</span>
-        <input type="text" value={newEventForm.name} onChange={setNew('name')} placeholder="Nombre (ej: Yoga Mayo)" className="adm-users__input" />
-        <input type="text" value={newEventForm.slug} onChange={setNew('slug')} placeholder="Slug (URL)" className="adm-users__input" />
-        <input type="number" step="0.01" value={newEventForm.price} onChange={setNew('price')} placeholder="Precio ($)" className="adm-users__input" />
-        <input type="date" value={newEventForm.date} onChange={setNew('date')} className="adm-users__input" />
-        <input type="text" value={newEventForm.description} onChange={setNew('description')} placeholder="Descripción del evento" className="adm-users__input" />
-        <input type="number" value={newEventForm.capacity} onChange={setNew('capacity')} placeholder="Capacidad (personas)" className="adm-users__input" />
-        <select value={newEventForm.activity_id} onChange={setNew('activity_id')} className="adm-users__input">
-          <option value="">— Vincular a actividad (opcional) —</option>
-          {activities.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving}>{saving ? '…' : 'Crear evento'}</button>
-        {err && <p className="adm-err-msg">{err}</p>}
-      </form>
+      {/* New event modal */}
+      {showNewModal && (
+        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && (setShowNewModal(false), setErr(''))}>
+          <div className="adm-evt-modal">
+            <div className="adm-evt-modal__head">
+              <span className="adm-users__change-title" style={{ margin: 0 }}>Nuevo evento</span>
+              <button className="adm-evt-modal__close" onClick={() => { setShowNewModal(false); setErr('') }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <EventForm isNew={true} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Custom DatePicker ─────────────────────────────────────
+const DIAS = ['D','L','M','X','J','V','S']
+const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
+function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
+  const [open, setOpen]   = useState(false)
+  const [view, setView]   = useState(() => {
+    if (value) { const d = new Date(value + 'T00:00:00'); return { y: d.getFullYear(), m: d.getMonth() } }
+    const n = new Date(); return { y: n.getFullYear(), m: n.getMonth() }
+  })
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  useEffect(() => {
+    if (value) { const d = new Date(value + 'T00:00:00'); setView({ y: d.getFullYear(), m: d.getMonth() }) }
+  }, [value])
+
+  const today = new Date()
+  today.setHours(0,0,0,0)
+
+  const firstDay = new Date(view.y, view.m, 1).getDay()
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate()
+
+  function prevMonth() { setView(v => v.m === 0 ? { y: v.y-1, m: 11 } : { y: v.y, m: v.m-1 }) }
+  function nextMonth() { setView(v => v.m === 11 ? { y: v.y+1, m: 0 } : { y: v.y, m: v.m+1 }) }
+
+  function selectDay(day) {
+    const mm = String(view.m + 1).padStart(2, '0')
+    const dd = String(day).padStart(2, '0')
+    onChange(`${view.y}-${mm}-${dd}`)
+    setOpen(false)
+  }
+
+  function clear(e) { e.stopPropagation(); onChange('') }
+
+  const displayVal = value
+    ? (() => { const d = new Date(value + 'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` })()
+    : ''
+
+  const selectedDay = value
+    ? (() => { const d = new Date(value + 'T00:00:00'); return d.getFullYear() === view.y && d.getMonth() === view.m ? d.getDate() : null })()
+    : null
+
+  const cells = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  return (
+    <div className="adm-dp" ref={ref}>
+      <button type="button" className={`adm-dp__trigger ${value ? 'adm-dp__trigger--set' : ''}`} onClick={() => setOpen(o => !o)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span>{displayVal || placeholder}</span>
+        {value && <span className="adm-dp__clear" onClick={clear}>✕</span>}
+      </button>
+      {open && (
+        <div className="adm-dp__cal">
+          <div className="adm-dp__cal-head">
+            <button type="button" className="adm-dp__nav" onClick={prevMonth}>‹</button>
+            <span className="adm-dp__cal-title">{MESES_CORTOS[view.m]} {view.y}</span>
+            <button type="button" className="adm-dp__nav" onClick={nextMonth}>›</button>
+          </div>
+          <div className="adm-dp__days-head">
+            {DIAS.map(d => <span key={d} className="adm-dp__dow">{d}</span>)}
+          </div>
+          <div className="adm-dp__grid">
+            {cells.map((day, i) => {
+              if (!day) return <span key={`e${i}`} />
+              const isToday = today.getFullYear() === view.y && today.getMonth() === view.m && today.getDate() === day
+              const isSel   = selectedDay === day
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  className={`adm-dp__day ${isSel ? 'adm-dp__day--sel' : ''} ${isToday && !isSel ? 'adm-dp__day--today' : ''}`}
+                  onClick={() => selectDay(day)}
+                >{day}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Custom TimePicker ─────────────────────────────────────
+const HOURS_12 = [12,1,2,3,4,5,6,7,8,9,10,11]
+const MINS_60  = Array.from({length:60},(_,i)=>i)
+const CELL_PX  = 36
+
+function TimePicker({ value, onChange, placeholder = 'Hora', variant = 'pill' }) {
+  const [open, setOpen] = useState(false)
+  const ref   = useRef(null)
+  const hRef  = useRef(null)
+  const mRef  = useRef(null)
+
+  const parsed = (() => {
+    if (!value) return { h12: null, min: null, ampm: 'am' }
+    const [hStr, mStr] = value.split(':')
+    const h24 = parseInt(hStr, 10)
+    return { h12: h24 % 12 || 12, min: parseInt(mStr, 10), ampm: h24 >= 12 ? 'pm' : 'am' }
+  })()
+
+  const selH = parsed.h12, selMin = parsed.min, selAP = parsed.ampm
+
+  function emit(h12, min, ampm) {
+    const h24 = ampm === 'pm' ? (h12 % 12) + 12 : h12 % 12
+    onChange(`${String(h24).padStart(2,'0')}:${String(min).padStart(2,'0')}`)
+  }
+  function pickHour(h)  { emit(h, selMin ?? 0, selAP) }
+  function pickMin(m)   { emit(selH ?? 12, m, selAP) }
+  function pickAP(ap)   { emit(selH ?? 12, selMin ?? 0, ap); setOpen(false) }
+
+  useEffect(() => {
+    if (!open) return
+    if (hRef.current && selH !== null) {
+      const idx = HOURS_12.indexOf(selH)
+      if (idx >= 0) hRef.current.scrollTop = Math.max(0, idx * CELL_PX - CELL_PX)
+    }
+    if (mRef.current && selMin !== null) {
+      mRef.current.scrollTop = Math.max(0, selMin * CELL_PX - CELL_PX)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const displayVal = value ? (() => {
+    const [hStr, mStr] = value.split(':')
+    const h24 = parseInt(hStr, 10)
+    return `${h24 % 12 || 12}:${mStr} ${h24 >= 12 ? 'p.m.' : 'a.m.'}`
+  })() : ''
+
+  const isInput = variant === 'input'
+
+  return (
+    <div className="adm-tp" ref={ref}>
+      <button type="button"
+        className={isInput
+          ? `adm-tp__trigger-input ${value ? 'adm-tp__trigger-input--set' : ''}`
+          : `adm-dp__trigger ${value ? 'adm-dp__trigger--set' : ''}`}
+        onClick={() => setOpen(o => !o)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>{displayVal || placeholder}</span>
+        {value && <span className="adm-dp__clear" onClick={e => { e.stopPropagation(); onChange('') }}>✕</span>}
+      </button>
+      {open && (
+        <div className="adm-tp__drop">
+          <div className="adm-tp__head-row">
+            <span>Hora</span>
+            <span>Min</span>
+            <span></span>
+          </div>
+          <div className="adm-tp__body">
+            <div className="adm-tp__col" ref={hRef}>
+              {HOURS_12.map(h => (
+                <button key={h} type="button"
+                  className={`adm-tp__cell ${selH === h ? 'adm-tp__cell--sel' : ''}`}
+                  onClick={() => pickHour(h)}>
+                  {String(h).padStart(2,'0')}
+                </button>
+              ))}
+            </div>
+            <div className="adm-tp__sep">:</div>
+            <div className="adm-tp__col" ref={mRef}>
+              {MINS_60.map(m => (
+                <button key={m} type="button"
+                  className={`adm-tp__cell ${selMin === m ? 'adm-tp__cell--sel' : ''}`}
+                  onClick={() => pickMin(m)}>
+                  {String(m).padStart(2,'0')}
+                </button>
+              ))}
+            </div>
+            <div className="adm-tp__col adm-tp__col--ap">
+              {['am','pm'].map(ap => (
+                <button key={ap} type="button"
+                  className={`adm-tp__cell adm-tp__cell--ap ${selAP === ap ? 'adm-tp__cell--sel' : ''}`}
+                  onClick={() => pickAP(ap)}>
+                  {ap === 'am' ? 'a.m.' : 'p.m.'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function AdminDashboard({ onClose }) {
   const [currentUser, setCurrentUser] = useState(() => sessionStorage.getItem('adm_user') || null)
+  const [userRole, setUserRole]       = useState(() => sessionStorage.getItem('adm_role') || 'admin')
+  const [userPerms, setUserPerms]     = useState(() => { try { return JSON.parse(sessionStorage.getItem('adm_perms') || 'null') } catch { return null } })
   const [fallback, setFallback]       = useState(false)
   const authed = !!currentUser
+  const isAdmin = userRole === 'admin'
+  const canSee = (key) => {
+    if (isAdmin) return true
+    if (key === 'users') return false
+    return userPerms?.[key] === true
+  }
 
   const [period, setPeriod]   = useState(PERIODS[2])
   const [stats, setStats]     = useState(null)
   const [loading, setLoading] = useState(false)
   const [time, setTime]       = useState(clock())
   const [tab, setTab]         = useState('stats')
+  const [insDateFrom, setInsDateFrom] = useState('')
+  const [insDateTo,   setInsDateTo]   = useState('')
 
   const load = useCallback(async (days) => {
     setLoading(true)
@@ -984,14 +1699,26 @@ export default function AdminDashboard({ onClose }) {
     return () => clearInterval(t)
   }, [authed, period, load])
 
-  const login = (username, isFallback) => {
+  const login = (username, isFallback, role = 'admin', permissions = null) => {
     sessionStorage.setItem('adm_user', username)
+    sessionStorage.setItem('adm_role', role)
+    sessionStorage.setItem('adm_perms', JSON.stringify(permissions))
     setCurrentUser(username)
     setFallback(isFallback)
+    setUserRole(role)
+    setUserPerms(permissions)
+    if (role !== 'admin' && permissions) {
+      const first = PERMS_CONFIG.find(p => permissions[p.key])
+      setTab(first?.key ?? 'stats')
+    }
   }
   const logout = () => {
     sessionStorage.removeItem('adm_user')
+    sessionStorage.removeItem('adm_role')
+    sessionStorage.removeItem('adm_perms')
     setCurrentUser(null)
+    setUserRole('admin')
+    setUserPerms(null)
     setStats(null)
     onClose()
   }
@@ -1033,12 +1760,12 @@ export default function AdminDashboard({ onClose }) {
           <div className="adm-dash__header">
             <div className="adm-dash__hl">
               <div className="adm-dash__logo-box">
-                <img src="/logo/logo.svg" alt="logo" className="adm-dash__logo"/>
+                <img src="/logo/logoNegro.svg" alt="logo" className="adm-dash__logo"/>
               </div>
               <div>
                 <div className="adm-dash__name">
                   Hotel Punta Galería
-                  <span className="adm-dash__badge">Admin</span>
+                  <span className={`adm-dash__badge${isAdmin ? '' : ' adm-dash__badge--editor'}`}>{isAdmin ? 'Admin' : 'Editor'}</span>
                 </div>
                 <div className="adm-dash__live">
                   <span className="adm-live-dot"/>
@@ -1061,30 +1788,26 @@ export default function AdminDashboard({ onClose }) {
 
           {/* Tab + period bar */}
           <div className="adm-period-bar">
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>
-              Estadísticas
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>
-              Google
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>
-              Usuarios
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>
-              Actividades
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>
-              Eventos
-            </button>
-            <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>
-              Inscripciones
-            </button>
+            {canSee('stats') && <button className={`adm-period-btn adm-tab-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>Estadísticas</button>}
+            {canSee('google') && <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>Google</button>}
+            {canSee('actividades') && <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>Actividades</button>}
+            {canSee('eventos') && <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>Eventos</button>}
+            {canSee('inscripciones') && <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>Inscripciones</button>}
+            {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
               <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
                 {p.label}
               </button>
             ))}
+            {tab === 'inscripciones' && (
+              <div className="adm-bar-daterange">
+                <span className="adm-bar-daterange__label">Período</span>
+                <DatePicker value={insDateFrom} onChange={setInsDateFrom} placeholder="Desde" />
+                <span className="adm-bar-datesep">→</span>
+                <DatePicker value={insDateTo} onChange={setInsDateTo} placeholder="Hasta" />
+              </div>
+            )}
           </div>
 
           {/* Fallback warning */}
@@ -1103,7 +1826,7 @@ export default function AdminDashboard({ onClose }) {
             ) : tab === 'eventos' ? (
               <EventosSection />
             ) : tab === 'inscripciones' ? (
-              <ActivityRegistrationsSection />
+              <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (

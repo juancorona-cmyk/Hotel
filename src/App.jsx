@@ -5,6 +5,7 @@ import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
 import About from './components/About'
 import Stats from './components/Stats'
+import Marquee from './components/Marquee'
 import Amenidades from './components/Amenidades'
 import Rooms from './components/Rooms'
 import Videos from './components/Videos'
@@ -20,7 +21,7 @@ import EventoPage from './components/EventoPage'
 import { setupDB, trackEvent } from './lib/turso'
 import './components/MaintenanceBanner.css'
 
-function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance }) {
+function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance, dataVersion }) {
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, room: roomId })
     setBookingRoom(roomId)
@@ -33,7 +34,8 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMai
       <Hero onBook={() => openBooking('hero', 'deluxe')} />
       <About />
       <Stats />
-      <Amenidades />
+      <Marquee />
+      <Amenidades key={`amenidades-${dataVersion}`} />
       <Rooms onBook={(roomId) => openBooking('rooms', roomId)} />
       <Videos />
       <Restaurant />
@@ -49,7 +51,10 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMai
         />
       )}
       {showAdmin && (
-        <AdminDashboard onClose={() => setShowAdmin(false)} />
+        <AdminDashboard onClose={() => {
+          setShowAdmin(false)
+          setDataVersion(v => v + 1)
+        }} />
       )}
     </>
   )
@@ -59,6 +64,7 @@ export default function App() {
   const [bookingRoom, setBookingRoom] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
   const [showMaintenance, setShowMaintenance] = useState(true)
+  const [dataVersion, setDataVersion] = useState(0)
 
   useEffect(() => {
     setupDB()
@@ -68,7 +74,10 @@ export default function App() {
     const handleKey = (e) => {
       if (e.ctrlKey && e.key?.toLowerCase() === 'k') {
         e.preventDefault()
-        setShowAdmin(a => !a)
+        setShowAdmin(a => {
+          if (a) setDataVersion(v => v + 1) // Refresh when closing
+          return !a
+        })
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -77,14 +86,16 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/evento/:slug" element={<EventoPage />} />
+      <Route path="/evento/:slug" element={<EventoPage key={dataVersion} />} />
       <Route path="/*" element={
         <HomeApp
+          key={dataVersion}
           bookingRoom={bookingRoom}
           setBookingRoom={setBookingRoom}
           showAdmin={showAdmin}
           setShowAdmin={setShowAdmin}
           showMaintenance={showMaintenance}
+          dataVersion={dataVersion}
         />
       } />
     </Routes>

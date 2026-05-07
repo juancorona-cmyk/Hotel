@@ -9,9 +9,9 @@ export default function Videos() {
   const sectionRef = useRef(null)
 
   const videos = [
-    { src: CDN.VIDEO_FONDO,      titleKey: 'videos.v1titulo', descKey: 'videos.v1desc' },
-    { src: CDN.VIDEO_JARDINES,   titleKey: 'videos.v2titulo', descKey: 'videos.v2desc' },
-    { src: CDN.VIDEO_HABITACION, titleKey: 'videos.v3titulo', descKey: 'videos.v3desc' },
+    { src: CDN.VIDEO_FONDO,      titleKey: 'videos.v1titulo', descKey: 'videos.v1desc', badge: 'Entorno' },
+    { src: CDN.VIDEO_JARDINES,   titleKey: 'videos.v2titulo', descKey: 'videos.v2desc', badge: 'Jardines' },
+    { src: CDN.VIDEO_HABITACION, titleKey: 'videos.v3titulo', descKey: 'videos.v3desc', badge: 'Habitaciones' },
   ]
 
   useEffect(() => {
@@ -35,20 +35,21 @@ export default function Videos() {
         <p className="videos__eyebrow">{t('videos.eyebrow')}</p>
         <h2 className="videos__title">{t('videos.titulo')}</h2>
         <div className="videos__grid">
-          {videos.map((v, i) => (
+          {videos.map((v) => (
             <div key={v.src} className="vambient">
               <div className="vambient__media">
-                <video 
-                  src={v.src} 
-                  className="vambient__video" 
-                  autoPlay 
-                  muted 
-                  loop 
-                  playsInline 
+                <video
+                  src={v.src}
+                  className="vambient__video"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
                   preload="metadata"
                 />
                 <div className="vambient__overlay" />
               </div>
+              <span className="vambient__badge">{v.badge}</span>
               <div className="vambient__info">
                 <h3>{t(v.titleKey)}</h3>
                 <p>{t(v.descKey)}</p>

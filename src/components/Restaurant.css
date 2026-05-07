@@ -1,5 +1,5 @@
 .restaurant {
-  background: #7a8c2e;
+  background: #626c1f;
   color: #fff;
   padding: 80px 32px;
 }
@@ -47,7 +47,7 @@
   display: inline-block;
   padding: 14px 32px;
   background: #fff;
-  color: #7a8c2e !important;
+  color: #626c1f !important;
   text-decoration: none;
   border-radius: 30px;
   font-size: 13px;
@@ -63,7 +63,7 @@
   background: #f8f8f8;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-  color: #7a8c2e !important;
+  color: #626c1f !important;
 }
 
 .restaurant__btn:active {

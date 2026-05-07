@@ -1,5 +1,5 @@
 .amenidades {
-  background: #f9f9f7;
+  background: #e5e0d8;
   padding: 88px 32px;
   text-align: center;
 }
@@ -13,8 +13,14 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.28em;
-  color: #7a8c2e;
+  color: #626c1f;
   margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.amenidades.is-visible .amenidades__eyebrow {
+  animation: amenFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .amenidades__title {
@@ -23,6 +29,16 @@
   font-weight: 800;
   color: #1a1a1a;
   margin-bottom: 56px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.amenidades.is-visible .amenidades__title {
+  animation: amenFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+}
+
+@keyframes amenFadeUp {
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .amenidades__grid {
@@ -43,19 +59,19 @@
   width: 52px;
   height: 52px;
   background: #fff;
-  border: 1.5px solid #e0e5cc;
+  border: 1.5px solid #c7b7a4;
   border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px;
-  color: #7a8c2e;
+  color: #626c1f;
   transition: background 0.25s, border-color 0.25s, transform 0.25s;
 }
 
 .amenidades__item:hover .amenidades__icon {
-  background: #7a8c2e;
-  border-color: #7a8c2e;
+  background: #626c1f;
+  border-color: #626c1f;
   color: #fff;
   transform: translateY(-4px);
 }
@@ -78,7 +94,7 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.28em;
-  color: #7a8c2e;
+  color: #626c1f;
   margin-bottom: 28px;
 }
 
@@ -94,7 +110,7 @@
   align-items: flex-start;
   gap: 18px;
   background: #fff;
-  border: 1.5px solid #e0e5cc;
+  border: 1.5px solid #c7b7a4;
   border-radius: 16px;
   padding: 24px 28px;
   min-width: 240px;
@@ -135,7 +151,7 @@
 }
 
 .actividades__card--clickable:hover {
-  border-color: #7a8c2e;
+  border-color: #626c1f;
   box-shadow: 0 10px 32px rgba(122,140,46,0.22);
 }
 
@@ -145,7 +161,7 @@
   right: 18px;
   font-size: 11px;
   font-weight: 800;
-  color: #7a8c2e;
+  color: #626c1f;
   letter-spacing: 0.04em;
   opacity: 0;
   transition: opacity 0.2s;
@@ -158,13 +174,13 @@
 .actividades__icon {
   width: 48px;
   height: 48px;
-  background: #f0f4de;
+  background: #dde8d8;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 11px;
-  color: #7a8c2e;
+  color: #626c1f;
   flex-shrink: 0;
 }
 
@@ -192,7 +208,7 @@
 }
 
 .actividades__info li svg {
-  color: #7a8c2e;
+  color: #626c1f;
   flex-shrink: 0;
 }
 
