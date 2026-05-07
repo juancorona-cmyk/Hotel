@@ -1,11 +1,11 @@
-const BASE = import.meta.env.VITE_TURSO_URL
-const TOKEN = import.meta.env.VITE_TURSO_TOKEN
-
 async function pipeline(requests) {
   try {
     const res = await fetch('/.netlify/functions/turso-proxy', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_TURSO_PROXY_TOKEN || 'change-me-in-production'}`,
+      },
       body: JSON.stringify({ requests }),
     })
     if (!res.ok) {
@@ -116,8 +116,12 @@ export async function setupDB() {
   await exec(`ALTER TABLE activity_registrations ADD COLUMN event_id INTEGER`).catch(() => {})
   await exec(`ALTER TABLE activity_registrations ADD COLUMN event_name TEXT`).catch(() => {})
   await exec(`ALTER TABLE activity_registrations ADD COLUMN payment_method TEXT DEFAULT NULL`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN paid INTEGER DEFAULT 0`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN paid_at TEXT DEFAULT NULL`).catch(() => {})
   await exec(`ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'editor'`).catch(() => {})
   await exec(`ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`).catch(() => {})
+  await exec(`ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`).catch(() => {})
   // Promote oldest user to admin (runs once; safe to repeat)
   await exec(`UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`).catch(() => {})
 }
@@ -186,10 +190,12 @@ export async function getEventByActivityId(activityId) {
 
 // ── Activity Registrations ────────────────────────────
 export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp, eventId, eventName, paymentMethod) {
-  return exec(
+  const res = await exec(
     'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), int(eventId ?? 0), txt(eventName ?? ''), txt(paymentMethod ?? '')]
   )
+  const rawId = res?.results?.[0]?.response?.result?.last_insert_rowid
+  return rawId ? Number(rawId) : null
 }
 
 export async function getActivityRegistrations(activityId) {
@@ -206,9 +212,52 @@ export async function deleteActivityRegistration(id) {
 
 export async function getAllActivityRegistrations() {
   const res = await exec(
-    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, payment_method, created_at FROM activity_registrations ORDER BY created_at DESC'
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, created_at FROM activity_registrations ORDER BY created_at DESC'
   )
   return parseRows(res)
+}
+
+export async function updateActivityRegistrationPayment(id, isPaid) {
+  const now = isPaid ? "datetime('now')" : "NULL"
+  await exec(
+    `UPDATE activity_registrations SET paid = ?, paid_at = ${now} WHERE id = ?`,
+    [int(isPaid ? 1 : 0), int(id)]
+  )
+}
+
+export async function getActivityRegistrationIntents() {
+  const res = await exec(
+    "SELECT id, session_id, metadata, created_at FROM bot_events WHERE event_type = 'activity_reg_intent' ORDER BY created_at DESC"
+  )
+  const rows = parseRows(res)
+  return rows.map(r => {
+    let meta = {}
+    try { meta = JSON.parse(r.metadata) } catch {}
+    return {
+      id: r.id,
+      session_id: r.session_id,
+      created_at: r.created_at,
+      ...meta
+    }
+  })
+}
+
+export async function getHotelReservationEvents() {
+  const res = await exec(
+    "SELECT id, session_id, event_type, metadata, created_at FROM bot_events WHERE event_type IN ('reserva_click', 'reserva_confirmada') ORDER BY created_at DESC"
+  )
+  const rows = parseRows(res)
+  return rows.map(r => {
+    let meta = {}
+    try { meta = JSON.parse(r.metadata) } catch {}
+    return {
+      id: r.id,
+      session_id: r.session_id,
+      event_type: r.event_type,
+      created_at: r.created_at,
+      ...meta
+    }
+  })
 }
 
 export async function getRegistrationCountByEvent(eventId) {
@@ -221,6 +270,10 @@ export async function getRegistrationCountByEvent(eventId) {
 
 export async function deleteEventRegistration(id) {
   await exec('DELETE FROM event_registrations WHERE id = ?', [int(id)])
+}
+
+export async function deleteBotEvent(id) {
+  await exec('DELETE FROM bot_events WHERE id = ?', [int(id)])
 }
 
 // ── Events ────────────────────────────────────────────
@@ -274,7 +327,7 @@ export async function getRegistrationsByEvent(eventId) {
 
 export async function getActivityRegistrationsByEvent(eventId) {
   const res = await exec(
-    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
+    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
     [int(eventId)]
   )
   return parseRows(res)
@@ -388,7 +441,7 @@ export async function adminChangePassword(username, newPassword) {
 export async function getStats(days = 28) {
   const pf = days > 0 ? `created_at >= datetime('now', '-${days} days')` : '1=1'
 
-  const [byType, byDayType, sessions, todayByType, yesterdayByType, waSources, reservaSources, confirmaSources] = await Promise.all([
+  const [byType, byDayType, sessions, todayByType, yesterdayByType, waSources, reservaSources, confirmaSources, intentSources, regConfirmSources] = await Promise.all([
     exec(`SELECT event_type, COUNT(*) as cnt FROM bot_events WHERE ${pf} GROUP BY event_type ORDER BY cnt DESC`),
     exec(`SELECT date(created_at) as day, event_type, COUNT(*) as cnt FROM bot_events WHERE created_at >= datetime('now', '-13 days') GROUP BY day, event_type ORDER BY day ASC`),
     exec(`SELECT COUNT(DISTINCT session_id) as cnt FROM bot_events WHERE ${pf}`),
@@ -397,6 +450,8 @@ export async function getStats(days = 28) {
     exec(`SELECT json_extract(metadata, '$.source') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'whatsapp_click' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
     exec(`SELECT json_extract(metadata, '$.source') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'reserva_click' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
     exec(`SELECT json_extract(metadata, '$.source') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'reserva_confirmada' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
+    exec(`SELECT COALESCE(json_extract(metadata, '$.activity_name'), 'General') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'activity_reg_intent' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
+    exec(`SELECT COALESCE(json_extract(metadata, '$.activity_name'), 'General') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'activity_reg_confirm' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
   ])
 
   return {
@@ -408,9 +463,34 @@ export async function getStats(days = 28) {
     waSources:        parseRows(waSources),
     reservaSources:   parseRows(reservaSources),
     confirmaSources:  parseRows(confirmaSources),
+    intentSources:    parseRows(intentSources),
+    regConfirmSources:parseRows(regConfirmSources),
   }
 }
 
 export async function clearEvents() {
   await exec('DELETE FROM bot_events')
+}
+
+// ── Check-in ────────────────────────────────────────────────
+export async function checkInRegistration(id) {
+  await exec(
+    `UPDATE activity_registrations SET checked_in = 1, checked_in_at = datetime('now') WHERE id = ?`,
+    [int(id)]
+  )
+}
+
+export async function undoCheckInRegistration(id) {
+  await exec(
+    `UPDATE activity_registrations SET checked_in = 0, checked_in_at = NULL WHERE id = ?`,
+    [int(id)]
+  )
+}
+
+export async function getRegistrationById(id) {
+  const res = await exec(
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, payment_method, paid, checked_in, checked_in_at, created_at FROM activity_registrations WHERE id = ?',
+    [int(id)]
+  )
+  return parseRows(res)[0] ?? null
 }

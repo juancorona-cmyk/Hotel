@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
@@ -14,12 +14,18 @@ import EventHall from './components/EventHall'
 import Testimonials from './components/Testimonials'
 import Location from './components/Location'
 import Footer from './components/Footer'
-import BookingModal from './components/BookingModal'
 import HotelBot from './components/HotelBot'
-import AdminDashboard from './components/AdminDashboard'
-import EventoPage from './components/EventoPage'
 import { setupDB, trackEvent } from './lib/turso'
 import './components/MaintenanceBanner.css'
+
+const BookingModal = lazy(() => import('./components/BookingModal'))
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
+const EventoPage = lazy(() => import('./components/EventoPage'))
+const CheckInPage = lazy(() => import('./components/CheckInPage'))
+
+function LazyFallback() {
+  return <div className="lazy-fallback" aria-hidden="true" />
+}
 
 function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance, dataVersion }) {
   const openBooking = (source, roomId) => {
@@ -45,16 +51,20 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMai
       <Footer />
       <HotelBot />
       {bookingRoom && (
-        <BookingModal
-          initialRoom={bookingRoom}
-          onClose={() => setBookingRoom(null)}
-        />
+        <Suspense fallback={<LazyFallback />}>
+          <BookingModal
+            initialRoom={bookingRoom}
+            onClose={() => setBookingRoom(null)}
+          />
+        </Suspense>
       )}
       {showAdmin && (
-        <AdminDashboard onClose={() => {
-          setShowAdmin(false)
-          setDataVersion(v => v + 1)
-        }} />
+        <Suspense fallback={<LazyFallback />}>
+          <AdminDashboard onClose={() => {
+            setShowAdmin(false)
+            setDataVersion(v => v + 1)
+          }} />
+        </Suspense>
       )}
     </>
   )
@@ -86,7 +96,16 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/evento/:slug" element={<EventoPage key={dataVersion} />} />
+      <Route path="/evento/:slug" element={
+        <Suspense fallback={<LazyFallback />}>
+          <EventoPage key={dataVersion} />
+        </Suspense>
+      } />
+      <Route path="/checkin" element={
+        <Suspense fallback={<LazyFallback />}>
+          <CheckInPage />
+        </Suspense>
+      } />
       <Route path="/*" element={
         <HomeApp
           key={dataVersion}

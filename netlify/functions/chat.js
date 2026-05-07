@@ -4,11 +4,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const AUTH_TOKEN = process.env.TURSO_PROXY_TOKEN || 'change-me-in-production'
-
-// Simple rate limiter — 100 req/min per IP
+// Rate limiter — 20 req/min per IP
 const RATE_WINDOW = 60_000
-const RATE_MAX = 100
+const RATE_MAX = 20
 const rateMap = new Map()
 
 function isRateLimited(ip) {
@@ -30,16 +28,6 @@ export default async (req) => {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  // Auth check
-  const authHeader = req.headers.get('authorization') || req.headers.get('x-proxy-token')
-  if (!authHeader || authHeader !== `Bearer ${AUTH_TOKEN}`) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  }
-
-  // Rate limit
   const ip = req.headers.get('x-forwarded-for') || req.headers.get('client-ip') || 'unknown'
   if (isRateLimited(ip)) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
@@ -48,19 +36,35 @@ export default async (req) => {
     })
   }
 
-  const BASE = process.env.TURSO_URL
-  const TOKEN = process.env.TURSO_TOKEN
+  const KEY = process.env.OPENAI_API_KEY
+  if (!KEY) {
+    return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+      status: 500,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
 
   try {
-    const bodyText = await req.text()
+    const { messages } = await req.json()
+    if (!messages || !Array.isArray(messages)) {
+      return new Response(JSON.stringify({ error: 'Invalid request' }), {
+        status: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
 
-    const res = await fetch(`${BASE}/v2/pipeline`, {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${TOKEN}`,
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${KEY}`,
       },
-      body: bodyText,
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages,
+        max_tokens: 350,
+        temperature: 0.65,
+      }),
     })
 
     const data = await res.json()
@@ -69,8 +73,8 @@ export default async (req) => {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    console.error('Turso proxy error:', err)
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('[chat] Error:', err)
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })

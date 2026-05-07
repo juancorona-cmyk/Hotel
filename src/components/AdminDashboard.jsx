@@ -6,32 +6,22 @@ import {
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
   getAllActivityRegistrations, getEventByActivityId, upsertActivityEvent,
   deleteActivityRegistration, getActivityRegistrationsByEvent,
-  deleteEventRegistration,
+  deleteEventRegistration, getActivityRegistrationIntents, getHotelReservationEvents,
+  deleteBotEvent, updateActivityRegistrationPayment,
+  getRegistrationById, checkInRegistration, undoCheckInRegistration,
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
+import { fmtFecha as _fmtFecha, fmtHora } from '../lib/utils'
 import SearchConsoleTab from './SearchConsoleTab'
 import './AdminDashboard.css'
 
-const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-
 function fmtFecha(s) {
-  if (!s) return ''
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (m) return `${parseInt(m[3])} de ${MESES[parseInt(m[2]) - 1]}`
-  return s
+  return _fmtFecha(s, false)
 }
 
-function fmtHora(s) {
-  if (!s) return ''
-  const m = s.match(/^(\d{1,2}):(\d{2})$/)
-  if (m) {
-    const h = parseInt(m[1])
-    return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'pm' : 'am'}`
-  }
-  return s
-}
-
-const FALLBACK_PWD = import.meta.env.VITE_ADMIN_PASSWORD || 'hotel2024'
+// One-time setup key for first admin user creation.
+// Must be set via Netlify env var. If unset, initial setup is disabled.
+const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
 
 const PERIODS = [
   { label: '24H', days: 1 },
@@ -46,7 +36,9 @@ const PERMS_CONFIG = [
   { key: 'google',        label: 'Google'         },
   { key: 'actividades',   label: 'Actividades'    },
   { key: 'eventos',       label: 'Eventos'        },
-  { key: 'inscripciones', label: 'Inscripciones'  },
+  { key: 'reservas',      label: 'Reservas Hotel' },
+  { key: 'inscripciones', label: 'Inscripciones Actividades'  },
+  { key: 'checkin',       label: 'Check-in'                },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -846,40 +838,174 @@ function ActivitiesSection() {
   )
 }
 
-// ── Activity Registrations view ──────────────────────────
-function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
-  const [regs, setRegs]           = useState([])
-  const [loading, setLoading]     = useState(false)
-  const [evtFilter, setEvtFilter] = useState('')
-  const [howFilter, setHowFilter] = useState('')
-  const [sortKey, setSortKey]     = useState('date')
-  const [sortDir, setSortDir]     = useState('desc')
+// ── Hotel Reservations view ──────────────────────────────
+function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
+  const [data, setData]       = useState([])
+  const [loading, setLoading] = useState(false)
+  const [view, setView]       = useState('confirmed') // 'confirmed' | 'intents'
+  const [sortDir, setSortDir] = useState('desc')
 
-  const loadRegs = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true)
-    const d = await getAllActivityRegistrations()
-    setRegs(d)
+    const d = await getHotelReservationEvents()
+    setData(d)
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    loadRegs()
-  }, [loadRegs])
+  useEffect(() => { load() }, [load])
 
-  const handleDelete = async (id, name) => {
-    if (!confirm(`¿Eliminar la inscripción de ${name}?`)) return
+  const handleDelete = async (id) => {
+    if (!confirm('¿Eliminar este registro?')) return
     try {
-      await deleteActivityRegistration(id)
-      loadRegs()
+      await deleteBotEvent(id)
+      load()
     } catch {
       alert('Error al eliminar')
     }
   }
 
+  const filtered = data.filter(r => {
+    if (view === 'confirmed' && r.event_type !== 'reserva_confirmada') return false
+    if (view === 'intents' && r.event_type !== 'reserva_click') return false
+    
+    if (dateFrom || dateTo) {
+      const d = r.created_at ? r.created_at.slice(0, 10) : ''
+      if (dateFrom && d < dateFrom) return false
+      if (dateTo   && d > dateTo)   return false
+    }
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a.created_at ?? '', vb = b.created_at ?? ''
+    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+  })
+
+  return (
+    <div className="adm-activities">
+      <div className="adm-users__header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>Reservas Hotel</span>
+          <div className="adm-ins-toggle">
+            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => setView('confirmed')}>Confirmadas</button>
+            <button className={view === 'intents' ? 'active' : ''} onClick={() => setView('intents')}>Intentos</button>
+          </div>
+        </div>
+        <span className="adm-users__count">
+          {sorted.length}{data.length > 0 ? ` de ${data.filter(r => r.event_type === (view === 'confirmed' ? 'reserva_confirmada' : 'reserva_click')).length}` : ''}
+        </span>
+      </div>
+
+      {loading ? <p className="adm-users__loading">Cargando…</p> : (
+        <div className="adm-registrations-table">
+          {sorted.length === 0 ? (
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin datos aún</p>
+          ) : (
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>Origen</th>
+                  <th>Habitación</th>
+                  {view === 'confirmed' && <th>Noches</th>}
+                  <th onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} style={{ cursor: 'pointer' }}>
+                    Fecha {sortDir === 'asc' ? '↑' : '↓'}
+                  </th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(r => (
+                  <tr key={r.id}>
+                    <td>
+                      <span className="adm-how-badge">{RESERVA_LABELS[r.source] ?? r.source ?? '—'}</span>
+                    </td>
+                    <td><strong style={{ textTransform: 'capitalize' }}>{r.room ?? '—'}</strong></td>
+                    {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
+                    <td className="adm-table__date">
+                      {new Date(r.created_at).toLocaleString('es-MX', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </td>
+                    <td>
+                      <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id)} title="Eliminar">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Activity Registrations view ──────────────────────────
+function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
+  const [regs, setRegs]           = useState([])
+  const [intents, setIntents]     = useState([])
+  const [loading, setLoading]     = useState(false)
+  const [view, setView]           = useState('confirmed') // 'confirmed' | 'intents'
+  const [evtFilter, setEvtFilter] = useState('')
+  const [howFilter, setHowFilter] = useState('')
+  const [sortKey, setSortKey]     = useState('date')
+  const [sortDir, setSortDir]     = useState('desc')
+
+  // Auto-filter by ID if search param exists
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const searchId = params.get('regId')
+    if (searchId && view === 'confirmed') {
+      setEvtFilter('') // Clear other filters
+      setHowFilter('')
+      // We don't have a direct "id" filter in the UI but we can use it to highlight or filter
+    }
+  }, [view])
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    if (view === 'confirmed') {
+      const d = await getAllActivityRegistrations()
+      setRegs(d)
+    } else {
+      const d = await getActivityRegistrationIntents()
+      setIntents(d)
+    }
+    setLoading(false)
+  }, [view])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`¿Eliminar este registro de ${name}?`)) return
+    try {
+      if (view === 'confirmed') await deleteActivityRegistration(id)
+      else await deleteBotEvent(id)
+      loadData()
+    } catch {
+      alert('Error al eliminar')
+    }
+  }
+
+  const handleTogglePaid = async (id, currentPaid) => {
+    try {
+      await updateActivityRegistrationPayment(id, !currentPaid)
+      loadData()
+    } catch {
+      alert('Error al actualizar pago')
+    }
+  }
+
+  const currentData = view === 'confirmed' ? regs : intents
   const getLabel = (r) => r.event_name?.trim() || r.activity_name?.trim() || 'Sin evento'
 
-  const evtCounts = regs.reduce((acc, r) => { const k = getLabel(r); acc[k] = (acc[k] || 0) + 1; return acc }, {})
-  const howCounts = regs.reduce((acc, r) => { const k = r.how_found || '—'; acc[k] = (acc[k] || 0) + 1; return acc }, {})
+  const evtCounts = currentData.reduce((acc, r) => { const k = getLabel(r); acc[k] = (acc[k] || 0) + 1; return acc }, {})
+  const howCounts = currentData.reduce((acc, r) => { const k = r.how_found || '—'; acc[k] = (acc[k] || 0) + 1; return acc }, {})
 
   const evtLabels = Object.keys(evtCounts).sort()
   const howLabels = Object.keys(howCounts).sort()
@@ -891,7 +1017,11 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
 
   const sortIcon = (key) => sortKey !== key ? ' ↕' : sortDir === 'asc' ? ' ↑' : ' ↓'
 
-  const afterFilters = regs.filter(r => {
+  const afterFilters = currentData.filter(r => {
+    const params = new URLSearchParams(window.location.search)
+    const searchId = params.get('regId')
+    if (searchId && String(r.id) !== searchId) return false
+
     if (evtFilter && getLabel(r) !== evtFilter) return false
     if (howFilter && (r.how_found || '—') !== howFilter) return false
     if (dateFrom || dateTo) {
@@ -901,6 +1031,13 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
     }
     return true
   })
+
+  const clearSearch = () => {
+    const url = new URL(window.location)
+    url.searchParams.delete('regId')
+    window.history.replaceState({}, '', url)
+    loadData()
+  }
 
   const sorted = [...afterFilters].sort((a, b) => {
     let va, vb
@@ -916,10 +1053,21 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   return (
     <div className="adm-activities">
       <div className="adm-users__header">
-        <span>Inscripciones</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>Inscripciones</span>
+          <div className="adm-ins-toggle">
+            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => { setView('confirmed'); setEvtFilter(''); setHowFilter('') }}>Confirmadas</button>
+            <button className={view === 'intents' ? 'active' : ''} onClick={() => { setView('intents'); setEvtFilter(''); setHowFilter('') }}>Intentos</button>
+          </div>
+        </div>
         <span className="adm-users__count">
-          {sorted.length}{hasFilters ? ` de ${regs.length}` : ' en total'}
+          {sorted.length}{hasFilters ? ` de ${currentData.length}` : ' en total'}
         </span>
+        {new URLSearchParams(window.location.search).get('regId') && (
+          <button className="adm-btn-sm adm-btn-sm--green" onClick={clearSearch} style={{ marginLeft: 12 }}>
+            Ver todos
+          </button>
+        )}
       </div>
 
       {!loading && evtLabels.length > 0 && (
@@ -971,7 +1119,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
         <div className="adm-registrations-table">
           {sorted.length === 0 ? (
-            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin inscripciones con estos filtros</p>
+            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>{view === 'confirmed' ? 'Sin inscripciones con estos filtros' : 'Sin intentos con estos filtros'}</p>
           ) : (
             <table className="adm-table">
               <thead>
@@ -979,10 +1127,10 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
                   <th className="adm-th-sort" onClick={() => toggleSort('event')}>Evento{sortIcon('event')}</th>
                   <th className="adm-th-sort" onClick={() => toggleSort('name')}>Nombre{sortIcon('name')}</th>
                   <th>Teléfono</th>
-                  <th>Pago</th>
+                  {view === 'confirmed' && <th>Estado Pago</th>}
                   <th className="adm-th-sort" onClick={() => toggleSort('how')}>¿Cómo se enteró?{sortIcon('how')}</th>
                   <th className="adm-th-sort" onClick={() => toggleSort('date')}>Fecha{sortIcon('date')}</th>
-                  <th>Acciones</th>
+                  {view === 'confirmed' && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
@@ -991,23 +1139,41 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
                     <td><strong>{getLabel(r)}</strong></td>
                     <td>{r.full_name}</td>
                     <td>{r.phone}</td>
-                    <td>
-                      {r.payment_method === 'transferencia'
-                        ? <span className="adm-pay-badge adm-pay-badge--transfer">Transferencia</span>
-                        : r.payment_method === 'presencial'
-                          ? <span className="adm-pay-badge adm-pay-badge--presencial">Presencial</span>
-                          : <span className="adm-pay-badge">—</span>
-                      }
-                    </td>
+                    {view === 'confirmed' && (
+                      <td>
+                        <button 
+                          className={`adm-pay-toggle ${r.paid ? 'adm-pay-toggle--paid' : ''}`}
+                          onClick={() => handleTogglePaid(r.id, !!r.paid)}
+                          title={r.paid ? 'Marcar como pendiente' : 'Marcar como pagado'}
+                        >
+                          {r.paid ? (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> PAGADO</>
+                          ) : (
+                            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> PENDIENTE</>
+                          )}
+                        </button>
+                        {r.paid_at && <div className="adm-paid-at">{new Date(r.paid_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short' })}</div>}
+                      </td>
+                    )}
                     <td>
                       <span className="adm-how-badge">{r.how_found || '—'}</span>
                     </td>
-                    <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString('es-MX')}</td>
-                    <td>
-                      <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id, r.full_name)} title="Eliminar">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                      </button>
+                    <td className="adm-table__date">
+                      {new Date(r.created_at).toLocaleString('es-MX', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </td>
+                    {view === 'confirmed' && (
+                      <td>
+                        <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id, r.full_name)} title="Eliminar">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -1018,6 +1184,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
     </div>
   )
 }
+
 
 // ── AI Description Field ─────────────────────────────────
 const DESC_MAX = 200
@@ -1081,7 +1248,8 @@ function LoginScreen({ onLogin }) {
     try {
       const hasUsers = await adminHasUsers()
       if (!hasUsers) {
-        const ok = pwd === FALLBACK_PWD
+        if (!SETUP_KEY) { setErr('Configuración inicial no disponible'); setBusy(false); return }
+        const ok = pwd === SETUP_KEY
         if (ok) onLogin(user.trim(), true, 'admin', null)
         else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
       } else {
@@ -1669,6 +1837,119 @@ function TimePicker({ value, onChange, placeholder = 'Hora', variant = 'pill' })
   )
 }
 
+// ── Check-in Section ────────────────────────────────────────
+function CheckInSection() {
+  const [ticketId, setTicketId] = useState('')
+  const [scanResult, setScanResult] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanErr, setScanErr] = useState('')
+
+  const handleLookup = async (e) => {
+    e?.preventDefault()
+    const id = parseInt(ticketId.trim())
+    if (!id) { setScanErr('Ingresa un número de ticket válido'); return }
+    setScanning(true); setScanErr(''); setScanResult(null)
+    try {
+      const r = await getRegistrationById(id)
+      if (!r) { setScanErr('Ticket no encontrado'); setScanning(false); return }
+      setScanResult(r)
+    } catch { setScanErr('Error al buscar') }
+    finally { setScanning(false) }
+  }
+
+  const handleCheckIn = async () => {
+    if (!scanResult) return
+    setScanning(true)
+    try {
+      await checkInRegistration(scanResult.id)
+      setScanResult(r => ({ ...r, checked_in: 1, checked_in_at: new Date().toISOString() }))
+    } catch { setScanErr('Error al confirmar') }
+    finally { setScanning(false) }
+  }
+
+  const handleUndo = async () => {
+    if (!scanResult) return
+    setScanning(true)
+    try {
+      await undoCheckInRegistration(scanResult.id)
+      setScanResult(r => ({ ...r, checked_in: 0, checked_in_at: null }))
+    } catch { setScanErr('Error al deshacer') }
+    finally { setScanning(false) }
+  }
+
+  const isCheckedIn = scanResult?.checked_in === 1 || scanResult?.checked_in === '1'
+
+  return (
+    <div className="adm-checkin">
+      <div className="adm-section-lbl">CHECK-IN · ESCANEAR TICKET</div>
+
+      <form onSubmit={handleLookup} className="adm-checkin__scan">
+        <input
+          type="text"
+          inputMode="numeric"
+          className="adm-checkin__input"
+          value={ticketId}
+          onChange={e => { setTicketId(e.target.value); setScanErr('') }}
+          placeholder="Ingresa el # de ticket..."
+          autoFocus
+        />
+        <button type="submit" className="adm-checkin__btn" disabled={scanning || !ticketId.trim()}>
+          {scanning ? 'Buscando...' : 'Buscar'}
+        </button>
+      </form>
+
+      {scanErr && <p className="adm-checkin__err">{scanErr}</p>}
+
+      {scanResult && (
+        <div className={`adm-checkin__result ${isCheckedIn ? 'adm-checkin__result--ok' : ''}`}>
+          <div className={`adm-checkin__badge ${isCheckedIn ? 'adm-checkin__badge--ok' : 'adm-checkin__badge--pending'}`}>
+            {isCheckedIn ? 'YA CONFIRMADO' : 'PENDIENTE'}
+          </div>
+
+          <div className="adm-checkin__info">
+            <div className="adm-checkin__row">
+              <span className="adm-checkin__label">Ticket</span>
+              <span className="adm-checkin__val">#{String(scanResult.id).padStart(4, '0')}</span>
+            </div>
+            <div className="adm-checkin__row adm-checkin__row--name">
+              <span className="adm-checkin__label">Persona</span>
+              <span className="adm-checkin__val adm-checkin__val--name">{scanResult.full_name}</span>
+            </div>
+            <div className="adm-checkin__row">
+              <span className="adm-checkin__label">Actividad</span>
+              <span className="adm-checkin__val">{scanResult.activity_name || '—'}</span>
+            </div>
+            {scanResult.event_name && (
+              <div className="adm-checkin__row">
+                <span className="adm-checkin__label">Evento</span>
+                <span className="adm-checkin__val">{scanResult.event_name}</span>
+              </div>
+            )}
+            <div className="adm-checkin__row">
+              <span className="adm-checkin__label">Teléfono</span>
+              <span className="adm-checkin__val">{scanResult.phone}</span>
+            </div>
+            <div className="adm-checkin__row">
+              <span className="adm-checkin__label">Pago</span>
+              <span className="adm-checkin__val">{scanResult.payment_method === 'transferencia' ? 'Transferencia' : scanResult.payment_method || 'Presencial'}</span>
+            </div>
+          </div>
+
+          {isCheckedIn ? (
+            <button className="adm-checkin__action adm-checkin__action--undo" onClick={handleUndo} disabled={scanning}>
+              {scanning ? 'Procesando...' : 'Deshacer confirmación'}
+            </button>
+          ) : (
+            <button className="adm-checkin__action adm-checkin__action--confirm" onClick={handleCheckIn} disabled={scanning}>
+              {scanning ? 'Confirmando...' : 'Confirmar entrada'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminDashboard({ onClose }) {
   const [currentUser, setCurrentUser] = useState(() => sessionStorage.getItem('adm_user') || null)
   const [userRole, setUserRole]       = useState(() => sessionStorage.getItem('adm_role') || 'admin')
@@ -1740,18 +2021,24 @@ export default function AdminDashboard({ onClose }) {
   const aWA    = cnt(stats?.byType, 'whatsapp_click')
   const aRes   = cnt(stats?.byType, 'reserva_click')
   const aConf  = cnt(stats?.byType, 'reserva_confirmada')
+  const aRegI  = cnt(stats?.byType, 'activity_reg_intent')
+  const aRegC  = cnt(stats?.byType, 'activity_reg_confirm')
 
   // Hoy
   const tMsg   = cnt(stats?.todayByType, 'bot_message')
   const tWA    = cnt(stats?.todayByType, 'whatsapp_click')
   const tRes   = cnt(stats?.todayByType, 'reserva_click')
   const tConf  = cnt(stats?.todayByType, 'reserva_confirmada')
+  const tRegI  = cnt(stats?.todayByType, 'activity_reg_intent')
+  const tRegC  = cnt(stats?.todayByType, 'activity_reg_confirm')
 
   // Ayer (delta)
   const yMsg   = cnt(stats?.yesterdayByType, 'bot_message')
   const yWA    = cnt(stats?.yesterdayByType, 'whatsapp_click')
   const yRes   = cnt(stats?.yesterdayByType, 'reserva_click')
   const yConf  = cnt(stats?.yesterdayByType, 'reserva_confirmada')
+  const yRegI  = cnt(stats?.yesterdayByType, 'activity_reg_intent')
+  const yRegC  = cnt(stats?.yesterdayByType, 'activity_reg_confirm')
 
   const chartData = buildChartData(stats?.byDayType)
 
@@ -1798,7 +2085,9 @@ export default function AdminDashboard({ onClose }) {
             {canSee('google') && <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>Google</button>}
             {canSee('actividades') && <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>Actividades</button>}
             {canSee('eventos') && <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>Eventos</button>}
+            {canSee('reservas') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</button>}
             {canSee('inscripciones') && <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>Inscripciones</button>}
+            {canSee('checkin') && <button className={`adm-period-btn adm-tab-btn ${tab === 'checkin' ? 'active' : ''}`} onClick={() => setTab('checkin')}>Check-in</button>}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
@@ -1806,7 +2095,7 @@ export default function AdminDashboard({ onClose }) {
                 {p.label}
               </button>
             ))}
-            {tab === 'inscripciones' && (
+            {(tab === 'inscripciones' || tab === 'reservas') && (
               <div className="adm-bar-daterange">
                 <span className="adm-bar-daterange__label">Período</span>
                 <DatePicker value={insDateFrom} onChange={setInsDateFrom} placeholder="Desde" />
@@ -1827,10 +2116,14 @@ export default function AdminDashboard({ onClose }) {
           <div className="adm-dash__body">
             {tab === 'users' ? (
               <UsersSection currentUser={currentUser} />
+            ) : tab === 'checkin' ? (
+              <CheckInSection />
             ) : tab === 'actividades' ? (
               <ActivitiesSection />
             ) : tab === 'eventos' ? (
               <EventosSection />
+            ) : tab === 'reservas' ? (
+              <HotelReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
             ) : tab === 'inscripciones' ? (
               <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
             ) : tab === 'google' ? (
@@ -1842,26 +2135,26 @@ export default function AdminDashboard({ onClose }) {
                 {/* Acumulado */}
                 <div className="adm-section-lbl">ACUMULADO · {period.label}</div>
                 <div className="adm-grid5">
-                  <StatCard label="SESIONES"    value={stats?.sessions} sub="únicas"            Icon={IcoUsers} />
-                  <StatCard label="MENSAJES"    value={aMsg}            sub="enviados al bot"   Icon={IcoMsg}   />
-                  <StatCard label="WHATSAPP"    value={aWA}             sub="clicks totales"    Icon={IcoWA}    />
-                  <StatCard label="INTENTOS"    value={aRes}            sub="modal de reserva"  Icon={IcoCal}   />
-                  <StatCard label="CONFIRMADAS" value={aConf}           sub="enviaron a WA"     Icon={IcoCheck} />
+                  <StatCard label="INTENTOS HOTEL" value={aRes}          sub="abrieron reserva" Icon={IcoCal}   />
+                  <StatCard label="RESERVAS HOTEL" value={aConf}         sub="enviaron a WA"    Icon={IcoCheck} />
+                  <StatCard label="INTENTOS ACT." value={aRegI}          sub="iniciaron registro" Icon={IcoCal}   />
+                  <StatCard label="INSCRIPCIONES" value={aRegC}           sub="confirmaron registro"  Icon={IcoCheck} />
+                  <StatCard label="SESIONES"     value={stats?.sessions} sub="únicas"            Icon={IcoUsers} />
                 </div>
 
                 {/* Hoy */}
                 <div className="adm-section-lbl">HOY · {todayLabel()}</div>
                 <div className="adm-grid5">
-                  <StatCard label="SESIONES"    value={null}   sub="hoy" Icon={IcoUsers} />
-                  <StatCard label="MENSAJES"    value={tMsg}   sub="hoy" Icon={IcoMsg}   delta={diff(tMsg,  yMsg)}  />
-                  <StatCard label="WHATSAPP"    value={tWA}    sub="hoy" Icon={IcoWA}    delta={diff(tWA,   yWA)}   />
-                  <StatCard label="INTENTOS"    value={tRes}   sub="hoy" Icon={IcoCal}   delta={diff(tRes,  yRes)}  />
-                  <StatCard label="CONFIRMADAS" value={tConf}  sub="hoy" Icon={IcoCheck} delta={diff(tConf, yConf)} />
+                  <StatCard label="INTENTOS HOTEL" value={tRes}   sub="hoy" Icon={IcoCal}   delta={diff(tRes,  yRes)}  />
+                  <StatCard label="RESERVAS HOTEL" value={tConf}  sub="hoy" Icon={IcoCheck} delta={diff(tConf, yConf)} />
+                  <StatCard label="INTENTOS ACT." value={tRegI}  sub="hoy" Icon={IcoCal}   delta={diff(tRegI, yRegI)} />
+                  <StatCard label="INSCRIPCIONES" value={tRegC}  sub="hoy" Icon={IcoCheck} delta={diff(tRegC, yRegC)} />
+                  <StatCard label="SESIONES"     value={null}   sub="hoy" Icon={IcoUsers} />
                 </div>
 
                 {/* Conversiones */}
                 <div className="adm-section-lbl">CONVERSIONES · {period.label}</div>
-                <div className="adm-conv-row adm-conv-row--3">
+                <div className="adm-conv-row adm-conv-row--3" style={{ marginBottom: 12 }}>
                   <div className="adm-conv-panel">
                     <p className="adm-conv-title">
                       <IcoWA /> WhatsApp por sección
@@ -1870,13 +2163,28 @@ export default function AdminDashboard({ onClose }) {
                   </div>
                   <div className="adm-conv-panel">
                     <p className="adm-conv-title">
-                      <IcoCal /> Intentos de reserva
+                      <IcoCal /> Intentos de inscripción
+                    </p>
+                    <ConversionList data={stats?.intentSources} labels={{}} color="#7a8c2e" />
+                  </div>
+                  <div className="adm-conv-panel">
+                    <p className="adm-conv-title">
+                      <IcoCheck /> Inscripciones confirmadas
+                    </p>
+                    <ConversionList data={stats?.regConfirmSources} labels={{}} color="#b5c840" />
+                  </div>
+                </div>
+
+                <div className="adm-conv-row">
+                  <div className="adm-conv-panel">
+                    <p className="adm-conv-title">
+                      <IcoCal /> Intentos de reserva (Hotel)
                     </p>
                     <ConversionList data={stats?.reservaSources} labels={RESERVA_LABELS} color="#7a8c2e" />
                   </div>
                   <div className="adm-conv-panel">
                     <p className="adm-conv-title">
-                      <IcoCheck /> Reservas confirmadas
+                      <IcoCheck /> Reservas confirmadas (Hotel)
                     </p>
                     <ConversionList data={stats?.confirmaSources} labels={RESERVA_LABELS} color="#b5c840" />
                   </div>

@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import OpenAI from 'openai'
 import { trackEvent } from '../../lib/turso'
 import './HotelBot.css'
 
@@ -136,11 +135,6 @@ export default function HotelBot() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
-  const client = new OpenAI({
-    apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true,
-  })
-
   // Tarjeta de saludo: aparece a los 2.5 s, se cierra sola a los 6 s
   // Solo una vez por sesión (sessionStorage se limpia al recargar)
   useEffect(() => {
@@ -194,17 +188,20 @@ export default function HotelBot() {
     setLoading(true)
 
     try {
-      const response = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...newMessages.map(m => ({ role: m.role, content: m.content }))
-        ],
-        max_tokens: 350,
-        temperature: 0.65,
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...newMessages.map(m => ({ role: m.role, content: m.content }))
+          ],
+        }),
       })
-
-      const reply = response.choices[0].message.content
+      if (!res.ok) throw new Error(`Chat error: ${res.status}`)
+      const data = await res.json()
+      const reply = data.choices?.[0]?.message?.content
+      if (!reply) throw new Error('Empty response')
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch {
       setMessages(prev => [

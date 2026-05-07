@@ -293,6 +293,131 @@
   color: #1a1a1a;
 }
 
+.arm-success__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.arm-success__check {
+  margin-bottom: 4px;
+}
+
+.arm-success__ticket {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #f8faf2;
+  border: 2px dashed #d4dfa8;
+  border-radius: 12px;
+  padding: 16px 32px;
+  margin: 4px 0;
+}
+
+.arm-success__ticket-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: #7a8c2e;
+  text-transform: uppercase;
+}
+
+.arm-success__ticket-id {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: #4a5a1e;
+}
+
+.arm-success__ticket-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.arm-success__msg {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #666;
+  margin: 0;
+  max-width: 300px;
+}
+
+.arm-success__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.arm-success__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.arm-success__btn--pdf {
+  background: #5a6c1e;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(90,108,30,0.25);
+}
+.arm-success__btn--pdf:hover:not(:disabled) {
+  background: #4a5a1e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(90,108,30,0.35);
+}
+.arm-success__btn--pdf.loading { opacity: 0.7; cursor: wait; }
+
+.arm-success__btn--wa {
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(37,211,102,0.25);
+}
+.arm-success__btn--wa:hover {
+  background: #1ebe5b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37,211,102,0.35);
+}
+
+.arm-success__close-btn {
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  padding: 8px 20px;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+.arm-success__close-btn:hover { color: #555; }
+  color: #666;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.arm-success__close-btn:hover { background: #eee; color: #111; }
+
 .arm-success small {
   font-size: 14px;
   color: #7a8c2e;

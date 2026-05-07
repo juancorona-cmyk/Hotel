@@ -8,7 +8,7 @@ export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const KEY = process.env.VITE_OPENAI_API_KEY
+  const KEY = process.env.OPENAI_API_KEY
   if (!KEY) return new Response(JSON.stringify({ error: 'No API key' }), { status: 500, headers: CORS })
 
   try {

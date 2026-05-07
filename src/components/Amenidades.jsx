@@ -1,29 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
-import { getActivities, getEventByActivityId } from '../lib/turso'
+import { getActivities, getEventByActivityId, trackEvent } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
+import { fmtFecha, fmtHora } from '../lib/utils'
 import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
-
-const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-
-function fmtFecha(s) {
-  if (!s) return ''
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (m) return `${parseInt(m[3])} de ${MESES[parseInt(m[2]) - 1]}`
-  return s
-}
-
-function fmtHora(s) {
-  if (!s) return ''
-  const m = s.match(/^(\d{1,2}):(\d{2})$/)
-  if (m) {
-    const h = parseInt(m[1])
-    const ampm = h >= 12 ? 'pm' : 'am'
-    return `${h % 12 || 12}:${m[2]} ${ampm}`
-  }
-  return s
-}
 
 const STATIC_ACTIVITIES = [
   { id: 's1', name: 'Yoga',    fecha: 'Viernes',  hora: '7:30 pm', semanas: 'todas' },
@@ -117,6 +98,7 @@ export default function Amenidades() {
                 key={a.id}
                 className="actividades__card actividades__card--clickable"
                 onClick={async () => {
+                  trackEvent('activity_reg_intent', { activity_id: a.id, activity_name: a.name })
                   const numId = parseInt(a.id)
                   const ev = !isNaN(numId) && numId > 0 ? await getEventByActivityId(numId) : null
                   setLinkedEvent(ev)
@@ -126,6 +108,7 @@ export default function Amenidades() {
                 tabIndex={0}
                 onKeyDown={async e => {
                   if (e.key === 'Enter') {
+                    trackEvent('activity_reg_intent', { activity_id: a.id, activity_name: a.name })
                     const numId = parseInt(a.id)
                     const ev = !isNaN(numId) && numId > 0 ? await getEventByActivityId(numId) : null
                     setLinkedEvent(ev)
