@@ -82,7 +82,15 @@ export default async (req) => {
   }
 
   const RAW_URL = process.env.TURSO_URL || process.env.VITE_TURSO_URL || ''
-  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '')
+
+  // Strip ALL whitespace from JWT — copy/paste often introduces spaces, newlines, or tabs
+  TOKEN = TOKEN.replace(/\s+/g, '')
+
+  // Handle case where user included "Bearer" prefix in the env var
+  if (TOKEN.toLowerCase().startsWith('bearer')) {
+    TOKEN = TOKEN.replace(/^bearer/i, '')
+  }
 
   if (!RAW_URL || !TOKEN) {
     const msg = `Config missing: URL=${!!RAW_URL}, Token=${!!TOKEN}`
@@ -91,11 +99,6 @@ export default async (req) => {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
-  }
-
-  // Handle case where user included "Bearer " in the env var
-  if (TOKEN.startsWith('Bearer ')) {
-    TOKEN = TOKEN.replace('Bearer ', '').trim()
   }
 
   // Convert libsql:// to https:// and cleanup
