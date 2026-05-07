@@ -4,7 +4,7 @@ async function pipeline(requests) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_TURSO_PROXY_TOKEN || 'change-me-in-production'}`,
+        'Authorization': `Bearer ${(import.meta.env.VITE_TURSO_PROXY_TOKEN || 'change-me-in-production').trim()}`,
       },
       body: JSON.stringify({ requests }),
     })

@@ -1,10 +1,10 @@
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const AUTH_TOKEN = process.env.TURSO_PROXY_TOKEN || 'change-me-in-production'
+const AUTH_TOKEN = (process.env.TURSO_PROXY_TOKEN || 'change-me-in-production').trim()
 
 // Simple rate limiter — 100 req/min per IP
 const RATE_WINDOW = 60_000
@@ -26,14 +26,47 @@ export default async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS })
   }
+
+  // Health-check endpoint — GET returns config status without exposing secrets
+  if (req.method === 'GET') {
+    const rawUrl = process.env.TURSO_URL || process.env.VITE_TURSO_URL || ''
+    const token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+    const proxyToken = process.env.TURSO_PROXY_TOKEN || ''
+    const viteProxyToken = process.env.VITE_TURSO_PROXY_TOKEN || ''
+    return new Response(JSON.stringify({
+      ok: !!(rawUrl && token),
+      proxy: 'turso-proxy v2',
+      config: {
+        TURSO_URL: rawUrl ? `${rawUrl.split('.').slice(-2).join('.')}` : 'MISSING',
+        TURSO_TOKEN: token ? 'SET' : 'MISSING',
+        TURSO_PROXY_TOKEN: proxyToken ? 'SET' : 'MISSING (using fallback)',
+        VITE_TURSO_PROXY_TOKEN: viteProxyToken ? 'SET' : 'MISSING (using fallback)',
+        tokensMatch: proxyToken === viteProxyToken || (!proxyToken && !viteProxyToken)
+      }
+    }), {
+      status: 200,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return new Response('Method not allowed', { status: 405, headers: CORS })
   }
 
   // Auth check
   const authHeader = req.headers.get('authorization') || req.headers.get('x-proxy-token')
-  if (!authHeader || authHeader !== `Bearer ${AUTH_TOKEN}`) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+  const expectedAuth = `Bearer ${AUTH_TOKEN}`
+  if (!authHeader || authHeader !== expectedAuth) {
+    console.error('Auth mismatch:', {
+      hasHeader: !!authHeader,
+      headerLen: authHeader?.length,
+      expectedLen: expectedAuth.length,
+      match: authHeader === expectedAuth
+    })
+    return new Response(JSON.stringify({
+      error: 'Unauthorized',
+      detail: 'Proxy token mismatch. Check TURSO_PROXY_TOKEN in Netlify env vars matches VITE_TURSO_PROXY_TOKEN build var.'
+    }), {
       status: 401,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
