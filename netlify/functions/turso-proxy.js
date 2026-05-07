@@ -48,13 +48,21 @@ export default async (req) => {
     })
   }
 
-  const BASE = process.env.TURSO_URL
-  const TOKEN = process.env.TURSO_TOKEN
+  const BASE = process.env.TURSO_URL || process.env.VITE_TURSO_URL
+  const TOKEN = process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN
+
+  if (!BASE || !TOKEN) {
+    console.error('Turso configuration missing:', { hasBase: !!BASE, hasToken: !!TOKEN })
+    return new Response(JSON.stringify({ error: 'Database configuration missing' }), {
+      status: 500,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
 
   try {
     const bodyText = await req.text()
 
-    const res = await fetch(`${BASE}/v2/pipeline`, {
+    const res = await fetch(`${BASE.replace(/\/$/, '')}/v2/pipeline`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${TOKEN}`,
@@ -63,13 +71,22 @@ export default async (req) => {
       body: bodyText,
     })
 
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error('Turso upstream error:', res.status, errorText)
+      return new Response(JSON.stringify({ error: `Upstream error: ${res.status}`, detail: errorText }), {
+        status: res.status,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      })
+    }
+
     const data = await res.json()
     return new Response(JSON.stringify(data), {
-      status: res.status,
+      status: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    console.error('Turso proxy error:', err)
+    console.error('Turso proxy exception:', err)
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
