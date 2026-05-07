@@ -8,22 +8,34 @@ async function pipeline(requests) {
       },
       body: JSON.stringify({ requests }),
     })
+    
     if (!res.ok) {
-      console.error('Pipeline error:', res.status, await res.text())
-      return null
+      const text = await res.text()
+      let errData = {}
+      try { errData = JSON.parse(text) } catch {}
+      console.error('DB Proxy Error:', res.status, errData)
+      throw new Error(errData.error || errData.detail || `Server error ${res.status}`)
     }
-    return await res.json()
+    
+    const data = await res.json()
+    if (data.error) throw new Error(data.error)
+    return data
   } catch (e) {
-    console.error('Pipeline fetch error:', e)
-    return null
+    console.error('DB Pipeline Failure:', e.message)
+    throw e
   }
 }
 
-function exec(sql, args = []) {
-  return pipeline([
-    { type: 'execute', stmt: { sql, args } },
-    { type: 'close' },
-  ])
+async function exec(sql, args = []) {
+  try {
+    return await pipeline([
+      { type: 'execute', stmt: { sql, args } },
+      { type: 'close' },
+    ])
+  } catch (e) {
+    // Re-throw to be caught by UI
+    throw e
+  }
 }
 
 const txt  = (v) => ({ type: 'text',    value: String(v) })

@@ -1248,16 +1248,23 @@ function LoginScreen({ onLogin }) {
     try {
       const hasUsers = await adminHasUsers()
       if (!hasUsers) {
-        if (!SETUP_KEY) { setErr('Configuración inicial no disponible'); setBusy(false); return }
+        if (!SETUP_KEY) { 
+          setErr('Configuración inicial no disponible (DB vacía y sin SETUP_KEY)')
+          setBusy(false)
+          return 
+        }
         const ok = pwd === SETUP_KEY
         if (ok) onLogin(user.trim(), true, 'admin', null)
-        else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
+        else { setErr('Clave de configuración incorrecta'); setPwd('') }
       } else {
         const result = await adminLogin(user.trim(), pwd)
         if (result.ok) onLogin(user.trim(), false, result.role, result.permissions)
         else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
       }
-    } catch { setErr('Error de conexión') }
+    } catch (err) { 
+      console.error('Login error:', err)
+      setErr(`Error de base de datos: ${err.message}`) 
+    }
     finally { setBusy(false) }
   }
 

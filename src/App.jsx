@@ -77,7 +77,9 @@ export default function App() {
   const [dataVersion, setDataVersion] = useState(0)
 
   useEffect(() => {
-    setupDB()
+    setupDB().catch(err => {
+      console.error('Initial DB Setup failed:', err.message)
+    })
   }, [])
 
   useEffect(() => {
