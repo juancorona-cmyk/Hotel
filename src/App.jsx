@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
 import { App as CapApp } from '@capacitor/app'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
@@ -149,9 +149,13 @@ export default function App() {
         } />
         
         <Route path="/checkin" element={
-          <Suspense fallback={<LazyFallback />}>
-            <CheckInPage />
-          </Suspense>
+          isNativeApp ? (
+            <Suspense fallback={<LazyFallback />}>
+              <CheckInPage />
+            </Suspense>
+          ) : (
+            <Navigate to="/" replace />
+          )
         } />
 
         <Route path="/*" element={
