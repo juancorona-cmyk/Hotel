@@ -39,19 +39,20 @@ export default function CheckInPage() {
     try {
       const hasUsers = await adminHasUsers()
       let ok = false
+      let result = null
       if (!hasUsers) {
         if (SETUP_KEY && loginPwd === SETUP_KEY) ok = true
         else setLoginErr('DB vacía y clave incorrecta')
       } else {
-        const result = await adminLogin(loginUser.trim(), loginPwd)
-        if (result.ok) ok = true
+        result = await adminLogin(loginUser.trim(), loginPwd)
+        if (result && result.ok) ok = true
         else setLoginErr('Usuario o contraseña incorrectos')
       }
 
       if (ok) {
         localStorage.setItem('ci_authed', 'true')
-        localStorage.setItem('ci_role', hasUsers ? result.role : 'admin')
-        localStorage.setItem('ci_perms', JSON.stringify(hasUsers ? result.permissions : null))
+        localStorage.setItem('ci_role', (hasUsers && result) ? result.role : 'admin')
+        localStorage.setItem('ci_perms', JSON.stringify((hasUsers && result) ? result.permissions : null))
         setAuthed(true)
       }
     } catch (err) {
