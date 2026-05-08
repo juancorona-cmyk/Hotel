@@ -77,7 +77,7 @@ export default async (req) => {
       dbInfo, 
       proxy: 'turso-proxy v5',
       config: {
-        cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || 'hotelpuntagaleria'
+        cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || 'dfuzfdrat'
       }
     }), {
       status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }
