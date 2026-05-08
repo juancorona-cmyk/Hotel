@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, adminLogin, adminHasUsers } from '../lib/turso'
+import { Capacitor } from '@capacitor/core'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, adminLogin, adminHasUsers } from '../lib/turso'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
 const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
-const isNativeApp = !!window.Capacitor
+const isNativeApp = Capacitor.isNativePlatform()
 
 export default function CheckInPage() {
   const [searchParams] = useSearchParams()
@@ -78,6 +79,21 @@ export default function CheckInPage() {
     setAuthed(false)
     setReg(null)
     navigate('/checkin')
+  }
+
+  const handleMarkPaid = async () => {
+    if (updating) return
+    setUpdating(true)
+    try {
+      await updateActivityRegistrationPayment(reg.id, true)
+      setReg(r => ({ ...r, paid: 1 }))
+      setStatus('confirmed')
+      setTimeout(() => setStatus(''), 3000)
+    } catch {
+      setStatus('error')
+    } finally {
+      setUpdating(false)
+    }
   }
 
   const handleCheckIn = async () => {
@@ -405,6 +421,15 @@ export default function CheckInPage() {
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
                 {updating ? 'Confirmando...' : 'Confirmar entrada'}
+              </button>
+            )}
+            {!reg.paid && (
+              <button className="ci-btn ci-btn--pay" onClick={handleMarkPaid} disabled={updating}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="1" y="4" width="22" height="16" rx="2"/>
+                  <line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                {updating ? 'Procesando...' : 'Marcar como pagado'}
               </button>
             )}
           </div>

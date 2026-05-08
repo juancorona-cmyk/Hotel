@@ -498,6 +498,17 @@
   background: #e5e7eb;
 }
 
+.ci-btn--pay {
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+.ci-btn--pay:active {
+  background: #1e40af;
+}
+
 /* ── Toasts ── */
 .ci-toast {
   text-align: center;
