@@ -27,16 +27,23 @@ export default async (req) => {
 
   // Health-check endpoint — GET returns config status without exposing secrets
   if (req.method === 'GET') {
-    const rawUrl = process.env.TURSO_URL || process.env.VITE_TURSO_URL || ''
-    const token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
-    const proxyToken = process.env.TURSO_PROXY_TOKEN || ''
-    const viteProxyToken = process.env.VITE_TURSO_PROXY_TOKEN || ''
+    let rawUrl = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
+    let token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+    
+    rawUrl = rawUrl.replace(/^["']|["']$/g, '')
+    token = token.replace(/^["']|["']$/g, '')
+    token = token.replace(/\s+/g, '')
+    if (token.toLowerCase().startsWith('bearer')) token = token.replace(/^bearer/i, '')
+
+    const proxyToken = (process.env.TURSO_PROXY_TOKEN || '').trim().replace(/^["']|["']$/g, '')
+    const viteProxyToken = (process.env.VITE_TURSO_PROXY_TOKEN || '').trim().replace(/^["']|["']$/g, '')
+    
     return new Response(JSON.stringify({
       ok: !!(rawUrl && token),
-      proxy: 'turso-proxy v2',
+      proxy: 'turso-proxy v3',
       config: {
         TURSO_URL: rawUrl ? `${rawUrl.split('.').slice(-2).join('.')}` : 'MISSING',
-        TURSO_TOKEN: token ? 'SET' : 'MISSING',
+        TURSO_TOKEN: token ? `SET (len: ${token.length})` : 'MISSING',
         TURSO_PROXY_TOKEN: proxyToken ? 'SET' : 'MISSING (using fallback)',
         VITE_TURSO_PROXY_TOKEN: viteProxyToken ? 'SET' : 'MISSING (using fallback)',
         tokensMatch: proxyToken === viteProxyToken || (!proxyToken && !viteProxyToken)
@@ -60,8 +67,12 @@ export default async (req) => {
     })
   }
 
-  const RAW_URL = process.env.TURSO_URL || process.env.VITE_TURSO_URL || ''
-  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '')
+  let RAW_URL = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
+  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+
+  // Remove potential quotes around values (common copy-paste error)
+  RAW_URL = RAW_URL.replace(/^["']|["']$/g, '')
+  TOKEN = TOKEN.replace(/^["']|["']$/g, '')
 
   // Strip ALL whitespace from JWT — copy/paste often introduces spaces, newlines, or tabs
   TOKEN = TOKEN.replace(/\s+/g, '')
@@ -80,10 +91,17 @@ export default async (req) => {
     })
   }
 
-  // Convert libsql:// to https:// and cleanup
-  let normalizedUrl = RAW_URL.trim().replace(/^libsql:\/\//, 'https://').replace(/\/$/, '')
+  // Convert libsql:// to https:// and cleanup to origin only
+  let normalizedUrl = RAW_URL.replace(/^libsql:\/\//, 'https://')
   if (!normalizedUrl.startsWith('http')) {
     normalizedUrl = 'https://' + normalizedUrl
+  }
+  
+  try {
+    const urlObj = new URL(normalizedUrl)
+    normalizedUrl = `${urlObj.protocol}//${urlObj.host}`
+  } catch (e) {
+    normalizedUrl = normalizedUrl.replace(/\/$/, '')
   }
 
   try {
