@@ -4,20 +4,35 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-// Simple rate limiter — 100 req/min per IP
-const RATE_WINDOW = 60_000
-const RATE_MAX = 100
-const rateMap = new Map()
-
-function isRateLimited(ip) {
-  const now = Date.now()
-  const entry = rateMap.get(ip)
-  if (!entry || now - entry.start > RATE_WINDOW) {
-    rateMap.set(ip, { start: now, count: 1 })
-    return false
+function getCleanConfig() {
+  let rawUrl = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
+  let token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+  
+  // Remove quotes
+  rawUrl = rawUrl.replace(/^["']|["']$/g, '')
+  token = token.replace(/^["']|["']$/g, '')
+  
+  // Clean token
+  token = token.replace(/\s+/g, '')
+  if (token.toLowerCase().startsWith('bearer')) {
+    token = token.replace(/^bearer/i, '')
   }
-  entry.count++
-  return entry.count > RATE_MAX
+
+  // Normalize URL to origin
+  let normalizedUrl = rawUrl.replace(/^libsql:\/\//, 'https://')
+  if (normalizedUrl && !normalizedUrl.startsWith('http')) {
+    normalizedUrl = 'https://' + normalizedUrl
+  }
+  if (normalizedUrl) {
+    try {
+      const urlObj = new URL(normalizedUrl)
+      normalizedUrl = `${urlObj.protocol}//${urlObj.host}`
+    } catch (e) {
+      normalizedUrl = normalizedUrl.replace(/\/$/, '')
+    }
+  }
+
+  return { rawUrl, token, normalizedUrl }
 }
 
 export default async (req) => {
@@ -25,28 +40,43 @@ export default async (req) => {
     return new Response(null, { status: 204, headers: CORS })
   }
 
-  // Health-check endpoint — GET returns config status without exposing secrets
-  if (req.method === 'GET') {
-    let rawUrl = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
-    let token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
-    
-    rawUrl = rawUrl.replace(/^["']|["']$/g, '')
-    token = token.replace(/^["']|["']$/g, '')
-    token = token.replace(/\s+/g, '')
-    if (token.toLowerCase().startsWith('bearer')) token = token.replace(/^bearer/i, '')
+  const { rawUrl, token, normalizedUrl } = getCleanConfig()
 
-    const proxyToken = (process.env.TURSO_PROXY_TOKEN || '').trim().replace(/^["']|["']$/g, '')
-    const viteProxyToken = (process.env.VITE_TURSO_PROXY_TOKEN || '').trim().replace(/^["']|["']$/g, '')
+  if (req.method === 'GET') {
+    let testStatus = 'Not attempted'
+    let testDetail = ''
     
+    if (normalizedUrl && token) {
+      try {
+        const testRes = await fetch(`${normalizedUrl}/v2/pipeline`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests: [{ type: 'execute', stmt: { sql: 'SELECT 1' } }, { type: 'close' }] })
+        })
+        if (testRes.ok) {
+          testStatus = 'SUCCESS'
+        } else {
+          testStatus = `FAILED (Status ${testRes.status})`
+          testDetail = await testRes.text()
+        }
+      } catch (e) {
+        testStatus = 'EXCEPTION'
+        testDetail = e.message
+      }
+    }
+
     return new Response(JSON.stringify({
-      ok: !!(rawUrl && token),
-      proxy: 'turso-proxy v3',
-      config: {
-        TURSO_URL: rawUrl ? `${rawUrl.split('.').slice(-2).join('.')}` : 'MISSING',
-        TURSO_TOKEN: token ? `SET (len: ${token.length})` : 'MISSING',
-        TURSO_PROXY_TOKEN: proxyToken ? 'SET' : 'MISSING (using fallback)',
-        VITE_TURSO_PROXY_TOKEN: viteProxyToken ? 'SET' : 'MISSING (using fallback)',
-        tokensMatch: proxyToken === viteProxyToken || (!proxyToken && !viteProxyToken)
+      ok: !!(normalizedUrl && token),
+      test: testStatus,
+      testDetail: testDetail,
+      proxy: 'turso-proxy v4',
+      config_debug: {
+        URL_PREVIEW: rawUrl ? `${rawUrl.slice(0, 15)}...${rawUrl.slice(-10)}` : 'MISSING',
+        TOKEN_PREVIEW: token ? `${token.slice(0, 10)}...${token.slice(-10)} (len: ${token.length})` : 'MISSING',
+        NORMALIZED_URL: normalizedUrl,
       }
     }), {
       status: 200,
@@ -58,103 +88,45 @@ export default async (req) => {
     return new Response('Method not allowed', { status: 405, headers: CORS })
   }
 
-  // Rate limit
-  const ip = req.headers.get('x-forwarded-for') || req.headers.get('client-ip') || 'unknown'
-  if (isRateLimited(ip)) {
-    return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
-  }
-
-  let RAW_URL = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
-  let TOKEN = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
-
-  // Remove potential quotes around values (common copy-paste error)
-  RAW_URL = RAW_URL.replace(/^["']|["']$/g, '')
-  TOKEN = TOKEN.replace(/^["']|["']$/g, '')
-
-  // Strip ALL whitespace from JWT — copy/paste often introduces spaces, newlines, or tabs
-  TOKEN = TOKEN.replace(/\s+/g, '')
-
-  // Handle case where user included "Bearer" prefix in the env var
-  if (TOKEN.toLowerCase().startsWith('bearer')) {
-    TOKEN = TOKEN.replace(/^bearer/i, '')
-  }
-
-  if (!RAW_URL || !TOKEN) {
-    const msg = `Config missing: URL=${!!RAW_URL}, Token=${!!TOKEN}`
-    console.error(msg)
-    return new Response(JSON.stringify({ error: msg }), {
+  if (!normalizedUrl || !token) {
+    return new Response(JSON.stringify({ error: 'Config missing' }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
-  }
-
-  // Convert libsql:// to https:// and cleanup to origin only
-  let normalizedUrl = RAW_URL.replace(/^libsql:\/\//, 'https://')
-  if (!normalizedUrl.startsWith('http')) {
-    normalizedUrl = 'https://' + normalizedUrl
-  }
-  
-  try {
-    const urlObj = new URL(normalizedUrl)
-    normalizedUrl = `${urlObj.protocol}//${urlObj.host}`
-  } catch (e) {
-    normalizedUrl = normalizedUrl.replace(/\/$/, '')
   }
 
   try {
     const bodyText = await req.text()
     const target = `${normalizedUrl}/v2/pipeline`
 
-    console.log(`DB Proxy: Fetching ${target.split('.').slice(-2).join('.')}...`)
+    const res = await fetch(target, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: bodyText
+    })
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 20000) // Increase to 20s
-
-    try {
-      const res = await fetch(target, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: bodyText,
-        signal: controller.signal
-      })
-
-      if (!res.ok) {
-        const errorText = await res.text()
-        console.error('Turso upstream error:', res.status, errorText)
-        
-        // Try to parse JSON error from Turso
-        let detail = errorText
-        try { const j = JSON.parse(errorText); detail = j.error || j.message || errorText } catch {}
-
-        return new Response(JSON.stringify({ 
-          error: `Turso API ${res.status}`, 
-          detail: detail
-        }), {
-          status: res.status,
-          headers: { ...CORS, 'Content-Type': 'application/json' },
-        })
-      }
-
-      const data = await res.json()
-      return new Response(JSON.stringify(data), {
-        status: 200,
+    if (!res.ok) {
+      const errorText = await res.text()
+      return new Response(JSON.stringify({ 
+        error: `Turso API ${res.status}`, 
+        detail: errorText
+      }), {
+        status: res.status,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       })
-    } finally {
-      clearTimeout(timeout)
     }
+
+    const data = await res.json()
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
   } catch (err) {
-    const isTimeout = err.name === 'AbortError'
-    console.error('Turso proxy exception:', err.name, err.message)
     return new Response(JSON.stringify({ 
-      error: isTimeout ? 'Database request timed out (20s)' : `Connection failed: ${err.message}`,
-      hint: 'Verify TURSO_URL and TURSO_TOKEN in Netlify. Ensure the database is active.'
+      error: `Connection failed: ${err.message}`
     }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },
