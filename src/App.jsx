@@ -23,8 +23,6 @@ const BookingModal = lazy(() => import('./components/BookingModal'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const EventoPage = lazy(() => import('./components/EventoPage'))
 const CheckInPage = lazy(() => import('./components/CheckInPage'))
-const StaffApp = lazy(() => import('./components/StaffApp'))
-
 // Detection for Capacitor/Native environment
 const isNativeApp = !!window.Capacitor
 
@@ -33,23 +31,17 @@ function LazyFallback() {
 }
 
 function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance, dataVersion }) {
-  // If it's the native app, we show the staff interface instead of the website
-  if (isNativeApp) {
-    return (
-      <Suspense fallback={<LazyFallback />}>
-        <StaffApp />
-      </Suspense>
-    )
-  }
-
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, room: roomId })
     setBookingRoom(roomId)
   }
 
+  // In native app, maintenance code is mandatory; in browser it's optional
+  const showBanner = isNativeApp ? true : showMaintenance
+
   return (
     <>
-      <MaintenanceBanner show={showMaintenance} />
+      <MaintenanceBanner show={showBanner} />
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} />
       <About />

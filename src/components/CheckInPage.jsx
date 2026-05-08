@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, adminLogin, adminHasUsers } from '../lib/turso'
+import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
 const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
@@ -277,7 +278,13 @@ export default function CheckInPage() {
     )
   }
 
-  if (!rid || !reg) {
+  // No QR scanned → show staff panel with events & attendees
+  if (!rid) {
+    return <StaffApp />
+  }
+
+  // QR scanned but registration not found
+  if (!reg) {
     return (
       <div className="ci-page">
         <div className="ci-card ci-card--empty">
@@ -290,12 +297,8 @@ export default function CheckInPage() {
               <line x1="15" y1="15" x2="15.01" y2="15" />
             </svg>
           </div>
-          <h2 className="ci-empty-title">{!rid ? 'Listo para escanear' : 'Entrada no encontrada'}</h2>
-          <p className="ci-empty-text">
-            {!rid
-              ? 'Escanea un código QR para validar la asistencia de un invitado.'
-              : 'El ticket escaneado no existe o es inválido.'}
-          </p>
+          <h2 className="ci-empty-title">Entrada no encontrada</h2>
+          <p className="ci-empty-text">El ticket escaneado no existe o es inválido.</p>
           <button className="ci-logout-link" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </div>
