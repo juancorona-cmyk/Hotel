@@ -4,7 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  SECRETS_SCAN_OMIT_KEYS = "ADMIN_USERNAME"
+  SECRETS_SCAN_OMIT_KEYS = "ADMIN_USERNAME, GOOGLE_SITE_URL"
 
 [functions]
   directory = "netlify/functions"
