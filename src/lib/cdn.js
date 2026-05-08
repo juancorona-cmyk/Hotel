@@ -1,4 +1,4 @@
-const DEFAULT_CLOUD = 'hotelpuntagaleria'
+const DEFAULT_CLOUD = 'ddtjwooiz'
 
 let cloudName = localStorage.getItem('cloudinary_cloud_name') || import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || DEFAULT_CLOUD
 
