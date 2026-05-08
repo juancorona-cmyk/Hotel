@@ -261,11 +261,12 @@ function Distribution({ byType }) {
 }
 
 // ── Users section ─────────────────────────────────────────
-function UsersSection({ currentUser }) {
+function UsersSection({ currentUser, userRole }) {
   const [users, setUsers]       = useState([])
   const [loadingU, setLoadingU] = useState(false)
   const [newUser, setNewUser]   = useState('')
   const [newPwd, setNewPwd]     = useState('')
+  const [newRole, setNewRole]   = useState('editor')
   const [showNew, setShowNew]   = useState(false)
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
@@ -286,14 +287,15 @@ function UsersSection({ currentUser }) {
     if (!newUser.trim() || newPwd.length < 6) { setErrU('Mínimo 6 caracteres en la contraseña'); return }
     setCreating(true); setErrU('')
     try {
-      await adminCreateUser(newUser.trim(), newPwd)
-      setNewUser(''); setNewPwd(''); loadUsers()
+      await adminCreateUser(newUser.trim(), newPwd, newRole)
+      setNewUser(''); setNewPwd(''); setNewRole('editor'); loadUsers()
     } catch { setErrU('Error al crear usuario') }
     finally { setCreating(false) }
   }
 
-  const del = async (id, username) => {
+  const del = async (id, username, targetRole) => {
     if (username === currentUser) { alert('No puedes eliminar tu propio usuario'); return }
+    if (userRole !== 'admin' && targetRole === 'admin') { alert('No tienes permisos para eliminar a un administrador'); return }
     if (!confirm(`¿Eliminar usuario "${username}"?`)) return
     await adminDeleteUser(id); loadUsers()
   }
@@ -336,12 +338,14 @@ function UsersSection({ currentUser }) {
               <span className="adm-user-row__name">
                 {u.username}
                 {u.username === currentUser && <span className="adm-user-row__you">tú</span>}
-                <span className={`adm-role-badge${u.role === 'admin' ? ' adm-role-badge--admin' : ''}`}>{u.role === 'admin' ? 'Admin' : 'Editor'}</span>
+                <span className={`adm-role-badge adm-role-badge--${u.role || 'editor'}`}>
+                  {u.role === 'admin' ? 'Admin' : u.role === 'staff' ? 'Staff App' : 'Editor'}
+                </span>
               </span>
               <span className="adm-user-row__date">
                 {String(u.created_at ?? '').slice(0, 10)}
               </span>
-              {u.role !== 'admin' && (
+              {userRole === 'admin' && u.role !== 'admin' && (
                 <button className="adm-user-row__btn" title="Permisos"
                   onClick={() => setPermModal({ ...u })}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -352,7 +356,7 @@ function UsersSection({ currentUser }) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </button>
               <button className="adm-user-row__btn adm-user-row__btn--del" title="Eliminar"
-                onClick={() => del(u.id, u.username)} disabled={u.username === currentUser}>
+                onClick={() => del(u.id, u.username, u.role)} disabled={u.username === currentUser}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
               </button>
             </div>
@@ -418,30 +422,47 @@ function UsersSection({ currentUser }) {
       )}
 
       {/* Add user */}
-      <form onSubmit={create} className="adm-users__add">
-        <input
-          type="text"
-          value={newUser}
-          onChange={e => { setNewUser(e.target.value); setErrU('') }}
-          placeholder="Nuevo usuario"
-          className="adm-users__input"
-        />
-        <div className="adm-pw" style={{ flex: 1 }}>
-          <input
-            type={showNew ? 'text' : 'password'}
-            value={newPwd}
-            onChange={e => { setNewPwd(e.target.value); setErrU('') }}
-            placeholder="Contraseña"
-            className="adm-pw__input"
-          />
-          <button type="button" className="adm-pw__eye" onClick={() => setShowNew(s => !s)}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating}>
-          {creating ? '…' : '+ Crear'}
-        </button>
-      </form>
+      {userRole === 'admin' && (
+        <form onSubmit={create} className="adm-users__add" style={{ flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            <input
+              type="text"
+              value={newUser}
+              onChange={e => { setNewUser(e.target.value); setErrU('') }}
+              placeholder="Nuevo usuario"
+              className="adm-users__input"
+              style={{ flex: 1 }}
+            />
+            <div className="adm-pw" style={{ flex: 1 }}>
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={newPwd}
+                onChange={e => { setNewPwd(e.target.value); setErrU('') }}
+                placeholder="Contraseña"
+                className="adm-pw__input"
+              />
+              <button type="button" className="adm-pw__eye" onClick={() => setShowNew(s => !s)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+            <select 
+              value={newRole} 
+              onChange={e => setNewRole(e.target.value)}
+              className="adm-users__input"
+              style={{ flex: 1 }}
+            >
+              <option value="editor">Rol: Editor (Web)</option>
+              <option value="staff">Rol: Staff (App Móvil)</option>
+              <option value="admin">Rol: Administrador Total</option>
+            </select>
+            <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating} style={{ padding: '0 24px' }}>
+              {creating ? '…' : '+ Crear Usuario'}
+            </button>
+          </div>
+        </form>
+      )}
       {errU && <p className="adm-users__err">{errU}</p>}
     </div>
   )

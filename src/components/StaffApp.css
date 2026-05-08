@@ -1,0 +1,130 @@
+.sa-container {
+  min-height: 100vh;
+  background: #f8fafc;
+  font-family: 'Montserrat', sans-serif;
+  color: #1a1a1a;
+}
+
+.sa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sa-logo { height: 32px; }
+
+.sa-logout {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sa-menu {
+  padding: 32px 20px;
+}
+
+.sa-title {
+  font-size: 26px;
+  font-weight: 900;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.sa-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.sa-btn {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.sa-btn:active {
+  transform: scale(0.97);
+}
+
+.sa-btn__icon {
+  font-size: 40px;
+}
+
+.sa-btn span {
+  font-size: 16px;
+  font-weight: 800;
+  color: #5a6c1e;
+}
+
+.sa-events {
+  padding: 24px 20px;
+}
+
+.sa-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sa-back {
+  background: #f1f5f9;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.sa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sa-event-card {
+  background: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sa-event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sa-event-info strong { font-size: 15px; color: #1e293b; }
+.sa-event-info span { font-size: 12px; color: #64748b; }
+
+.sa-event-stats {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5a6c1e;
+  background: #f0fdf4;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.sa-loading { text-align: center; padding: 40px; color: #64748b; }

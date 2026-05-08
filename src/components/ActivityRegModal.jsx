@@ -123,15 +123,15 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    min-height: 297mm; 
     width: 210mm;
-    padding: 20mm;
+    height: 297mm;
+    overflow: hidden;
   }
   
   .ticket-container {
     width: 140mm;
     background: #fff;
-    border-radius: 10mm;
+    border-radius: 8mm;
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     position: relative;
     overflow: hidden;
@@ -151,64 +151,39 @@ export default function ActivityRegModal({ activity, event, onClose }) {
 
   .header {
     background: #5a6c1e;
-    padding: 10mm;
+    padding: 8mm;
     text-align: center;
     position: relative;
     z-index: 1;
   }
-  .header svg { width: 45mm; height: auto; }
+  .header svg { width: 40mm; height: auto; }
 
   .content {
-    padding: 10mm;
+    padding: 8mm;
     position: relative;
     z-index: 1;
-    flex-grow: 1;
-  }
-
-  .notch-container {
-    position: relative;
-    height: 10mm;
-    margin: 5mm 0;
-    display: flex;
-    align-items: center;
-    z-index: 1;
-  }
-  .notch-left, .notch-right {
-    position: absolute;
-    width: 10mm;
-    height: 10mm;
-    background: #f0f2f5;
-    border-radius: 50%;
-  }
-  .notch-left { left: -5mm; }
-  .notch-right { right: -5mm; }
-  .divider {
-    flex-grow: 1;
-    height: 0;
-    border-top: 1.5px dashed #d1d5db;
-    margin: 0 5mm;
   }
 
   .ticket-id-section {
     text-align: center;
-    margin-bottom: 8mm;
+    margin-bottom: 6mm;
   }
   .ticket-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 800;
     color: #5a6c1e;
-    letter-spacing: 3px;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
-    margin-bottom: 2mm;
+    margin-bottom: 1.5mm;
   }
   .ticket-number {
-    font-size: 36px;
+    font-size: 32px;
     font-weight: 900;
     color: #1a1a1a;
     background: #f3f4f6;
     display: inline-block;
-    padding: 2mm 8mm;
-    border-radius: 4mm;
+    padding: 1.5mm 7mm;
+    border-radius: 3.5mm;
     border: 1px solid #e5e7eb;
   }
 
@@ -216,61 +191,85 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 8mm;
+    margin-bottom: 6mm;
   }
   .qr-wrapper {
-    padding: 6mm;
+    padding: 5mm;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-radius: 6mm;
+    border-radius: 5mm;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
   }
-  .qr-wrapper img { width: 45mm; height: 45mm; display: block; }
+  .qr-wrapper img { width: 40mm; height: 40mm; display: block; }
   .qr-hint {
-    margin-top: 4mm;
-    font-size: 10px;
+    margin-top: 3mm;
+    font-size: 9px;
     color: #6b7280;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.2px;
   }
 
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4mm;
+    gap: 3mm;
   }
   .info-item {
     background: #fff;
-    padding: 3mm 4mm;
-    border-radius: 3mm;
+    padding: 2.5mm 3.5mm;
+    border-radius: 2.5mm;
     border: 1px solid #f3f4f6;
   }
   .info-item.full { grid-column: span 2; background: #f9fafb; border-left: 4px solid #5a6c1e; }
-  .info-lbl { font-size: 8px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1mm; }
-  .info-val { font-size: 14px; font-weight: 700; color: #1f2937; }
-  .info-item.full .info-val { font-size: 18px; color: #111827; }
+  .info-lbl { font-size: 7.5px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.8mm; }
+  .info-val { font-size: 13px; font-weight: 700; color: #1f2937; }
+  .info-item.full .info-val { font-size: 16px; color: #111827; }
 
   .instructions-box {
-    margin-top: 8mm;
+    margin-top: 6mm;
     background: #fffbeb;
-    padding: 5mm;
-    border-radius: 4mm;
+    padding: 4mm;
+    border-radius: 3.5mm;
     border: 1px solid #fef3c7;
   }
-  .instr-title { font-size: 10px; font-weight: 900; color: #92400e; text-transform: uppercase; margin-bottom: 2mm; display: flex; align-items: center; }
-  .instr-title svg { margin-right: 2mm; }
-  .instr-text { font-size: 10px; line-height: 1.6; color: #b45309; font-weight: 500; }
+  .instr-title { font-size: 9px; font-weight: 900; color: #92400e; text-transform: uppercase; margin-bottom: 1.5mm; display: flex; align-items: center; }
+  .instr-title svg { margin-right: 1.5mm; }
+  .instr-text { font-size: 9px; line-height: 1.5; color: #b45309; font-weight: 500; }
+
+  .notch-container {
+    position: relative;
+    height: 8mm;
+    margin: 4mm 0;
+    display: flex;
+    align-items: center;
+    z-index: 1;
+  }
+  .notch-left, .notch-right {
+    position: absolute;
+    width: 8mm;
+    height: 8mm;
+    background: #f0f2f5;
+    border-radius: 50%;
+  }
+  .notch-left { left: -4mm; }
+  .notch-right { right: -4mm; }
+  .divider {
+    flex-grow: 1;
+    height: 0;
+    border-top: 1.2px dashed #d1d5db;
+    margin: 0 4mm;
+  }
 
   .footer-ticket {
     background: #f9fafb;
-    padding: 6mm;
+    padding: 5mm;
     text-align: center;
     border-top: 1px solid #f3f4f6;
     z-index: 1;
   }
-  .footer-brand { font-size: 12px; font-weight: 800; color: #5a6c1e; letter-spacing: 1px; }
-  .footer-id { font-family: monospace; font-size: 9px; color: #9ca3af; margin-top: 2mm; }
+  .footer-brand { font-size: 11px; font-weight: 800; color: #5a6c1e; letter-spacing: 0.8px; }
+  .footer-id { font-family: monospace; font-size: 8px; color: #9ca3af; margin-top: 1.5mm; }
 </style></head>
 <body>
 <div class="ticket-container">

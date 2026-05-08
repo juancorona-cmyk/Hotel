@@ -7,9 +7,13 @@
     "dev": "vite",
     "dev:netlify": "netlify dev",
     "build": "vite build",
+    "build:apk": "npm run build && npx cap sync android && export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../HotelPuntaGaleria.apk && echo '\n✅ APK LISTO: Se ha guardado como HotelPuntaGaleria.apk en la raíz de tu proyecto\n'",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.2",
+    "@capacitor/cli": "^8.3.2",
+    "@capacitor/core": "^8.3.2",
     "@sparticuz/chromium": "^123.0.1",
     "i18next": "^26.0.8",
     "puppeteer-core": "^22.15.0",

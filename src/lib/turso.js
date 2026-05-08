@@ -402,16 +402,20 @@ export async function adminLogin(username, password) {
   return { ok: true, role: row.role ?? 'editor', permissions }
 }
 
-export async function adminCreateUser(username, password) {
+export async function adminCreateUser(username, password, role = 'editor') {
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
   const saltHex   = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')
   const hash      = await pbkdf2(password, saltBytes)
-  const adminCheck = await exec(`SELECT COUNT(*) as cnt FROM admin_users WHERE role = 'admin'`)
-  const hasAdmin = Number(parseRows(adminCheck)[0]?.cnt ?? 0) > 0
-  const role = hasAdmin ? 'editor' : 'admin'
+  
+  // For staff, set limited default permissions
+  let permissions = null
+  if (role === 'staff') {
+    permissions = JSON.stringify({ checkin: true, inscripciones: true })
+  }
+  
   return exec(
-    'INSERT OR REPLACE INTO admin_users (username, hash, salt, role) VALUES (?, ?, ?, ?)',
-    [txt(username), txt(hash), txt(saltHex), txt(role)]
+    'INSERT OR REPLACE INTO admin_users (username, hash, salt, role, permissions) VALUES (?, ?, ?, ?, ?)',
+    [txt(username), txt(hash), txt(saltHex), txt(role), permissions ? txt(permissions) : { type: 'null' }]
   )
 }
 

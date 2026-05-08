@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hotel Punta Galeria</string>
+    <string name="title_activity_main">Hotel Punta Galeria</string>
+    <string name="package_name">com.hotelpuntagaleria.app</string>
+    <string name="custom_url_scheme">com.hotelpuntagaleria.app</string>
+</resources>

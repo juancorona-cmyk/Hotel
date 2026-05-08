@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, adminLogin, adminHasUsers } from '../lib/turso'
 import './CheckInPage.css'
+
+// Reusing setup key for initial login if no users exist
+const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
 
 export default function CheckInPage() {
   const [searchParams] = useSearchParams()
   const rid = searchParams.get('rid')
+
+  // Auth state
+  const [authed, setAuthed] = useState(() => localStorage.getItem('ci_authed') === 'true')
+  const [loginUser, setLoginUser] = useState('')
+  const [loginPwd, setLoginPwd] = useState('')
+  const [loginErr, setLoginErr] = useState('')
+  const [loginBusy, setLoginBusy] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
 
   const [reg, setReg] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -13,14 +24,51 @@ export default function CheckInPage() {
   const [status, setStatus] = useState('')
 
   useEffect(() => {
-    if (!rid) { setLoading(false); return }
+    if (!authed || !rid) { setLoading(false); return }
+    setLoading(true)
     getRegistrationById(parseInt(rid))
       .then(r => setReg(r))
       .catch(() => setReg(null))
       .finally(() => setLoading(false))
-  }, [rid])
+  }, [rid, authed])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    if (!loginUser.trim() || !loginPwd) return
+    setLoginBusy(true); setLoginErr('')
+    try {
+      const hasUsers = await adminHasUsers()
+      let ok = false
+      if (!hasUsers) {
+        if (SETUP_KEY && loginPwd === SETUP_KEY) ok = true
+        else setLoginErr('DB vacía y clave incorrecta')
+      } else {
+        const result = await adminLogin(loginUser.trim(), loginPwd)
+        if (result.ok) ok = true
+        else setLoginErr('Usuario o contraseña incorrectos')
+      }
+
+      if (ok) {
+        localStorage.setItem('ci_authed', 'true')
+        localStorage.setItem('ci_role', hasUsers ? result.role : 'admin')
+        localStorage.setItem('ci_perms', JSON.stringify(hasUsers ? result.permissions : null))
+        setAuthed(true)
+      }
+    } catch (err) {
+      setLoginErr(`Error: ${err.message}`)
+    } finally {
+      setLoginBusy(false)
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('ci_authed')
+    setAuthed(false)
+    setReg(null)
+  }
 
   const handleCheckIn = async () => {
+    if (updating) return
     setUpdating(true)
     try {
       await checkInRegistration(reg.id)
@@ -35,6 +83,7 @@ export default function CheckInPage() {
   }
 
   const handleUndo = async () => {
+    if (updating) return
     setUpdating(true)
     try {
       await undoCheckInRegistration(reg.id)
@@ -48,6 +97,47 @@ export default function CheckInPage() {
     }
   }
 
+  // ── Login UI ──
+  if (!authed) {
+    return (
+      <div className="ci-page">
+        <div className="ci-card ci-login-card">
+          <div className="ci-header">
+            <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo" />
+          </div>
+          <h2 className="ci-login-title">VALIDACIÓN DE TICKETS</h2>
+          <p className="ci-login-sub">Inicia sesión para continuar</p>
+          <form onSubmit={handleLogin} className="ci-login-form">
+            <input
+              type="text"
+              value={loginUser}
+              onChange={e => setLoginUser(e.target.value)}
+              placeholder="Usuario"
+              className="ci-login-input"
+              autoFocus
+            />
+            <div className="ci-pwd-wrap">
+              <input
+                type={showPwd ? 'text' : 'password'}
+                value={loginPwd}
+                onChange={e => setLoginPwd(e.target.value)}
+                placeholder="Contraseña"
+                className="ci-login-input"
+              />
+              <button type="button" className="ci-pwd-toggle" onClick={() => setShowPwd(!showPwd)}>
+                {showPwd ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            {loginErr && <p className="ci-login-err">{loginErr}</p>}
+            <button type="submit" className="ci-login-btn" disabled={loginBusy}>
+              {loginBusy ? 'Verificando...' : 'Entrar'}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="ci-page">
@@ -58,7 +148,7 @@ export default function CheckInPage() {
     )
   }
 
-  if (!reg) {
+  if (!rid || !reg) {
     return (
       <div className="ci-page">
         <div className="ci-card ci-card--error">
@@ -67,8 +157,9 @@ export default function CheckInPage() {
               <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
             </svg>
           </div>
-          <h2 className="ci-title">Entrada no encontrada</h2>
-          <p className="ci-sub">El ticket escaneado no existe o el ID es inválido.</p>
+          <h2 className="ci-title">{!rid ? 'Esperando escaneo' : 'Entrada no encontrada'}</h2>
+          <p className="ci-sub">{!rid ? 'Escanea un código QR para validar una asistencia.' : 'El ticket escaneado no existe o es inválido.'}</p>
+          <button className="ci-logout-link" onClick={handleLogout}>Cerrar sesión de staff</button>
         </div>
       </div>
     )
@@ -79,8 +170,9 @@ export default function CheckInPage() {
   return (
     <div className="ci-page">
       <div className={`ci-card ${isCheckedIn ? 'ci-card--done' : ''}`}>
-        <div className="ci-header">
-          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo" />
+        <div className="ci-header-row">
+          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo-sm" />
+          <button className="ci-logout-btn" onClick={handleLogout} title="Cerrar sesión">Salir</button>
         </div>
 
         <div className="ci-body">
@@ -122,6 +214,12 @@ export default function CheckInPage() {
             <div className="ci-info__row">
               <span className="ci-info__label">Teléfono</span>
               <span className="ci-info__value">{reg.phone}</span>
+            </div>
+            <div className="ci-info__row">
+              <span className="ci-info__label">Estado de Pago</span>
+              <span className={`ci-info__value ci-pay-status ${reg.paid ? 'ci-pay--ok' : 'ci-pay--pending'}`}>
+                {reg.paid ? 'PAGADO ✓' : 'PENDIENTE DE PAGO ⚠'}
+              </span>
             </div>
             <div className="ci-info__row">
               <span className="ci-info__label">Registrado</span>
