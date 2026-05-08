@@ -28,6 +28,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
+                <data android:scheme="https" android:host="www.hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
+                <data android:scheme="http" android:host="hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
+                <data android:scheme="http" android:host="www.hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
             </intent-filter>
 
         </activity>

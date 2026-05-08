@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.2",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.3.2",
     "@capacitor/core": "^8.3.2",
     "@sparticuz/chromium": "^123.0.1",

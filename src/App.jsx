@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useNavigate } from 'react-router-dom'
+import { App as CapApp } from '@capacitor/app'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
@@ -88,6 +89,20 @@ export default function App() {
   const [showAdmin, setShowAdmin] = useState(false)
   const [showMaintenance, setShowMaintenance] = useState(true)
   const [dataVersion, setDataVersion] = useState(0)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Handle Deep Links
+    CapApp.addListener('appUrlOpen', (data) => {
+      try {
+        const url = new URL(data.url)
+        const path = url.pathname + url.search
+        navigate(path)
+      } catch (e) {
+        console.error('Deep link error:', e)
+      }
+    })
+  }, [navigate])
 
   useEffect(() => {
     setupDB().catch(err => {
