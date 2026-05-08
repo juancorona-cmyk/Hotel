@@ -3,6 +3,8 @@ import { getEvents, getActivityRegistrationsByEvent } from '../lib/turso'
 import CheckInPage from './CheckInPage'
 import './StaffApp.css'
 
+const FILTERS = { all: 'Todos', confirmed: 'Confirmados', pending: 'Pendientes' }
+
 export default function StaffApp() {
   const [authed, setAuthed] = useState(() => localStorage.getItem('ci_authed') === 'true')
   const [role] = useState(() => localStorage.getItem('ci_role') || 'staff')
@@ -11,12 +13,13 @@ export default function StaffApp() {
     catch { return {} }
   })
 
-  const [view, setView] = useState('menu') 
+  const [view, setView] = useState('menu')
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [attendees, setAttendees] = useState([])
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
 
   const hasPerm = (key) => role === 'admin' || !!perms?.[key]
 
@@ -27,16 +30,18 @@ export default function StaffApp() {
         .then(setEvents)
         .finally(() => setLoading(false))
     }
-  }, [authed, view, role, perms])
+  }, [authed, view])
 
   const viewAttendees = async (ev) => {
     setSelectedEvent(ev)
     setLoading(true)
     setView('attendees')
+    setFilter('all')
+    setSearch('')
     try {
       const regs = await getActivityRegistrationsByEvent(ev.id)
       setAttendees(regs)
-    } catch (err) {
+    } catch {
       alert('Error al cargar asistentes')
     } finally {
       setLoading(false)
@@ -47,13 +52,19 @@ export default function StaffApp() {
     return <CheckInPage />
   }
 
-  // Handle back to menu
-  const goHome = () => { setView('menu'); setSelectedEvent(null); setAttendees([]); setSearch('') }
+  const goHome = () => { setView('menu'); setSelectedEvent(null); setAttendees([]); setSearch(''); setFilter('all') }
 
-  const filteredAttendees = attendees.filter(a => 
-    a.full_name.toLowerCase().includes(search.toLowerCase()) || 
-    a.phone.includes(search)
-  )
+  const checkedCount = attendees.filter(a => a.checked_in).length
+  const pendingCount = attendees.length - checkedCount
+
+  const filteredAttendees = attendees.filter(a => {
+    const matchSearch = a.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      a.phone.includes(search)
+    if (!matchSearch) return false
+    if (filter === 'confirmed') return a.checked_in
+    if (filter === 'pending') return !a.checked_in
+    return true
+  })
 
   const handleLogout = () => {
     localStorage.removeItem('ci_authed')
@@ -75,20 +86,35 @@ export default function StaffApp() {
           <div className="sa-grid">
             {hasPerm('eventos') && (
               <button className="sa-btn" onClick={() => setView('events')}>
-                <div className="sa-btn__icon">📅</div>
+                <div className="sa-btn__icon">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
                 <span>Ver Eventos</span>
               </button>
             )}
-            
+
             {hasPerm('checkin') && (
               <button className="sa-btn" onClick={() => window.location.href = '/checkin'}>
-                <div className="sa-btn__icon">🔍</div>
+                <div className="sa-btn__icon">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                    <line x1="9" y1="15" x2="9.01" y2="15" />
+                    <line x1="15" y1="15" x2="15.01" y2="15" />
+                  </svg>
+                </div>
                 <span>Escanear QR</span>
               </button>
             )}
 
             {!hasPerm('eventos') && !hasPerm('checkin') && (
-              <p style={{ textAlign: 'center', color: '#666' }}>No tienes permisos asignados. Contacta al administrador.</p>
+              <p className="sa-no-perms">No tienes permisos asignados. Contacta al administrador.</p>
             )}
           </div>
         </div>
@@ -100,7 +126,12 @@ export default function StaffApp() {
             <button className="sa-back" onClick={goHome}>← Volver</button>
             <h2>Eventos Activos</h2>
           </div>
-          {loading ? <p className="sa-loading">Cargando...</p> : (
+          {loading ? (
+            <div className="sa-loading-wrap">
+              <div className="sa-spinner" />
+              <p>Cargando eventos...</p>
+            </div>
+          ) : (
             <div className="sa-list">
               {events.map(ev => (
                 <div key={ev.id} className="sa-event-card" onClick={() => viewAttendees(ev)}>
@@ -108,12 +139,24 @@ export default function StaffApp() {
                     <strong>{ev.name}</strong>
                     <span>{ev.date}</span>
                   </div>
-                  <div className="sa-event-stats">
-                    →
+                  <div className="sa-event-arrow">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
                   </div>
                 </div>
               ))}
-              {events.length === 0 && <p className="sa-empty">No hay eventos activos.</p>}
+              {events.length === 0 && (
+                <div className="sa-empty">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <p>No hay eventos activos.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -125,55 +168,91 @@ export default function StaffApp() {
             <button className="sa-back" onClick={() => setView('events')}>← Volver</button>
             <div className="sa-top-text">
               <h2>{selectedEvent.name}</h2>
-              <span style={{fontSize: 12, color: '#666'}}>{attendees.length} registrados</span>
             </div>
           </div>
 
-          <div className="sa-search-wrap">
-            <input 
-              type="text" 
-              placeholder="Buscar por nombre o celular..." 
-              className="sa-search"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                marginBottom: '16px',
-                fontFamily: 'inherit'
-              }}
-            />
+          {/* Stats bar */}
+          <div className="sa-stats-bar">
+            <div className="sa-stat">
+              <span className="sa-stat-num">{attendees.length}</span>
+              <span className="sa-stat-label">Total</span>
+            </div>
+            <div className="sa-stat sa-stat--ok">
+              <span className="sa-stat-num">{checkedCount}</span>
+              <span className="sa-stat-label">Confirmados</span>
+            </div>
+            <div className="sa-stat sa-stat--pend">
+              <span className="sa-stat-num">{pendingCount}</span>
+              <span className="sa-stat-label">Pendientes</span>
+            </div>
           </div>
 
-          {loading ? <p className="sa-loading">Cargando lista...</p> : (
+          {/* Search + filter */}
+          <div className="sa-search-wrap">
+            <div className="sa-search-field">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar por nombre o celular..."
+                className="sa-search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="sa-filter-tabs">
+              {Object.entries(FILTERS).map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`sa-filter-tab ${filter === key ? 'sa-filter-tab--active' : ''}`}
+                  onClick={() => setFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="sa-loading-wrap">
+              <div className="sa-spinner" />
+              <p>Cargando lista...</p>
+            </div>
+          ) : (
             <div className="sa-list">
               {filteredAttendees.map(a => (
-                <div key={a.id} className="sa-event-card" style={{flexDirection: 'column', alignItems: 'flex-start', gap: 8}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center'}}>
+                <div key={a.id} className="sa-attendee-card">
+                  <div className="sa-attendee-top">
                     <strong>{a.full_name}</strong>
-                    <span style={{fontSize: 11, color: '#94a3b8'}}>{a.phone}</span>
+                    <span className="sa-attendee-phone">{a.phone}</span>
                   </div>
-                  <div style={{display: 'flex', gap: 8}}>
-                    <span className={`sa-badge ${a.paid ? 'ok' : 'pend'}`} style={{
-                      fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: '4px',
-                      background: a.paid ? '#f0fdf4' : '#fffbeb',
-                      color: a.paid ? '#16a34a' : '#d97706'
-                    }}>
-                      {a.paid ? 'PAGADO' : 'PENDIENTE'}
+                  <div className="sa-attendee-meta">
+                    <span className={`sa-tag ${a.paid ? 'sa-tag--paid' : 'sa-tag--unpaid'}`}>
+                      {a.paid ? 'PAGADO' : 'PENDIENTE PAGO'}
                     </span>
-                    <span className={`sa-badge ${a.checked_in ? 'ok' : 'pend'}`} style={{
-                      fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: '4px',
-                      background: a.checked_in ? '#f0fdf4' : '#f1f5f9',
-                      color: a.checked_in ? '#16a34a' : '#64748b'
-                    }}>
-                      {a.checked_in ? 'CONFIRMADO' : 'FALTA'}
+                    <span className={`sa-tag ${a.checked_in ? 'sa-tag--ok' : 'sa-tag--pending'}`}>
+                      {a.checked_in ? 'CONFIRMADO' : 'FALTA ENTRADA'}
                     </span>
+                    {a.payment_method && (
+                      <span className="sa-tag sa-tag--method">
+                        {a.payment_method === 'transferencia' ? 'Transferencia' :
+                         a.payment_method === 'presencial' ? 'Pago presencial' : a.payment_method}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
-              {filteredAttendees.length === 0 && <p className="sa-empty">No se encontraron resultados.</p>}
+              {filteredAttendees.length === 0 && (
+                <div className="sa-empty">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <p>No se encontraron resultados.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

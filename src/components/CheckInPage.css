@@ -1,3 +1,4 @@
+/* ── Base ── */
 .ci-page {
   min-height: 100vh;
   background: #f0f2f5;
@@ -6,6 +7,10 @@
   align-items: center;
   padding: 16px;
   font-family: 'Montserrat', sans-serif;
+}
+
+.ci-page--public {
+  background: linear-gradient(160deg, #f7f8fa 0%, #eef1f5 100%);
 }
 
 .ci-card {
@@ -20,52 +25,99 @@
 
 @keyframes ci-fade-up {
   from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Login ── */
+/* ── Login (redesigned) ── */
 .ci-login-card {
-  padding: 32px 24px;
+  padding: 40px 28px 36px;
 }
+
+.ci-login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.ci-login-logo {
+  height: 48px;
+}
+
+.ci-login-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #5a6c1e;
+  background: #f0fdf0;
+  padding: 4px 12px;
+  border-radius: 100px;
+  border: 1px solid rgba(90, 108, 30, 0.15);
+}
+
 .ci-login-title {
   text-align: center;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
   color: #1a1a1a;
-  margin-top: 24px;
-  letter-spacing: 0.5px;
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
 }
+
 .ci-login-sub {
   text-align: center;
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 32px;
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 28px;
+  line-height: 1.4;
 }
+
 .ci-login-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
+
+.ci-login-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ci-login-field-icon {
+  position: absolute;
+  left: 14px;
+  color: #aaa;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 .ci-login-input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 14px 14px 14px 42px;
   border-radius: 12px;
-  border: 1px solid #e1e1e1;
+  border: 1.5px solid #e5e7eb;
   font-size: 15px;
   font-family: inherit;
-  transition: all 0.2s;
+  background: #fafbfc;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   outline: none;
 }
+
 .ci-login-input:focus {
   border-color: #5a6c1e;
-  box-shadow: 0 0 0 3px rgba(90, 108, 30, 0.1);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(90, 108, 30, 0.08);
 }
-.ci-pwd-wrap {
-  position: relative;
+
+.ci-login-input--pwd {
+  padding-right: 56px;
 }
+
 .ci-pwd-toggle {
   position: absolute;
-  right: 12px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -74,36 +126,193 @@
   font-weight: 700;
   color: #5a6c1e;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
 }
+
+.ci-pwd-toggle:hover {
+  background: #f0fdf0;
+}
+
+.ci-login-err {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  background: #fef2f2;
+  padding: 10px 14px;
+  border-radius: 10px;
+  line-height: 1.4;
+}
+
 .ci-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   background: #5a6c1e;
   color: #fff;
-  padding: 14px;
+  padding: 15px;
   border: none;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
-  transition: opacity 0.2s;
-  margin-top: 8px;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 6px;
 }
-.ci-login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.ci-login-err {
-  color: #dc2626;
-  font-size: 13px;
+
+.ci-login-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  background: #4a5b18;
+}
+
+.ci-login-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ci-login-btn-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ci-spin 0.6s linear infinite;
+}
+
+@keyframes ci-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Public / Guest screen ── */
+.ci-card--public {
+  padding: 40px 28px 32px;
   text-align: center;
-  margin-top: 4px;
+}
+
+.ci-public-logo {
+  height: 36px;
+  margin-bottom: 28px;
+}
+
+.ci-public-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #5a6c1e;
+  border-radius: 50%;
+  animation: ci-spin 0.6s linear infinite;
+  margin: 0 auto 16px;
+}
+
+.ci-public-loading {
+  color: #888;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ci-public-icon {
+  color: #d1d5db;
+  margin-bottom: 20px;
+}
+
+.ci-public-check {
+  color: #5a6c1e;
+  margin-bottom: 20px;
+}
+
+.ci-public-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+  letter-spacing: -0.3px;
+}
+
+.ci-public-text {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.ci-public-details {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ci-public-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ci-public-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ci-public-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.ci-public-ticket {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: #f3f4f6;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.ci-public-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.ci-public-message svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ci-public-message p {
+  font-size: 13px;
+  color: #1e40af;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ci-public-footer {
+  font-size: 12px;
+  color: #c0c0c0;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 /* ── Header ── */
-.ci-header {
-  display: flex;
-  justify-content: center;
-  padding: 8px 0;
-}
-.ci-logo { height: 44px; }
-
 .ci-header-row {
   display: flex;
   justify-content: space-between;
@@ -111,47 +320,73 @@
   padding: 16px 20px;
   border-bottom: 1px solid #f0f0f0;
 }
+
 .ci-logo-sm { height: 28px; }
+
 .ci-logout-btn {
   background: #fef2f2;
   color: #dc2626;
   border: none;
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.15s;
 }
 
-/* ── Body ── */
-.ci-body { padding: 24px; }
+.ci-logout-btn:active {
+  background: #fee2e2;
+}
 
-.ci-badge {
+/* ── Result card ── */
+.ci-card--result {
+  padding: 0;
+}
+
+.ci-card--done {
+  /* subtle green tint when confirmed */
+}
+
+.ci-body {
+  padding: 24px 20px 28px;
+}
+
+.ci-result-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
   font-weight: 800;
   font-size: 14px;
-  margin-bottom: 24px;
-  text-align: center;
+  margin-bottom: 28px;
 }
-.ci-badge--ok { background: #f0fdf4; color: #16a34a; }
-.ci-badge--pending { background: #fffbeb; color: #d97706; }
+
+.ci-result-badge--ok {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.ci-result-badge--pending {
+  background: #fffbeb;
+  color: #d97706;
+}
 
 .ci-info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 18px;
+  margin-bottom: 28px;
 }
+
 .ci-info__row {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .ci-info__label {
   font-size: 11px;
   font-weight: 700;
@@ -159,85 +394,162 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
 .ci-info__value {
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
 }
+
 .ci-info__value--big {
   font-size: 20px;
   font-weight: 800;
   color: #111827;
 }
+
 .ci-info__value--id {
-  font-family: monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   background: #f3f4f6;
   display: inline-block;
   align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 14px;
 }
+
+.ci-info__value--date {
+  font-size: 13px;
+  color: #6b7280;
+}
+
 .ci-pay-status {
   font-weight: 800;
   font-size: 14px;
-  padding: 4px 0;
+  padding: 3px 0;
 }
+
 .ci-pay--ok { color: #16a34a; }
 .ci-pay--pending { color: #d97706; }
 
 .ci-info__row--check {
   border-top: 1px dashed #e5e7eb;
-  padding-top: 16px;
-  margin-top: 8px;
+  padding-top: 18px;
+  margin-top: 4px;
 }
 
 /* ── Actions ── */
-.ci-actions { display: flex; flex-direction: column; gap: 12px; }
+.ci-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .ci-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   padding: 16px;
   border-radius: 14px;
   border: none;
   font-size: 16px;
   font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
-.ci-btn--confirm { background: #5a6c1e; color: #fff; }
-.ci-btn--confirm:active { transform: scale(0.98); }
-.ci-btn--undo { background: #f3f4f6; color: #6b7280; font-size: 14px; }
 
-.ci-status {
-  text-align: center;
+.ci-btn--confirm {
+  background: #5a6c1e;
+  color: #fff;
+}
+
+.ci-btn--confirm:active {
+  transform: scale(0.98);
+  background: #4a5b18;
+}
+
+.ci-btn--undo {
+  background: #f3f4f6;
+  color: #6b7280;
   font-size: 14px;
-  font-weight: 600;
+}
+
+.ci-btn--undo:active {
+  background: #e5e7eb;
+}
+
+/* ── Toasts ── */
+.ci-toast {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 10px;
   margin-bottom: 16px;
 }
-.ci-status--ok { color: #16a34a; }
-.ci-status--warn { color: #d97706; }
-.ci-status--err { color: #dc2626; }
 
-/* ── Errors / Empty ── */
-.ci-card--error {
-  padding: 48px 24px;
+.ci-toast--ok   { background: #f0fdf4; color: #16a34a; }
+.ci-toast--warn { background: #fffbeb; color: #d97706; }
+.ci-toast--err  { background: #fef2f2; color: #dc2626; }
+
+/* ── Empty / Loading states ── */
+.ci-card--empty {
+  padding: 48px 28px;
   text-align: center;
 }
-.ci-icon--x {
-  color: #dc2626;
+
+.ci-empty-icon {
+  color: #d1d5db;
   margin-bottom: 20px;
 }
-.ci-title { font-size: 22px; font-weight: 800; color: #111827; margin-bottom: 8px; }
-.ci-sub { font-size: 15px; color: #6b7280; line-height: 1.5; margin-bottom: 24px; }
-.ci-loading { padding: 48px; text-align: center; color: #666; font-weight: 600; }
+
+.ci-empty-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 8px;
+}
+
+.ci-empty-text {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
 
 .ci-logout-link {
   background: none;
   border: none;
   color: #9ca3af;
   font-size: 13px;
-  text-decoration: underline;
+  font-weight: 600;
   cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.15s;
+}
+
+.ci-logout-link:hover {
+  color: #6b7280;
+}
+
+.ci-loading-wrap {
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.ci-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #5a6c1e;
+  border-radius: 50%;
+  animation: ci-spin 0.6s linear infinite;
+  margin: 0 auto 16px;
+}
+
+.ci-loading-text {
+  font-size: 14px;
+  color: #888;
+  font-weight: 600;
 }
