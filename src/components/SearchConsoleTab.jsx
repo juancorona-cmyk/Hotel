@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { API_BASE } from '../lib/turso'
 
 const GSC_PERIODS = [
   { label: '7D',  days: 7  },
@@ -134,7 +135,9 @@ export default function SearchConsoleTab() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/.netlify/functions/gsc?days=${days}`)
+      const path = API_BASE ? `/.netlify/functions/gsc?days=${days}` : `/api/gsc?days=${days}`
+      const url = API_BASE ? `${API_BASE}${path}` : path
+      const res = await fetch(url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       if (json.error === 'not_configured') { setError('not_configured'); return }

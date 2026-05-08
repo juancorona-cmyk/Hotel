@@ -16,7 +16,8 @@ import Testimonials from './components/Testimonials'
 import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
-import { setupDB, trackEvent } from './lib/turso'
+import { setupDB, trackEvent, getProxyConfig } from './lib/turso'
+import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
 
 const BookingModal = lazy(() => import('./components/BookingModal'))
@@ -31,18 +32,14 @@ function LazyFallback() {
   return <div className="lazy-fallback" aria-hidden="true" />
 }
 
-function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMaintenance, dataVersion }) {
+function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion }) {
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, room: roomId })
     setBookingRoom(roomId)
   }
 
-  // In native app, maintenance code is mandatory; in browser it's optional
-  const showBanner = isNativeApp ? true : showMaintenance
-
   return (
     <>
-      <MaintenanceBanner show={showBanner} />
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} />
       <About />
@@ -80,26 +77,33 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, showMai
 export default function App() {
   const [bookingRoom, setBookingRoom] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
-  const [showMaintenance, setShowMaintenance] = useState(true)
+  const [showMaintenance] = useState(true)
+  const [maintenanceUnlocked, setMaintenanceUnlocked] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    // Sync configuration from Netlify env vars (Private)
+    getProxyConfig().then(data => {
+      if (data?.config?.cloudinaryCloudName) {
+        localStorage.setItem('cloudinary_cloud_name', data.config.cloudinaryCloudName)
+        updateCDN(data.config.cloudinaryCloudName) // Actualizar URLs del CDN antes de re-renderizar
+        setDataVersion(v => v + 1) // Forzar re-renderizado
+      }
+    })
+  }, [])
 
   useEffect(() => {
     // Handle Deep Links
     const setupDeepLinks = async () => {
       CapApp.addListener('appUrlOpen', (data) => {
         try {
-          // data.url could be https://hotelpuntagaleria.mx/checkin?rid=123
-          // or com.hotelpuntagaleria.app://checkin?rid=123
           const url = new URL(data.url)
           let path = url.pathname + url.search
-          
-          // In some cases, pathname might be empty for custom schemes
           if (!path || path === '/') {
             const search = data.url.split('?')[1]
             if (search) path = '/checkin?' + search
           }
-
           if (path) navigate(path)
         } catch (e) {
           console.error('Deep link error:', e)
@@ -120,7 +124,7 @@ export default function App() {
       if (e.ctrlKey && e.key?.toLowerCase() === 'k') {
         e.preventDefault()
         setShowAdmin(a => {
-          if (a) setDataVersion(v => v + 1) // Refresh when closing
+          if (a) setDataVersion(v => v + 1)
           return !a
         })
       }
@@ -130,30 +134,49 @@ export default function App() {
   }, [])
 
   return (
-    <Routes>
-      <Route path="/evento/:slug" element={
-        <Suspense fallback={<LazyFallback />}>
-          <EventoPage key={dataVersion} />
-        </Suspense>
-      } />
-      <Route path="/checkin" element={
-        <Suspense fallback={<LazyFallback />}>
-          <CheckInPage />
-        </Suspense>
-      } />
-      <Route path="/*" element={
-        <HomeApp
-          key={dataVersion}
-          bookingRoom={bookingRoom}
-          setBookingRoom={setBookingRoom}
-          showAdmin={showAdmin}
-          setShowAdmin={setShowAdmin}
-          showMaintenance={showMaintenance}
-          dataVersion={dataVersion}
-        />
-      } />
-    </Routes>
+    <>
+      {/* El mantenimiento solo bloquea la web pública, no el APK del Staff */}
+      {!isNativeApp && <MaintenanceBanner 
+        show={showMaintenance} 
+        onUnlock={() => setMaintenanceUnlocked(true)} 
+      />}
+      
+      <Routes>
+        <Route path="/evento/:slug" element={
+          <Suspense fallback={<LazyFallback />}>
+            <EventoPage key={dataVersion} />
+          </Suspense>
+        } />
+        
+        <Route path="/checkin" element={
+          <Suspense fallback={<LazyFallback />}>
+            <CheckInPage />
+          </Suspense>
+        } />
+
+        <Route path="/*" element={
+          /* 
+             En el APK (isNativeApp): 
+             - Si no estamos en localhost, mostramos login de staff directamente.
+             - Excepto si el administrador desbloqueó el mantenimiento para ver el index.
+          */
+          (isNativeApp && window.location.hostname !== 'localhost' && !maintenanceUnlocked) ? (
+            <Suspense fallback={<LazyFallback />}>
+              <CheckInPage />
+            </Suspense>
+          ) : (
+            <HomeApp
+              key={dataVersion}
+              bookingRoom={bookingRoom}
+              setBookingRoom={setBookingRoom}
+              showAdmin={showAdmin}
+              setShowAdmin={setShowAdmin}
+              dataVersion={dataVersion}
+              setDataVersion={setDataVersion}
+            />
+          )
+        } />
+      </Routes>
+    </>
   )
 }
-
-

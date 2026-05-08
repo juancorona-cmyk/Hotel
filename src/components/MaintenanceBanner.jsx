@@ -1,22 +1,19 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const ADMIN_CODE = '171215'
-const isNativeApp = !!window.Capacitor
 
-export default function MaintenanceBanner({ show = true }) {
-  const navigate = useNavigate()
+export default function MaintenanceBanner({ show = true, onUnlock }) {
   const [code, setCode] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    // Check if already unlocked in this session
     const unlocked = sessionStorage.getItem('maintenance_unlocked')
     if (unlocked === 'true') {
       setIsUnlocked(true)
+      if (onUnlock) onUnlock()
     }
-  }, [])
+  }, [onUnlock])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -25,6 +22,7 @@ export default function MaintenanceBanner({ show = true }) {
       sessionStorage.setItem('maintenance_unlocked', 'true')
       setError('')
       setCode('')
+      if (onUnlock) onUnlock()
     } else {
       setError('Código incorrecto')
       setCode('')
@@ -65,20 +63,10 @@ export default function MaintenanceBanner({ show = true }) {
           </form>
 
           <p className="maintenance-lock__hint">Solo administradores</p>
-
-          {isNativeApp && (
-            <div className="maintenance-lock__staff">
-              <button 
-                className="maintenance-lock__staff-btn"
-                onClick={() => navigate('/checkin')}
-              >
-                Acceso Staff
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
   )
 }
+
 

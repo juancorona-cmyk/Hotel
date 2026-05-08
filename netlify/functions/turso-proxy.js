@@ -7,15 +7,28 @@ const CORS = {
 function getCleanConfig() {
   let rawUrl = (process.env.TURSO_URL || process.env.VITE_TURSO_URL || '').trim()
   let token = (process.env.TURSO_TOKEN || process.env.TURSO_AUTH_TOKEN || process.env.VITE_TURSO_TOKEN || '').trim()
+  
+  // Clean quotes and spaces
   rawUrl = rawUrl.replace(/^["']|["']$/g, '').trim()
   token = token.replace(/^["']|["']$/g, '').trim().replace(/\s+/g, '')
   if (token.toLowerCase().startsWith('bearer')) token = token.replace(/^bearer/i, '')
+  
+  // Ensure it's https:// (Node's fetch needs this)
   let normalizedUrl = rawUrl.replace(/^libsql:\/\//, 'https://')
-  if (normalizedUrl && !normalizedUrl.startsWith('http')) normalizedUrl = 'https://' + normalizedUrl
-  if (normalizedUrl) {
-    try { const urlObj = new URL(normalizedUrl); normalizedUrl = `${urlObj.protocol}//${urlObj.host}` }
-    catch (e) { normalizedUrl = normalizedUrl.replace(/\/$/, '') }
+  if (normalizedUrl && !normalizedUrl.startsWith('http')) {
+    normalizedUrl = 'https://' + normalizedUrl
   }
+
+  // Remove trailing slashes and normalize
+  if (normalizedUrl) {
+    try { 
+      const urlObj = new URL(normalizedUrl)
+      normalizedUrl = `${urlObj.protocol}//${urlObj.host}` 
+    } catch (e) { 
+      normalizedUrl = normalizedUrl.replace(/\/+$/, '') 
+    }
+  }
+
   return { rawUrl, token, normalizedUrl }
 }
 
@@ -25,6 +38,8 @@ export default async (req) => {
 
   if (req.method === 'GET') {
     let testStatus = 'Not attempted', testDetail = '', dbInfo = {}
+    console.log(`[Diagnostic] Connecting to Turso at: ${normalizedUrl}`)
+
     if (normalizedUrl && token) {
       try {
         const testRes = await fetch(`${normalizedUrl}/v2/pipeline`, {
@@ -49,9 +64,22 @@ export default async (req) => {
           testStatus = `FAILED (${testRes.status})`
           testDetail = await testRes.text()
         }
-      } catch (e) { testStatus = 'EXCEPTION'; testDetail = e.message }
+      } catch (e) { 
+        testStatus = 'EXCEPTION'
+        testDetail = `Diagnostic Error: ${e.message}`
+        console.error('[Diagnostic Error]', e)
+      }
     }
-    return new Response(JSON.stringify({ ok: !!(normalizedUrl && token), test: testStatus, testDetail, dbInfo, proxy: 'turso-proxy v5' }), {
+    return new Response(JSON.stringify({ 
+      ok: !!(normalizedUrl && token), 
+      test: testStatus, 
+      testDetail, 
+      dbInfo, 
+      proxy: 'turso-proxy v5',
+      config: {
+        cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME || 'hotelpuntagaleria'
+      }
+    }), {
       status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }
     })
   }
@@ -63,9 +91,15 @@ export default async (req) => {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: await req.text()
     })
+    if (!res.ok) {
+        const errText = await res.text()
+        console.error('Turso DB Server Error:', res.status, errText)
+        return new Response(JSON.stringify({ error: `Turso Server Error ${res.status}: ${errText}` }), { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    }
     const data = await res.json()
     return new Response(JSON.stringify(data), { status: res.status, headers: { ...CORS, 'Content-Type': 'application/json' } })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    console.error('Turso Proxy Connectivity Error:', err)
+    return new Response(JSON.stringify({ error: `Turso DB Connection Error: ${err.message}. Verifica que TURSO_URL sea una URL válida de https.` }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createActivityRegistration, getRegistrationCountByEvent, trackEvent } from '../lib/turso'
+import { createActivityRegistration, getRegistrationCountByEvent, trackEvent, API_BASE } from '../lib/turso'
 import { fmtFecha, isValidPhone } from '../lib/utils'
 import './ActivityRegModal.css'
 
@@ -361,7 +361,9 @@ export default function ActivityRegModal({ activity, event, onClose }) {
 </body></html>`
 
     try {
-      const res = await fetch('/.netlify/functions/export-pdf', {
+      const path = API_BASE ? '/.netlify/functions/export-pdf' : '/api/export-pdf'
+      const apiUrl = API_BASE ? `${API_BASE}${path}` : path
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ html, filename: `ticket-hotel-${ticketId}.pdf` })

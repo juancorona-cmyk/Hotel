@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { trackEvent } from '../../lib/turso'
+import { trackEvent, API_BASE } from '../../lib/turso'
 import './HotelBot.css'
 
 const SYSTEM_PROMPT = `Eres HotelBot, el asistente virtual del Hotel Punta Galería en Morelia, Michoacán. Eres amable, profesional y conciso.
@@ -188,7 +188,9 @@ export default function HotelBot() {
     setLoading(true)
 
     try {
-      const res = await fetch('/.netlify/functions/chat', {
+      const path = API_BASE ? '/.netlify/functions/chat' : '/api/chat'
+      const url = API_BASE ? `${API_BASE}${path}` : path
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

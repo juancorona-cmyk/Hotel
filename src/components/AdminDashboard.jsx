@@ -9,6 +9,7 @@ import {
   deleteEventRegistration, getActivityRegistrationIntents, getHotelReservationEvents,
   deleteBotEvent, updateActivityRegistrationPayment,
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
+  API_BASE
 } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import { fmtFecha as _fmtFecha, fmtHora } from '../lib/utils'
@@ -1218,7 +1219,9 @@ function DescField({ value, onChange, name, price, date }) {
     if (!name?.trim()) { alert('Escribe primero el nombre'); return }
     setLoading(true)
     try {
-      const res = await fetch('/.netlify/functions/ai-description', {
+      const path = API_BASE ? '/.netlify/functions/ai-description' : '/api/ai-description'
+      const url = API_BASE ? `${API_BASE}${path}` : path
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, price: parseFloat(price) || 0, date, maxLen: DESC_MAX }),

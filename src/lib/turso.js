@@ -1,21 +1,54 @@
 const PROD_URL = 'https://hotelpuntagaleria.mx'
-const API_BASE = (typeof window !== 'undefined' && (
-  window.Capacitor || 
-  (window.location.hostname !== 'hotelpuntagaleria.mx' && window.location.hostname !== 'localhost')
-)) ? PROD_URL : ''
+
+// Forzamos ruta relativa en localhost para asegurar que use Netlify Dev.
+// Solo usamos PROD_URL si es Capacitor Y NO es localhost.
+const API_BASE = (typeof window !== 'undefined' && window.Capacitor && window.location.hostname !== 'localhost') 
+  ? PROD_URL 
+  : ''
+
+export { API_BASE }
+
+export async function getProxyConfig() {
+  try {
+    // En producción usamos la ruta directa para evitar redirecciones que rompan el JSON
+    const path = API_BASE ? '/.netlify/functions/turso-proxy' : '/api/turso-proxy'
+    const url = API_BASE ? `${API_BASE}${path}` : path
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const text = await res.text()
+    if (text.trim().startsWith('<')) return null // Es HTML, no config
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
 
 async function pipeline(requests) {
+  // En el APK usamos la ruta de función directa para evitar fallos de redirección (Unexpected token <)
+  const path = API_BASE ? '/.netlify/functions/turso-proxy' : '/api/turso-proxy'
+  const url = API_BASE ? `${API_BASE}${path}` : path
+  
+  console.log(`[DB Pipeline] Fetching: ${url}`, { requests })
+
   try {
-    const res = await fetch(`${API_BASE}/.netlify/functions/turso-proxy`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({ requests }),
     })
     
     const text = await res.text()
+    console.log(`[DB Pipeline] Response status: ${res.status}`)
     
+    // Si la respuesta empieza con < es que el servidor nos mandó HTML (posible error 404 o redirección SPA)
+    if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html') || text.trim().startsWith('<')) {
+      console.error('Servidor devolvió HTML en lugar de JSON:', text.slice(0, 200))
+      throw new Error(`Error de configuración: El servidor devolvió una página web. Verifica la URL de la API: ${url}`)
+    }
+
     if (!res.ok) {
       let errData = {}
       try { errData = JSON.parse(text) } catch {}
@@ -28,14 +61,14 @@ async function pipeline(requests) {
       if (data.error) throw new Error(data.error)
       return data
     } catch (e) {
-      console.error('Failed to parse JSON response:', text.slice(0, 100))
-      if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
-        throw new Error('El servidor devolvió una página HTML en lugar de datos. Esto suele suceder por un error de redirección o sesión expirada.')
-      }
-      throw new Error(`Error al procesar respuesta del servidor: ${e.message}`)
+      console.error('Failed to parse JSON:', text.slice(0, 100))
+      throw new Error(`Error de respuesta (No es JSON válido).`)
     }
   } catch (e) {
     console.error('DB Pipeline Failure:', e.message)
+    if (e.message.includes('fetch')) {
+      throw new Error(`Error de conexión (Failed to fetch). Revisa tu internet o el servidor en ${url}`)
+    }
     throw e
   }
 }
