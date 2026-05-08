@@ -2143,7 +2143,7 @@ export default function AdminDashboard({ onClose }) {
           {/* Body */}
           <div className="adm-dash__body">
             {tab === 'users' ? (
-              <UsersSection currentUser={currentUser} />
+              <UsersSection currentUser={currentUser} userRole={userRole} />
             ) : tab === 'checkin' ? (
               <CheckInSection />
             ) : tab === 'actividades' ? (

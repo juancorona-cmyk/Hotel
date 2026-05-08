@@ -1,6 +1,12 @@
+const PROD_URL = 'https://hotelpuntagaleria.mx'
+const API_BASE = (typeof window !== 'undefined' && (
+  window.Capacitor || 
+  (window.location.hostname !== 'hotelpuntagaleria.mx' && window.location.hostname !== 'localhost')
+)) ? PROD_URL : ''
+
 async function pipeline(requests) {
   try {
-    const res = await fetch('/.netlify/functions/turso-proxy', {
+    const res = await fetch(`${API_BASE}/.netlify/functions/turso-proxy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -8,17 +14,26 @@ async function pipeline(requests) {
       body: JSON.stringify({ requests }),
     })
     
+    const text = await res.text()
+    
     if (!res.ok) {
-      const text = await res.text()
       let errData = {}
       try { errData = JSON.parse(text) } catch {}
       console.error('DB Proxy Error:', res.status, errData)
-      throw new Error(errData.error || errData.detail || `Server error ${res.status}`)
+      throw new Error(errData.error || errData.detail || `Error del servidor ${res.status}`)
     }
     
-    const data = await res.json()
-    if (data.error) throw new Error(data.error)
-    return data
+    try {
+      const data = JSON.parse(text)
+      if (data.error) throw new Error(data.error)
+      return data
+    } catch (e) {
+      console.error('Failed to parse JSON response:', text.slice(0, 100))
+      if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html')) {
+        throw new Error('El servidor devolvió una página HTML en lugar de datos. Esto suele suceder por un error de redirección o sesión expirada.')
+      }
+      throw new Error(`Error al procesar respuesta del servidor: ${e.message}`)
+    }
   } catch (e) {
     console.error('DB Pipeline Failure:', e.message)
     throw e

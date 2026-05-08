@@ -103,7 +103,7 @@ export default function CheckInPage() {
       <div className="ci-page">
         <div className="ci-card ci-login-card">
           <div className="ci-header">
-            <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo" />
+            <img src="logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo" />
           </div>
           <h2 className="ci-login-title">VALIDACIÓN DE TICKETS</h2>
           <p className="ci-login-sub">Inicia sesión para continuar</p>
