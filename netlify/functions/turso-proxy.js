@@ -4,7 +4,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const AUTH_TOKEN = (process.env.TURSO_PROXY_TOKEN || 'change-me-in-production').trim()
+const AUTH_TOKEN = (process.env.TURSO_PROXY_TOKEN || process.env.VITE_TURSO_PROXY_TOKEN || 'change-me-in-production').trim()
 
 // Simple rate limiter — 100 req/min per IP
 const RATE_WINDOW = 60_000
