@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { getEvents, getActivityRegistrationsByEvent } from '../lib/turso'
+import { useNavigate } from 'react-router-dom'
+import { getEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations } from '../lib/turso'
 import CheckInPage from './CheckInPage'
 import './StaffApp.css'
 
 const FILTERS = { all: 'Todos', confirmed: 'Confirmados', pending: 'Pendientes' }
 
 export default function StaffApp() {
+  const navigate = useNavigate()
   const [authed, setAuthed] = useState(() => localStorage.getItem('ci_authed') === 'true')
   const [role] = useState(() => localStorage.getItem('ci_role') || 'staff')
   const [perms] = useState(() => {
@@ -17,6 +19,7 @@ export default function StaffApp() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [attendees, setAttendees] = useState([])
   const [events, setEvents] = useState([])
+  const [allRegistrations, setAllRegistrations] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
@@ -28,6 +31,12 @@ export default function StaffApp() {
       setLoading(true)
       getEvents()
         .then(setEvents)
+        .finally(() => setLoading(false))
+    }
+    if (authed && view === 'all_registrations' && hasPerm('eventos')) {
+      setLoading(true)
+      getAllActivityRegistrations()
+        .then(setAllRegistrations)
         .finally(() => setLoading(false))
     }
   }, [authed, view])
@@ -52,7 +61,14 @@ export default function StaffApp() {
     return <CheckInPage />
   }
 
-  const goHome = () => { setView('menu'); setSelectedEvent(null); setAttendees([]); setSearch(''); setFilter('all') }
+  const goHome = () => {
+    setView('menu')
+    setSelectedEvent(null)
+    setAttendees([])
+    setAllRegistrations([])
+    setSearch('')
+    setFilter('all')
+  }
 
   const checkedCount = attendees.filter(a => a.checked_in).length
   const pendingCount = attendees.length - checkedCount
@@ -60,6 +76,16 @@ export default function StaffApp() {
   const filteredAttendees = attendees.filter(a => {
     const matchSearch = a.full_name.toLowerCase().includes(search.toLowerCase()) ||
       a.phone.includes(search)
+    if (!matchSearch) return false
+    if (filter === 'confirmed') return a.checked_in
+    if (filter === 'pending') return !a.checked_in
+    return true
+  })
+
+  const filteredAll = allRegistrations.filter(a => {
+    const matchSearch = (a.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (a.phone || '').includes(search) ||
+      (a.event_name || '').toLowerCase().includes(search.toLowerCase())
     if (!matchSearch) return false
     if (filter === 'confirmed') return a.checked_in
     if (filter === 'pending') return !a.checked_in
@@ -98,8 +124,22 @@ export default function StaffApp() {
               </button>
             )}
 
+            {hasPerm('eventos') && (
+              <button className="sa-btn" onClick={() => setView('all_registrations')}>
+                <div className="sa-btn__icon">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <span>Todos los Registros</span>
+              </button>
+            )}
+
             {hasPerm('checkin') && (
-              <button className="sa-btn" onClick={() => window.location.href = '/checkin'}>
+              <button className="sa-btn" onClick={() => navigate('/checkin')}>
                 <div className="sa-btn__icon">
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -155,6 +195,67 @@ export default function StaffApp() {
                     <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
                   <p>No hay eventos activos.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'all_registrations' && (
+        <div className="sa-attendees">
+          <div className="sa-top">
+            <button className="sa-back" onClick={goHome}>← Volver</button>
+            <div className="sa-top-text">
+              <h2>Todos los Registros</h2>
+            </div>
+          </div>
+
+          <div className="sa-search-wrap">
+            <div className="sa-search-field">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar por nombre, celular o evento..."
+                className="sa-search"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="sa-loading-wrap">
+              <div className="sa-spinner" />
+              <p>Cargando registros...</p>
+            </div>
+          ) : (
+            <div className="sa-list">
+              {filteredAll.map(a => (
+                <div key={a.id} className="sa-attendee-card" onClick={() => navigate(`/checkin?rid=${a.id}`)}>
+                  <div className="sa-attendee-top">
+                    <strong>{a.full_name}</strong>
+                    <span className="sa-attendee-phone">{a.phone}</span>
+                  </div>
+                  <div className="sa-attendee-event">
+                    <small>{a.event_name || 'Sin evento'}</small>
+                  </div>
+                  <div className="sa-attendee-meta">
+                    <span className={`sa-tag ${a.paid ? 'sa-tag--paid' : 'sa-tag--unpaid'}`}>
+                      {a.paid ? 'PAGADO' : 'PENDIENTE PAGO'}
+                    </span>
+                    <span className={`sa-tag ${a.checked_in ? 'sa-tag--ok' : 'sa-tag--pending'}`}>
+                      {a.checked_in ? 'CONFIRMADO' : 'FALTA ENTRADA'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {filteredAll.length === 0 && (
+                <div className="sa-empty">
+                  <p>No se encontraron registros.</p>
                 </div>
               )}
             </div>
@@ -223,7 +324,7 @@ export default function StaffApp() {
           ) : (
             <div className="sa-list">
               {filteredAttendees.map(a => (
-                <div key={a.id} className="sa-attendee-card">
+                <div key={a.id} className="sa-attendee-card" onClick={() => navigate(`/checkin?rid=${a.id}`)}>
                   <div className="sa-attendee-top">
                     <strong>{a.full_name}</strong>
                     <span className="sa-attendee-phone">{a.phone}</span>
@@ -260,3 +361,4 @@ export default function StaffApp() {
     </div>
   )
 }
+

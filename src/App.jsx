@@ -23,6 +23,7 @@ const BookingModal = lazy(() => import('./components/BookingModal'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const EventoPage = lazy(() => import('./components/EventoPage'))
 const CheckInPage = lazy(() => import('./components/CheckInPage'))
+
 // Detection for Capacitor/Native environment
 const isNativeApp = !!window.Capacitor
 
@@ -85,15 +86,27 @@ export default function App() {
 
   useEffect(() => {
     // Handle Deep Links
-    CapApp.addListener('appUrlOpen', (data) => {
-      try {
-        const url = new URL(data.url)
-        const path = url.pathname + url.search
-        navigate(path)
-      } catch (e) {
-        console.error('Deep link error:', e)
-      }
-    })
+    const setupDeepLinks = async () => {
+      CapApp.addListener('appUrlOpen', (data) => {
+        try {
+          // data.url could be https://hotelpuntagaleria.mx/checkin?rid=123
+          // or com.hotelpuntagaleria.app://checkin?rid=123
+          const url = new URL(data.url)
+          let path = url.pathname + url.search
+          
+          // In some cases, pathname might be empty for custom schemes
+          if (!path || path === '/') {
+            const search = data.url.split('?')[1]
+            if (search) path = '/checkin?' + search
+          }
+
+          if (path) navigate(path)
+        } catch (e) {
+          console.error('Deep link error:', e)
+        }
+      })
+    }
+    setupDeepLinks()
   }, [navigate])
 
   useEffect(() => {
@@ -142,3 +155,5 @@ export default function App() {
     </Routes>
   )
 }
+
+

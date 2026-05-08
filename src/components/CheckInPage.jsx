@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, adminLogin, adminHasUsers } from '../lib/turso'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
@@ -9,6 +9,7 @@ const isNativeApp = !!window.Capacitor
 
 export default function CheckInPage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const rid = searchParams.get('rid')
 
   // Auth
@@ -76,6 +77,7 @@ export default function CheckInPage() {
     localStorage.removeItem('ci_perms')
     setAuthed(false)
     setReg(null)
+    navigate('/checkin')
   }
 
   const handleCheckIn = async () => {
@@ -299,6 +301,9 @@ export default function CheckInPage() {
           </div>
           <h2 className="ci-empty-title">Entrada no encontrada</h2>
           <p className="ci-empty-text">El ticket escaneado no existe o es inválido.</p>
+          <div className="ci-actions">
+            <button className="ci-btn ci-btn--undo" onClick={() => navigate('/checkin')}>Volver al Panel</button>
+          </div>
           <button className="ci-logout-link" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </div>
@@ -311,7 +316,12 @@ export default function CheckInPage() {
     <div className="ci-page">
       <div className={`ci-card ci-card--result ${isCheckedIn ? 'ci-card--done' : ''}`}>
         <div className="ci-header-row">
-          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-logo-sm" />
+          <button className="ci-back-btn" onClick={() => navigate('/checkin')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Volver
+          </button>
           <button className="ci-logout-btn" onClick={handleLogout} title="Cerrar sesión">Salir</button>
         </div>
 
@@ -403,3 +413,4 @@ export default function CheckInPage() {
     </div>
   )
 }
+

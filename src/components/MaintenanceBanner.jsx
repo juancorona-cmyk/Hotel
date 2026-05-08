@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const ADMIN_CODE = '171215'
+const isNativeApp = !!window.Capacitor
 
 export default function MaintenanceBanner({ show = true }) {
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [error, setError] = useState('')
@@ -62,8 +65,20 @@ export default function MaintenanceBanner({ show = true }) {
           </form>
 
           <p className="maintenance-lock__hint">Solo administradores</p>
+
+          {isNativeApp && (
+            <div className="maintenance-lock__staff">
+              <button 
+                className="maintenance-lock__staff-btn"
+                onClick={() => navigate('/checkin')}
+              >
+                Acceso Staff
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
+

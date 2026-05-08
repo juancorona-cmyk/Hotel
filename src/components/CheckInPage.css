@@ -323,6 +323,25 @@
 
 .ci-logo-sm { height: 28px; }
 
+.ci-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f3f4f6;
+  color: #4b5563;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ci-back-btn:active {
+  background: #e5e7eb;
+}
+
 .ci-logout-btn {
   background: #fef2f2;
   color: #dc2626;
