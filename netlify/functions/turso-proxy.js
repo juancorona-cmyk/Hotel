@@ -4,8 +4,6 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-const AUTH_TOKEN = (process.env.TURSO_PROXY_TOKEN || process.env.VITE_TURSO_PROXY_TOKEN || 'change-me-in-production').trim()
-
 // Simple rate limiter — 100 req/min per IP
 const RATE_WINDOW = 60_000
 const RATE_MAX = 100
@@ -51,25 +49,6 @@ export default async (req) => {
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: CORS })
-  }
-
-  // Auth check
-  const authHeader = req.headers.get('authorization') || req.headers.get('x-proxy-token')
-  const expectedAuth = `Bearer ${AUTH_TOKEN}`
-  if (!authHeader || authHeader !== expectedAuth) {
-    console.error('Auth mismatch:', {
-      hasHeader: !!authHeader,
-      headerLen: authHeader?.length,
-      expectedLen: expectedAuth.length,
-      match: authHeader === expectedAuth
-    })
-    return new Response(JSON.stringify({
-      error: 'Unauthorized',
-      detail: 'Proxy token mismatch. Check TURSO_PROXY_TOKEN in Netlify env vars matches VITE_TURSO_PROXY_TOKEN build var.'
-    }), {
-      status: 401,
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    })
   }
 
   // Rate limit
