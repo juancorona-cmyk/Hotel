@@ -108,12 +108,13 @@ export default function StaffApp() {
 
       {view === 'menu' && (
         <div className="sa-menu">
-          <h1 className="sa-title">Panel {role === 'admin' ? 'Administrador' : 'Staff'}</h1>
+          <h1 className="sa-title">Bienvenido</h1>
+          <p className="sa-subtitle">Panel {role === 'admin' ? 'Administrador' : 'Staff'} · Hotel Punta Galería</p>
           <div className="sa-grid">
             {hasPerm('eventos') && (
               <button className="sa-btn" onClick={() => setView('events')}>
                 <div className="sa-btn__icon">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
                     <line x1="8" y1="2" x2="8" y2="6" />
@@ -125,9 +126,9 @@ export default function StaffApp() {
             )}
 
             {hasPerm('eventos') && (
-              <button className="sa-btn" onClick={() => setView('all_registrations')}>
+              <button className="sa-btn sa-btn--blue" onClick={() => setView('all_registrations')}>
                 <div className="sa-btn__icon">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                     <circle cx="9" cy="7" r="4" />
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
@@ -139,14 +140,14 @@ export default function StaffApp() {
             )}
 
             {hasPerm('checkin') && (
-              <button className="sa-btn" onClick={() => navigate('/checkin')}>
+              <button className="sa-btn sa-btn--amber" onClick={() => navigate('/checkin')}>
                 <div className="sa-btn__icon">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <line x1="9" y1="9" x2="9.01" y2="9" />
-                    <line x1="15" y1="9" x2="15.01" y2="9" />
-                    <line x1="9" y1="15" x2="9.01" y2="15" />
-                    <line x1="15" y1="15" x2="15.01" y2="15" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3"/>
+                    <line x1="9" y1="15" x2="9.01" y2="15" strokeWidth="3"/>
+                    <line x1="15" y1="15" x2="15.01" y2="15" strokeWidth="3"/>
                   </svg>
                 </div>
                 <span>Escanear QR</span>
