@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const ADMIN_CODE = '171215'
 
-export default function MaintenanceBanner({ show = true, onUnlock }) {
+export default function MaintenanceBanner({ show = true, onUnlock, skip = false }) {
   const [code, setCode] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [error, setError] = useState('')
@@ -29,7 +29,7 @@ export default function MaintenanceBanner({ show = true, onUnlock }) {
     }
   }
 
-  if (!show || isUnlocked) return null
+  if (!show || isUnlocked || skip) return null
 
   return (
     <div className="maintenance-lock">
