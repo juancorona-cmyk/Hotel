@@ -1,10 +1,9 @@
+import { Capacitor } from '@capacitor/core'
+
 const PROD_URL = 'https://hotelpuntagaleria.mx'
 
-// En Capacitor siempre apuntamos al servidor real (no al WebView local).
-// En browser/dev usamos rutas relativas para que Netlify Dev las maneje.
-const API_BASE = (typeof window !== 'undefined' && window.Capacitor)
-  ? PROD_URL
-  : ''
+// isNativePlatform() es true solo en Android/iOS, false en navegador.
+const API_BASE = Capacitor.isNativePlatform() ? PROD_URL : ''
 
 export { API_BASE }
 

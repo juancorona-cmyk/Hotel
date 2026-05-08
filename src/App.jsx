@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
 import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
@@ -25,8 +26,8 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const EventoPage = lazy(() => import('./components/EventoPage'))
 const CheckInPage = lazy(() => import('./components/CheckInPage'))
 
-// Detection for Capacitor/Native environment
-const isNativeApp = !!window.Capacitor
+// True solo en Android/iOS nativo, false en navegador web
+const isNativeApp = Capacitor.isNativePlatform()
 
 function LazyFallback() {
   return <div className="lazy-fallback" aria-hidden="true" />
