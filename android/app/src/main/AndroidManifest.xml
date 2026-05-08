@@ -22,15 +22,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- App Links: Abrir la App al escanear QR de checkin -->
+            <!-- App Links verificados: solo https sin www para que Android pueda verificar assetlinks.json -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
-                <data android:scheme="https" android:host="www.hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
-                <data android:scheme="http" android:host="hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
-                <data android:scheme="http" android:host="www.hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
             </intent-filter>
 
         </activity>
