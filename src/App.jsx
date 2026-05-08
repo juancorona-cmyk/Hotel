@@ -159,12 +159,7 @@ export default function App() {
         } />
 
         <Route path="/*" element={
-          /* 
-             En el APK (isNativeApp): 
-             - Si no estamos en localhost, mostramos login de staff directamente.
-             - Excepto si el administrador desbloqueó el mantenimiento para ver el index.
-          */
-          (isNativeApp && window.location.hostname !== 'localhost' && !maintenanceUnlocked) ? (
+          isNativeApp ? (
             <Suspense fallback={<LazyFallback />}>
               <CheckInPage />
             </Suspense>
