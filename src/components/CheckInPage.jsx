@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, adminLogin, adminHasUsers } from '../lib/turso'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
@@ -25,6 +26,7 @@ export default function CheckInPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [status, setStatus] = useState('')
+  const [isScanning, setIsScanning] = useState(false)
 
   useEffect(() => {
     if (!isNativeApp && rid) {
@@ -42,6 +44,41 @@ export default function CheckInPage() {
       .catch(() => setReg(null))
       .finally(() => setLoading(false))
   }, [rid, authed])
+
+  // Lógica de Escaneo
+  const startScan = async () => {
+    if (!isNativeApp) {
+      alert('El escaneo solo funciona en la aplicación instalada.')
+      return
+    }
+
+    try {
+      const { barcodes } = await BarcodeScanner.scan()
+      if (barcodes.length > 0) {
+        const value = barcodes[0].displayValue
+        // Esperamos una URL como: https://hotelpuntagaleria.mx/checkin?rid=123
+        try {
+          const url = new URL(value)
+          const scannedRid = url.searchParams.get('rid')
+          if (scannedRid) {
+            navigate(`/checkin?rid=${scannedRid}`)
+          } else {
+            alert('Código QR no válido para el sistema del hotel.')
+          }
+        } catch {
+          // Si no es URL, probamos si es solo el ID
+          if (!isNaN(value)) {
+            navigate(`/checkin?rid=${value}`)
+          } else {
+            alert('Código QR no reconocido.')
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Scan error:', err)
+      // Si falla por falta de permisos o no soportado
+    }
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -298,7 +335,7 @@ export default function CheckInPage() {
 
   // No QR scanned → show staff panel with events & attendees
   if (!rid) {
-    return <StaffApp />
+    return <StaffApp onStartScan={startScan} />
   }
 
   // QR scanned but registration not found
@@ -327,109 +364,97 @@ export default function CheckInPage() {
   }
 
   const isCheckedIn = reg.checked_in === 1 || reg.checked_in === '1'
+  const eid = searchParams.get('eid')
+
+  const goBackToApp = () => {
+    if (eid) {
+      navigate(`/checkin?eid=${eid}`)
+    } else {
+      navigate('/checkin')
+    }
+  }
 
   return (
     <div className="ci-page">
       <div className={`ci-card ci-card--result ${isCheckedIn ? 'ci-card--done' : ''}`}>
         <div className="ci-header-row">
-          <button className="ci-back-btn" onClick={() => navigate('/checkin')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <button className="ci-back-btn" onClick={goBackToApp}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
             Volver
           </button>
-          <button className="ci-logout-btn" onClick={handleLogout} title="Cerrar sesión">Salir</button>
+          <button className="ci-logout-btn-red" onClick={handleLogout}>Salir</button>
         </div>
 
         <div className="ci-body">
-          <div className={`ci-result-badge ${isCheckedIn ? 'ci-result-badge--ok' : 'ci-result-badge--pending'}`}>
+          <div className={`ci-status-badge ${isCheckedIn ? 'ci-status-badge--ok' : 'ci-status-badge--pending'}`}>
             {isCheckedIn ? (
               <>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
                 <span>YA CONFIRMADO</span>
               </>
             ) : (
               <>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
                 <span>PENDIENTE DE ENTRADA</span>
               </>
             )}
           </div>
 
-          <div className="ci-info">
-            <div className="ci-info__row ci-info__row--name">
-              <span className="ci-info__label">Persona</span>
-              <span className="ci-info__value ci-info__value--big">{reg.full_name}</span>
+          <div className="ci-details-list">
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">PERSONA</span>
+              <span className="ci-detail-value ci-detail-value--name">{reg.full_name}</span>
             </div>
-            <div className="ci-info__row">
-              <span className="ci-info__label">Evento</span>
-              <span className="ci-info__value">{reg.event_name || reg.activity_name || '—'}</span>
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">EVENTO</span>
+              <span className="ci-detail-value">{reg.event_name || reg.activity_name || '—'}</span>
             </div>
-            <div className="ci-info__row">
-              <span className="ci-info__label">Ticket</span>
-              <span className="ci-info__value ci-info__value--id">#{String(reg.id).padStart(4, '0')}</span>
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">TICKET</span>
+              <span className="ci-detail-value ci-detail-value--id">#{String(reg.id).padStart(4, '0')}</span>
             </div>
-            <div className="ci-info__row">
-              <span className="ci-info__label">Teléfono</span>
-              <span className="ci-info__value">{reg.phone}</span>
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">TELÉFONO</span>
+              <span className="ci-detail-value">{reg.phone}</span>
             </div>
-            <div className="ci-info__row">
-              <span className="ci-info__label">Estado de pago</span>
-              <span className={`ci-info__value ci-pay-status ${reg.paid ? 'ci-pay--ok' : 'ci-pay--pending'}`}>
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">ESTADO DE PAGO</span>
+              <span className={`ci-detail-value ci-status-txt ${reg.paid ? 'ci-txt--ok' : 'ci-txt--pending'}`}>
                 {reg.paid ? 'PAGADO' : 'PENDIENTE DE PAGO'}
               </span>
             </div>
-            <div className="ci-info__row">
-              <span className="ci-info__label">Registrado</span>
-              <span className="ci-info__value ci-info__value--date">
-                {String(reg.created_at || '').slice(0, 16).replace('T', ' · ')}
+            <div className="ci-detail-item">
+              <span className="ci-detail-label">REGISTRADO</span>
+              <span className="ci-detail-value ci-detail-value--small">
+                {String(reg.created_at || '').slice(0, 16).replace('T', ' ')}
               </span>
             </div>
-            {isCheckedIn && reg.checked_in_at && (
-              <div className="ci-info__row ci-info__row--check">
-                <span className="ci-info__label">Entrada confirmada</span>
-                <span className="ci-info__value ci-info__value--date">
-                  {String(reg.checked_in_at).slice(0, 16).replace('T', ' · ')}
-                </span>
-              </div>
-            )}
           </div>
 
           {status === 'confirmed' && (
-            <div className="ci-toast ci-toast--ok">Entrada confirmada exitosamente</div>
+            <div className="ci-toast ci-toast--ok">Entrada confirmada</div>
           )}
           {status === 'undone' && (
             <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>
           )}
-          {status === 'error' && (
-            <div className="ci-toast ci-toast--err">Error. Intenta de nuevo.</div>
-          )}
 
           <div className="ci-actions">
             {isCheckedIn ? (
-              <button className="ci-btn ci-btn--undo" onClick={handleUndo} disabled={updating}>
+              <button className="ci-btn-action ci-btn-action--undo" onClick={handleUndo} disabled={updating}>
                 {updating ? 'Procesando...' : 'Deshacer confirmación'}
               </button>
             ) : (
-              <button className="ci-btn ci-btn--confirm" onClick={handleCheckIn} disabled={updating}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <button className="ci-btn-action ci-btn-action--confirm" onClick={handleCheckIn} disabled={updating}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
                 {updating ? 'Confirmando...' : 'Confirmar entrada'}
-              </button>
-            )}
-            {!reg.paid && (
-              <button className="ci-btn ci-btn--pay" onClick={handleMarkPaid} disabled={updating}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="1" y="4" width="22" height="16" rx="2"/>
-                  <line x1="1" y1="10" x2="23" y2="10"/>
-                </svg>
-                {updating ? 'Procesando...' : 'Marcar como pagado'}
               </button>
             )}
           </div>
@@ -438,4 +463,5 @@ export default function CheckInPage() {
     </div>
   )
 }
+
 
