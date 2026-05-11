@@ -26,7 +26,6 @@ export default function CheckInPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [status, setStatus] = useState('')
-  const [isScanning, setIsScanning] = useState(false)
 
   useEffect(() => {
     if (!isNativeApp && rid) {
