@@ -272,9 +272,7 @@ export default function EventoPage() {
                         value={fullName}
                         onChange={e => { setFullName(e.target.value); setError('') }}
                         placeholder="Tu nombre completo"
-                        autoFocus
-                      />
-                    </div>
+                      />                    </div>
 
                     <div className="ep-field">
                       <label className="ep-label">Número de teléfono *</label>

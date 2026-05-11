@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations } from '../lib/turso'
-import CheckInPage from './CheckInPage'
 import './StaffApp.css'
 
 const FILTERS = { all: 'Todos', confirmed: 'Confirmados', pending: 'Pendientes' }
 
-export default function StaffApp({ onStartScan }) {
+export default function StaffApp({ onStartScan, onLogout }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [authed, setAuthed] = useState(() => localStorage.getItem('ci_authed') === 'true')
   const [role] = useState(() => localStorage.getItem('ci_role') || 'staff')
 
   const [view, setView] = useState('dashboard')
@@ -20,9 +18,9 @@ export default function StaffApp({ onStartScan }) {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
-    if (!authed) return
     setLoading(true)
     Promise.all([getEvents(), getAllActivityRegistrations()])
       .then(([evs, regs]) => { 
@@ -36,15 +34,13 @@ export default function StaffApp({ onStartScan }) {
           if (ev) viewAttendees(ev)
         }
       })
+      .catch(err => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
-  }, [authed])
 
-  const handleLogout = () => {
-    localStorage.removeItem('ci_authed')
-    localStorage.removeItem('ci_role')
-    localStorage.removeItem('ci_perms')
-    setAuthed(false)
-  }
+    // Hide splash after 2 seconds
+    const timer = setTimeout(() => setShowSplash(false), 2000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const viewAttendees = async (ev) => {
     setSelectedEvent(ev)
@@ -80,8 +76,6 @@ export default function StaffApp({ onStartScan }) {
     }
   }
 
-  if (!authed) return <CheckInPage />
-
   const totalConfirmed = allRegs.filter(r => r.checked_in).length
   const totalPaid = allRegs.filter(r => r.paid).length
 
@@ -101,16 +95,18 @@ export default function StaffApp({ onStartScan }) {
   if (view === 'dashboard') {
     return (
       <div className="sa-root">
-        <div className="sa-splash">
-          <img src="/logo/logNegro.svg" alt="Loading..." className="sa-splash-logo" />
-        </div>
+        {showSplash && (
+          <div className="sa-splash">
+            <img src="/logo/logNegro.svg" alt="Loading..." className="sa-splash-logo" />
+          </div>
+        )}
 
         <section className="sa-header-hero-section">
           <div className="sa-top-bar">
             <div className="sa-logo-text">Hotel Punta Galería</div>
             <div className="sa-top-btns">
               <button className="sa-top-btn">{role === 'admin' ? 'ADMIN' : 'STAFF'}</button>
-              <button className="sa-top-btn" onClick={handleLogout}>Salir</button>
+              <button className="sa-top-btn" onClick={onLogout}>Salir</button>
             </div>
           </div>
 
@@ -218,7 +214,7 @@ export default function StaffApp({ onStartScan }) {
             <span className="sa-h-title">{selectedEvent?.name}</span>
             <span className="sa-h-subtitle">{selectedEvent?.date || 'Sin fecha'}</span>
           </div>
-          <button className="sa-top-btn" onClick={handleLogout}>Salir</button>
+          <button className="sa-top-btn" onClick={onLogout}>Salir</button>
         </header>
 
         <div className="sa-attendees-stats-row">
@@ -269,7 +265,7 @@ export default function StaffApp({ onStartScan }) {
             {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="sa-skeleton sa-skeleton-att" />)}
           </div>
         ) : (
-          <div className="sa-attendee-list">
+          <div className={`sa-attendee-list ${search ? 'sa-searching' : ''}`}>
             {filteredAttendees.map((a, idx) => (
               <div key={a.id} className="sa-attendee-card" style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}>
                 <div className={`sa-status-dot ${a.checked_in ? 'sa-dot--confirmed' : 'sa-dot--pending'}`} />

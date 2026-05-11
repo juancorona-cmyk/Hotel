@@ -275,7 +275,6 @@ export default function CheckInPage() {
                 onChange={e => { setLoginUser(e.target.value); setLoginErr('') }}
                 placeholder="Usuario"
                 className="ci-login-input"
-                autoFocus
               />
             </div>
             <div className="ci-login-field">
@@ -335,7 +334,7 @@ export default function CheckInPage() {
 
   // No QR scanned → show staff panel with events & attendees
   if (!rid) {
-    return <StaffApp onStartScan={startScan} />
+    return <StaffApp onStartScan={startScan} onLogout={handleLogout} />
   }
 
   // QR scanned but registration not found

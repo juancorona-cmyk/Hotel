@@ -246,34 +246,29 @@ export default function App() {
           </Suspense>
         } />
 
-        {/* /checkin: en la app → staff flow; en browser → intenta abrir la app */}
-        <Route path="/checkin" element={
-          isNativeApp ? (
+        {/* In the native app, everything shows CheckInPage (Staff Flow) */}
+        {isNativeApp ? (
+          <Route path="/*" element={
             <Suspense fallback={<LazyFallback />}>
               <CheckInPage />
             </Suspense>
-          ) : (
-            <CheckInBrowserGateway />
-          )
-        } />
-
-        <Route path="/*" element={
-          isNativeApp ? (
-            <Suspense fallback={<LazyFallback />}>
-              <CheckInPage />
-            </Suspense>
-          ) : (
-            <HomeApp
-              key={dataVersion}
-              bookingRoom={bookingRoom}
-              setBookingRoom={setBookingRoom}
-              showAdmin={showAdmin}
-              setShowAdmin={setShowAdmin}
-              dataVersion={dataVersion}
-              setDataVersion={setDataVersion}
-            />
-          )
-        } />
+          } />
+        ) : (
+          <>
+            <Route path="/checkin" element={<CheckInBrowserGateway />} />
+            <Route path="/*" element={
+              <HomeApp
+                key={dataVersion}
+                bookingRoom={bookingRoom}
+                setBookingRoom={setBookingRoom}
+                showAdmin={showAdmin}
+                setShowAdmin={setShowAdmin}
+                dataVersion={dataVersion}
+                setDataVersion={setDataVersion}
+              />
+            } />
+          </>
+        )}
       </Routes>
     </>
   )

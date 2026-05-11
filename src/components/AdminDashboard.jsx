@@ -376,7 +376,6 @@ function UsersSection({ currentUser, userRole }) {
               onChange={e => setChangePwd(p => ({ ...p, val: e.target.value }))}
               placeholder="Nueva contraseña"
               className="adm-pw__input"
-              autoFocus
             />
             <button type="button" className="adm-pw__eye" onClick={() => setChangePwd(p => ({ ...p, show: !p.show }))}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -701,7 +700,7 @@ function ActivitiesSection() {
             </div>
 
             <form onSubmit={saveEdit} className="adm-act-edit">
-              <input type="text" value={editItem.name} onChange={setE('name')} placeholder="Nombre" className="adm-users__input adm-act-form__name" autoFocus />
+              <input type="text" value={editItem.name} onChange={setE('name')} placeholder="Nombre" className="adm-users__input adm-act-form__name" />
 
               <div className="adm-act-tipo">
                 <button type="button" className={editItem.tipo === 'fecha' ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'fecha', evtDate: ''}))}>Fecha específica</button>
@@ -1311,7 +1310,6 @@ function LoginScreen({ onLogin }) {
           onChange={e => { setUser(e.target.value); setErr('') }}
           placeholder="Usuario"
           className="adm-pw__input"
-          autoFocus
           autoComplete="username"
         />
         <div className="adm-pw">
@@ -1526,7 +1524,7 @@ function EventosSection() {
     <form onSubmit={isNew ? addEvent : saveEdit} className="adm-evt-form-inner">
       <input type="text" value={isNew ? newEventForm.name : editItem.name}
         onChange={isNew ? setNew('name') : set('name')}
-        placeholder="Nombre del evento" className="adm-users__input" autoFocus />
+        placeholder="Nombre del evento" className="adm-users__input" />
       <input type="text" value={isNew ? newEventForm.slug : editItem.slug}
         onChange={isNew ? setNew('slug') : set('slug')}
         placeholder="Slug (URL automático)" className="adm-users__input" />
@@ -1922,7 +1920,6 @@ function CheckInSection() {
           value={ticketId}
           onChange={e => { setTicketId(e.target.value); setScanErr('') }}
           placeholder="Ingresa el # de ticket..."
-          autoFocus
         />
         <button type="submit" className="adm-checkin__btn" disabled={scanning || !ticketId.trim()}>
           {scanning ? 'Buscando...' : 'Buscar'}
