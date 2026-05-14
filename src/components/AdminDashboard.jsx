@@ -40,7 +40,6 @@ const PERMS_CONFIG = [
   { key: 'eventos',       label: 'Eventos'        },
   { key: 'reservas',      label: 'Reservas Hotel' },
   { key: 'inscripciones', label: 'Inscripciones Actividades'  },
-  { key: 'checkin',       label: 'Check-in'                },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -1352,6 +1351,7 @@ function toSlug(name) {
 
 // ── Events section ────────────────────────────────
 function EventosSection() {
+  const savingRef = useRef(false)
   const [events, setEvents] = useState([])
   const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(false)
@@ -1420,7 +1420,9 @@ function EventosSection() {
 
   const addEvent = async (e) => {
     e.preventDefault()
+    if (savingRef.current) return
     if (!newEventForm.name.trim() || !newEventForm.slug.trim()) { setErr('Nombre y slug son requeridos'); return }
+    savingRef.current = true
     setSaving(true); setErr('')
     try {
       await createEvent(newEventForm.name.trim(), newEventForm.slug.trim(), parseFloat(newEventForm.price) || 0, newEventForm.description.trim(), newEventForm.date, parseInt(newEventForm.capacity) || 0, newEventForm.activity_id || null)
@@ -1428,7 +1430,7 @@ function EventosSection() {
       setShowNewModal(false)
       load()
     } catch (e) { setErr('Error al guardar: ' + e.message) }
-    finally { setSaving(false) }
+    finally { savingRef.current = false; setSaving(false) }
   }
 
   const delEvent = async (id) => {
@@ -1913,7 +1915,6 @@ export default function AdminDashboard({ onClose }) {
             {canSee('eventos') && <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>Eventos</button>}
             {canSee('reservas') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</button>}
             {canSee('inscripciones') && <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>Inscripciones</button>}
-            {canSee('checkin') && <button className={`adm-period-btn adm-tab-btn ${tab === 'checkin' ? 'active' : ''}`} onClick={() => setTab('checkin')}>Check-in</button>}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
             <span className="adm-period-sep"/>
             {tab === 'stats' && PERIODS.map(p => (
@@ -1942,8 +1943,6 @@ export default function AdminDashboard({ onClose }) {
           <div className="adm-dash__body">
             {tab === 'users' ? (
               <UsersSection currentUser={currentUser} userRole={userRole} />
-            ) : tab === 'checkin' ? (
-              <CheckInSection />
             ) : tab === 'actividades' ? (
               <ActivitiesSection />
             ) : tab === 'eventos' ? (

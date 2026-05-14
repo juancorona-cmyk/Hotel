@@ -6,11 +6,6 @@ import { fmtFecha, fmtHora } from '../lib/utils'
 import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
 
-const STATIC_ACTIVITIES = [
-  { id: 's1', name: 'Yoga',    fecha: 'Viernes',  hora: '7:30 pm', semanas: 'todas' },
-  { id: 's2', name: 'Pilates', fecha: 'Sábados',  hora: '9:00 am', semanas: 'todas' },
-]
-
 // Week 1 = days 1-7, week 2 = 8-14, week 3 = 15-21, week 4 = 22-28, week 5 = 29+
 function getWeekOfMonth() {
   return Math.ceil(new Date().getDate() / 7)
@@ -72,8 +67,7 @@ export default function Amenidades() {
     { key: 'amenidades.checkin',     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> },
   ]
 
-  const activities = (dbActivities?.length ? dbActivities : STATIC_ACTIVITIES)
-    .filter(isActivityVisible)
+  const activities = (dbActivities ?? []).filter(isActivityVisible)
 
   return (
     <section id="amenidades" className={`amenidades ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
@@ -90,6 +84,7 @@ export default function Amenidades() {
           ))}
         </div>
 
+        {activities.length > 0 && (
         <div className={`actividades ${isVisible ? 'is-visible' : ''}`}>
           <p className="actividades__eyebrow">{t('amenidades.actividadesEyebrow')}</p>
           <div className="actividades__cards">
@@ -141,6 +136,7 @@ export default function Amenidades() {
             ))}
           </div>
         </div>
+        )}
       </div>
 
       {selectedActivity && (
