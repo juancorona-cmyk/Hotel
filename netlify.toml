@@ -1,3 +1,9 @@
+[dev]
+  port = 8888
+  targetPort = 5173
+  framework = "#static"
+  autoLaunch = false
+
 [build]
   command = "npm run build"
   publish = "dist"
