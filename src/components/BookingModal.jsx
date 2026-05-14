@@ -89,7 +89,7 @@ export default function BookingModal({ initialRoom, onClose }) {
       ``,
       t('modal.waMsg.gracias'),
     ].join('\n')
-    window.open(`https://wa.me/5214431234567?text=${encodeURIComponent(lines)}`, '_blank', 'noopener,noreferrer')
+    window.open(`https://wa.me/5214433972720?text=${encodeURIComponent(lines)}`, '_blank', 'noopener,noreferrer')
   }
 
   return (

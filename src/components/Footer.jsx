@@ -43,7 +43,7 @@ const SOCIAL = [
   },
   {
     label: 'WhatsApp',
-    href: 'https://wa.me/5214431234567',
+    href: 'https://wa.me/5214433972720',
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
@@ -106,23 +106,41 @@ export default function Footer() {
                 <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              <span>{t('footer.direccion')}</span>
+              <span>
+                <span className="footer__contact-lbl">Dirección</span>
+                <span className="footer__contact-val">{t('footer.direccion')}</span>
+              </span>
             </li>
             <li>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/>
               </svg>
-              <span>+52 (443) 123-4567</span>
+              <span>
+                <span className="footer__contact-lbl">Recepción</span>
+                <span className="footer__contact-val">+52 (443) 397-27-20</span>
+              </span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/>
+              </svg>
+              <span>
+                <span className="footer__contact-lbl">Atención a clientes</span>
+                <span className="footer__contact-val">+52 1 443 123 4567</span>
+              </span>
             </li>
             <li>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="14" height="14">
                 <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
               </svg>
-              <span>{t('footer.recepcion')}</span>
+              <span>
+                <span className="footer__contact-lbl">Horario</span>
+                <span className="footer__contact-val">{t('footer.recepcion')}</span>
+              </span>
             </li>
           </ul>
           <a
-            href="https://wa.me/5214431234567?text=Hola,%20quisiera%20hacer%20una%20reservación"
+            href="https://wa.me/5214433972720?text=Hola,%20quisiera%20hacer%20una%20reservación"
             target="_blank" rel="noopener noreferrer"
             className="footer__cta"
             onClick={() => trackEvent('whatsapp_click', { source: 'footer_reservar' })}

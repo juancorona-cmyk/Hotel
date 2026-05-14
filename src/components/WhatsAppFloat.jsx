@@ -4,7 +4,7 @@ import './WhatsAppFloat.css'
 export default function WhatsAppFloat() {
   return (
     <a
-      href="https://wa.me/5214431234567?text=Hola,%20me%20gustaría%20obtener%20información"
+      href="https://wa.me/5214433972720?text=Hola,%20me%20gustaría%20obtener%20información"
       target="_blank"
       rel="noopener noreferrer"
       className="wa-float"

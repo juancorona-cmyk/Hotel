@@ -145,7 +145,7 @@
 
 .bm-room-tab__sub {
   font-size: 12px;
-  color: #666;
+  color: #666666;
   font-weight: 500;
 }
 
@@ -261,7 +261,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #666;
+  color: #666666;
   font-size: 13px;
   font-weight: 500;
 }

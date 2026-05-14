@@ -1,17 +1,17 @@
 import { Capacitor } from '@capacitor/core'
 
-const PROD_URL = 'https://hotelpuntagaleria.mx'
-
-// isNativePlatform() es true solo en Android/iOS, false en navegador.
-const API_BASE = Capacitor.isNativePlatform() ? PROD_URL : ''
+// URL relativa: el WebView la resuelve contra el servidor activo.
+// - Producción APK: https://hotelpuntagaleria.mx  (androidScheme + hostname)
+// - Live dev APK:   http://localhost:8888          (server.url + adb reverse)
+// - Browser dev:    Vite proxy a netlify dev
+const API_BASE = ''
 
 export { API_BASE }
 
 export async function getProxyConfig() {
   try {
     // En producción usamos la ruta directa para evitar redirecciones que rompan el JSON
-    const path = API_BASE ? '/.netlify/functions/turso-proxy' : '/api/turso-proxy'
-    const url = API_BASE ? `${API_BASE}${path}` : path
+    const url = `${API_BASE}/.netlify/functions/turso-proxy`
     const res = await fetch(url)
     if (!res.ok) return null
     const text = await res.text()
@@ -23,52 +23,41 @@ export async function getProxyConfig() {
 }
 
 async function pipeline(requests) {
-  // En el APK usamos la ruta de función directa para evitar fallos de redirección (Unexpected token <)
-  const path = API_BASE ? '/.netlify/functions/turso-proxy' : '/api/turso-proxy'
-  const url = API_BASE ? `${API_BASE}${path}` : path
-  
-  console.log(`[DB Pipeline] Fetching: ${url}`, { requests })
+  const url = `${API_BASE}/.netlify/functions/turso-proxy`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
 
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ requests }),
+      signal: controller.signal,
     })
-    
+
     const text = await res.text()
-    console.log(`[DB Pipeline] Response status: ${res.status}`)
-    
-    // Si la respuesta empieza con < es que el servidor nos mandó HTML (posible error 404 o redirección SPA)
-    if (text.trim().startsWith('<!doctype') || text.trim().startsWith('<html') || text.trim().startsWith('<')) {
-      console.error('Servidor devolvió HTML en lugar de JSON:', text.slice(0, 200))
-      throw new Error(`Error de configuración: El servidor devolvió una página web. Verifica la URL de la API: ${url}`)
+
+    if (text.trim().startsWith('<')) {
+      throw new Error(`El servidor devolvió HTML. Verifica la URL: ${url}`)
     }
 
     if (!res.ok) {
       let errData = {}
       try { errData = JSON.parse(text) } catch {}
-      console.error('DB Proxy Error:', res.status, errData)
       throw new Error(errData.error || errData.detail || `Error del servidor ${res.status}`)
     }
-    
-    try {
-      const data = JSON.parse(text)
-      if (data.error) throw new Error(data.error)
-      return data
-    } catch (e) {
-      console.error('Failed to parse JSON:', text.slice(0, 100))
-      throw new Error(`Error de respuesta (No es JSON válido).`)
-    }
+
+    const data = JSON.parse(text)
+    if (data.error) throw new Error(data.error)
+    return data
   } catch (e) {
-    console.error('DB Pipeline Failure:', e.message)
-    if (e.message.includes('fetch')) {
-      throw new Error(`Error de conexión (Failed to fetch). Revisa tu internet o el servidor en ${url}`)
+    if (e.name === 'AbortError') throw new Error('Tiempo de espera agotado. Verifica tu conexión a internet.')
+    if (e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('network')) {
+      throw new Error('Sin conexión. Verifica tu internet.')
     }
     throw e
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -234,6 +223,7 @@ export async function upsertActivityEvent(activityId, activityName, price, descr
       [txt(activityName), txt(slug), flt(price ?? 0), txt(description ?? ''), txt(date ?? ''), int(capacity ?? 0), int(activityId)]
     )
   }
+  return slug
 }
 
 export async function getEventByActivityId(activityId) {
@@ -268,7 +258,7 @@ export async function deleteActivityRegistration(id) {
 
 export async function getAllActivityRegistrations() {
   const res = await exec(
-    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, created_at FROM activity_registrations ORDER BY created_at DESC'
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, checked_in, checked_in_at, created_at FROM activity_registrations ORDER BY created_at DESC'
   )
   return parseRows(res)
 }
@@ -335,7 +325,7 @@ export async function deleteBotEvent(id) {
 // ── Events ────────────────────────────────────────────
 export async function getEvents() {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity, active, activity_id FROM hotel_events WHERE active = 1 ORDER BY date DESC, created_at DESC'
+    'SELECT e.id, e.name, e.slug, e.price, e.description, e.date, e.capacity, e.active, e.activity_id, a.hora FROM hotel_events e LEFT JOIN activities a ON e.activity_id = a.id WHERE e.active = 1 ORDER BY e.date DESC, e.created_at DESC'
   )
   return parseRows(res)
 }
@@ -383,7 +373,7 @@ export async function getRegistrationsByEvent(eventId) {
 
 export async function getActivityRegistrationsByEvent(eventId) {
   const res = await exec(
-    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
+    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, checked_in, checked_in_at, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
     [int(eventId)]
   )
   return parseRows(res)
@@ -447,6 +437,34 @@ export async function adminLogin(username, password) {
   let permissions = null
   try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}
   return { ok: true, role: row.role ?? 'editor', permissions }
+}
+
+// Login via servidor — funciona en HTTP y HTTPS (sin crypto.subtle)
+export async function adminLoginSingle(username, password, setupKey = null) {
+  const url = `${API_BASE}/.netlify/functions/auth`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ username, password, setupKey }),
+      signal: controller.signal,
+    })
+    const text = await res.text()
+    let data
+    try { data = JSON.parse(text) } catch { throw new Error('Respuesta inválida del servidor') }
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+    return data
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Tiempo de espera agotado. Verifica tu conexión a internet.')
+    if (e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('network')) {
+      throw new Error('Sin conexión al servidor. Verifica tu internet.')
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export async function adminCreateUser(username, password, role = 'editor') {

@@ -152,7 +152,7 @@
   border: 1.5px solid #c7b7a4;
   border-radius: 999px;
   background: #fff;
-  color: #666;
+  color: #666666;
   font-size: 13px;
   font-weight: 700;
   font-family: inherit;
@@ -226,7 +226,7 @@
 
 .ep-soldout p {
   font-size: 15px;
-  color: #666;
+  color: #666666;
   margin: 0;
   line-height: 1.55;
   max-width: 320px;
@@ -258,28 +258,90 @@
   background: #fff;
   border-radius: 20px;
   border: 1px solid #ebebea;
-  padding: 52px 28px;
+  padding: 36px 24px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   color: #4a5a1e;
 }
 
-.ep-success svg { color: #7a8c2e; }
+.ep-success-check {
+  width: 56px;
+  height: 56px;
+  background: #eef4e8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #236d00;
+}
 
 .ep-success h2 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   color: #1a1a1a;
   margin: 0;
 }
 
 .ep-success p {
-  font-size: 15px;
-  color: #555;
+  font-size: 14px;
+  color: #6b7280;
   margin: 0;
+  line-height: 1.5;
+}
+
+/* QR ticket card */
+.ep-ticket-qr {
+  background: #f5f2ed;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1.5px solid #e5e0d8;
+}
+
+.ep-ticket-qr svg {
+  border-radius: 10px;
+  display: block;
+}
+
+.ep-ticket-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ep-ticket-num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #838c2f;
+  text-transform: uppercase;
+}
+
+.ep-ticket-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #323f48;
+}
+
+.ep-ticket-event {
+  font-size: 13px;
+  color: #c7b7a4;
+  font-weight: 600;
+}
+
+.ep-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
 }
 
 /* ── Form ────────────────────────────────────────── */
@@ -458,7 +520,7 @@
 
 .ep-not-found__icon { font-size: 52px; line-height: 1; margin-bottom: 4px; }
 .ep-not-found h2 { font-size: 22px; font-weight: 800; color: #1a1a1a; margin: 0; }
-.ep-not-found p  { font-size: 15px; color: #666; margin: 0; line-height: 1.5; }
+.ep-not-found p  { font-size: 15px; color: #666666; margin: 0; line-height: 1.5; }
 
 /* ── Step indicator ─────────────────────────────── */
 .ep-steps {

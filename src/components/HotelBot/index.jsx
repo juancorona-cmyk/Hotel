@@ -8,7 +8,8 @@ HOTEL:
 - Nombre: Hotel Punta Galería
 - Dirección: Periférico Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.
 - Historia: ~40 años de experiencia, antes Hostal Real Camelinas, desde 2011 Hotel Punta Galería
-- WhatsApp / Recepción: +52 443 123-4567
+- Recepción: +52 443 397-27-20
+- Atención a clientes: +52 1 443 123 4567
 - Recepción 24 horas
 
 HABITACIONES (ambas incluyen: AC, WiFi gratuito, Smart TV, escritorio de trabajo):
@@ -32,13 +33,14 @@ INSTRUCCIONES:
 - Responde siempre en español, máximo 4 oraciones
 - Al hablar de habitaciones: menciona primero las amenidades compartidas (AC, WiFi, Smart TV, escritorio) UNA SOLA VEZ, luego diferencia cada tipo solo por capacidad y tipo de cama. No repitas las mismas amenidades para cada habitación.
 - Al hablar de check-in/out: indica que tanto el check-in como el check-out son las 24 horas, a cualquier hora del día o de la noche.
-- Para reservas de habitación o salón: indica WhatsApp +52 443 123-4567
+- Para reservas de habitación o salón: indica WhatsApp +52 443 397-27-20
+- Para atención general: +52 1 443 123 4567
 - Para actividades: menciona el horario y sugiere confirmar por WhatsApp
-- Si preguntan por contacto/teléfono: NO escribas el número en el texto. Solo responde algo como "Puedes contactarnos directamente por WhatsApp:" e incluye al final: [CONTACTO: +52 443 123-4567]
+- Si preguntan por contacto/teléfono: NO escribas el número en el texto. Solo responde algo como "Puedes contactarnos directamente por WhatsApp:" e incluye al final: [CONTACTO: +52 443 397-27-20]
 - Si preguntan por yoga o pilates: incluye exactamente este texto: [ACTIVIDAD: yoga|viernes|7:30 pm] o [ACTIVIDAD: pilates|sábados|9:00 am]
 - No inventes información fuera de lo proporcionado`
 
-const WHATSAPP_NUMBER = '5214431234567'
+const WHATSAPP_NUMBER = '5214433972720'
 
 function parseSpecialCards(content) {
   const cards = []
@@ -188,8 +190,7 @@ export default function HotelBot() {
     setLoading(true)
 
     try {
-      const path = API_BASE ? '/.netlify/functions/chat' : '/api/chat'
-      const url = API_BASE ? `${API_BASE}${path}` : path
+      const url = `${API_BASE}/.netlify/functions/chat`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -208,7 +209,7 @@ export default function HotelBot() {
     } catch {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Lo siento, hubo un problema de conexión. Por favor contáctanos directamente: [CONTACTO: +52 443 123-4567]' },
+        { role: 'assistant', content: 'Lo siento, hubo un problema de conexión. Por favor contáctanos directamente: [CONTACTO: +52 443 397-27-20]' },
       ])
     } finally {
       setLoading(false)

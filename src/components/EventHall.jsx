@@ -44,7 +44,7 @@ export default function EventHall() {
       <div className="events__desc">
         <p>{t('eventos.desc')}</p>
         <a
-          href="https://wa.me/5214431234567?text=Hola,%20me%20gustaría%20reservar%20el%20salón%20de%20eventos"
+          href="https://wa.me/5214433972720?text=Hola,%20me%20gustaría%20reservar%20el%20salón%20de%20eventos"
           target="_blank" rel="noopener noreferrer"
           className="events__btn"
           onClick={() => trackEvent('whatsapp_click', { source: 'salon' })}

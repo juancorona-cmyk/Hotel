@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, adminLogin, adminHasUsers } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, adminLoginSingle } from '../lib/turso'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
@@ -82,27 +82,24 @@ export default function CheckInPage() {
   const handleLogin = async (e) => {
     e.preventDefault()
     if (!loginUser.trim() || !loginPwd) return
-    setLoginBusy(true); setLoginErr('')
+    setLoginBusy(true)
+    setLoginErr('')
     try {
-      const hasUsers = await adminHasUsers()
-      let ok = false
-      let result = null
-      if (!hasUsers) {
-        if (SETUP_KEY && loginPwd === SETUP_KEY) ok = true
-        else setLoginErr('DB vacía y clave incorrecta')
-      } else {
-        result = await adminLogin(loginUser.trim(), loginPwd)
-        if (result && result.ok) ok = true
-        else setLoginErr('Usuario o contraseña incorrectos')
-      }
-      if (ok) {
+      const result = await adminLoginSingle(loginUser.trim(), loginPwd, SETUP_KEY)
+      if (result.ok) {
         localStorage.setItem('ci_authed', 'true')
-        localStorage.setItem('ci_role', (hasUsers && result) ? result.role : 'admin')
-        localStorage.setItem('ci_perms', JSON.stringify((hasUsers && result) ? result.permissions : null))
+        localStorage.setItem('ci_role', result.role)
+        localStorage.setItem('ci_perms', JSON.stringify(result.permissions ?? null))
         setAuthed(true)
+      } else {
+        setLoginErr(
+          result.reason === 'setup'
+            ? 'DB sin usuarios. Verifica la clave de configuración.'
+            : 'Usuario o contraseña incorrectos'
+        )
       }
     } catch (err) {
-      setLoginErr(`Error: ${err.message}`)
+      setLoginErr(err.message || 'Error de conexión')
     } finally {
       setLoginBusy(false)
     }
@@ -123,12 +120,29 @@ export default function CheckInPage() {
     try {
       await updateActivityRegistrationPayment(reg.id, true)
       setReg(r => ({ ...r, paid: 1 }))
-      setStatus('confirmed')
+      setStatus('paid')
       setTimeout(() => setStatus(''), 3000)
     } catch {
       setStatus('error')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleMarkPaidAndCheckIn = async () => {
+    if (updating) return
+    setUpdating(true)
+    try {
+      await updateActivityRegistrationPayment(reg.id, true)
+      await checkInRegistration(reg.id)
+      setReg(r => ({ ...r, paid: 1, checked_in: 1, checked_in_at: new Date().toISOString() }))
+      setStatus('paid_confirmed')
+      setTimeout(() => setStatus(''), 4000)
+    } catch {
+      setStatus('error')
+    } finally {
+      setUpdating(false)
+      setConfirmingUnpaid(false)
     }
   }
 
@@ -254,62 +268,72 @@ export default function CheckInPage() {
 
   if (!authed) {
     return (
-      <div className="ci-page">
-        <div className="ci-card ci-login-card">
-          <div className="ci-login-header">
-            <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-login-logo" />
-            <div className="ci-login-badge">STAFF</div>
-          </div>
+      <div className="ci-page ci-page--login">
+        <div className="ci-login-top">
+          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-login-logo" />
+          <span className="ci-login-badge">STAFF</span>
+        </div>
+        <div className="ci-login-body">
           <h2 className="ci-login-title">Validación de Tickets</h2>
           <p className="ci-login-sub">Ingresa tus credenciales para gestionar accesos</p>
           <form onSubmit={handleLogin} className="ci-login-form">
-            <div className="ci-login-field">
-              <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              <input
-                type="text"
-                value={loginUser}
-                onChange={e => { setLoginUser(e.target.value); setLoginErr('') }}
-                placeholder="Usuario"
-                className="ci-login-input"
-              />
-            </div>
-            <div className="ci-login-field">
-              <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-              <input
-                type={showPwd ? 'text' : 'password'}
-                value={loginPwd}
-                onChange={e => { setLoginPwd(e.target.value); setLoginErr('') }}
-                placeholder="Contraseña"
-                className="ci-login-input ci-login-input--pwd"
-              />
-              <button type="button" className="ci-pwd-toggle" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}>
-                {showPwd ? 'Ocultar' : 'Ver'}
-              </button>
-            </div>
-            {loginErr && (
-              <div className="ci-login-err">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+            <div className="ci-login-fields">
+              <div className="ci-login-field">
+                <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
                 </svg>
-                {loginErr}
+                <input
+                  type="text"
+                  value={loginUser}
+                  onChange={e => { setLoginUser(e.target.value); setLoginErr('') }}
+                  placeholder="Usuario"
+                  className="ci-login-input"
+                  autoComplete="username"
+                />
               </div>
-            )}
+              <div className="ci-login-field">
+                <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={loginPwd}
+                  onChange={e => { setLoginPwd(e.target.value); setLoginErr('') }}
+                  placeholder="Contraseña"
+                  className="ci-login-input ci-login-input--pwd"
+                  autoComplete="current-password"
+                />
+                <button type="button" className="ci-pwd-toggle" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}>
+                  {showPwd ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {loginErr && (
+                <div className="ci-login-err">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                  {loginErr}
+                </div>
+              )}
+            </div>
             <button type="submit" className="ci-login-btn" disabled={loginBusy}>
               {loginBusy ? (
                 <span className="ci-login-btn-spinner" />
               ) : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="9 18 15 12 9 6"/>
-                  </svg>
-                  Entrar
-                </>
+                <>Entrar</>
               )}
             </button>
           </form>
@@ -362,101 +386,207 @@ export default function CheckInPage() {
   }
 
   const isCheckedIn = reg.checked_in === 1 || reg.checked_in === '1'
-  const eid = searchParams.get('eid')
+  const isPaid = reg.paid === 1 || reg.paid === '1'
+  const isTransfer = (reg.payment_method || '').toLowerCase().includes('transfer')
+  // scanState: 'duplicate' | 'ready' | 'unpaid_transfer' | 'unpaid_cash'
+  const scanState = isCheckedIn
+    ? 'duplicate'
+    : isPaid
+      ? 'ready'
+      : isTransfer ? 'unpaid_transfer' : 'unpaid_cash'
 
-  const goBackToApp = () => {
-    if (eid) {
-      navigate(`/checkin?eid=${eid}`)
-    } else {
-      navigate('/checkin')
-    }
-  }
+  const eid = searchParams.get('eid')
+  const goBackToApp = () => navigate(eid ? `/checkin?eid=${eid}` : '/checkin')
+
+  const heroClass = scanState === 'duplicate'
+    ? 'ci-result-hero--duplicate'
+    : (scanState === 'unpaid_transfer' || scanState === 'unpaid_cash')
+      ? 'ci-result-hero--unpaid'
+      : ''
 
   return (
-    <div className="ci-page">
-      <div className={`ci-card ci-card--result ${isCheckedIn ? 'ci-card--done' : ''}`}>
-        <div className="ci-header-row">
-          <button className="ci-back-btn" onClick={goBackToApp}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+    <div className="ci-result-root">
+      <div className={`ci-result-hero ${heroClass}`}>
+        <div className="ci-result-topbar">
+          <button className="ci-result-back" onClick={goBackToApp}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
-            Volver
           </button>
-          <button className="ci-logout-btn-red" onClick={handleLogout}>Salir</button>
+          <button className="ci-result-exit" onClick={handleLogout}>Salir</button>
         </div>
 
-        <div className="ci-body">
-          <div className={`ci-status-badge ${isCheckedIn ? 'ci-status-badge--ok' : 'ci-status-badge--pending'}`}>
-            {isCheckedIn ? (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span>YA CONFIRMADO</span>
-              </>
-            ) : (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <span>PENDIENTE DE ENTRADA</span>
-              </>
-            )}
+        {scanState === 'duplicate' && (
+          <div className="ci-result-status-pill ci-result-status-pill--duplicate">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            YA INGRESÓ
           </div>
-
-          <div className="ci-details-list">
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">PERSONA</span>
-              <span className="ci-detail-value ci-detail-value--name">{reg.full_name}</span>
-            </div>
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">EVENTO</span>
-              <span className="ci-detail-value">{reg.event_name || reg.activity_name || '—'}</span>
-            </div>
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">TICKET</span>
-              <span className="ci-detail-value ci-detail-value--id">#{String(reg.id).padStart(4, '0')}</span>
-            </div>
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">TELÉFONO</span>
-              <span className="ci-detail-value">{reg.phone}</span>
-            </div>
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">ESTADO DE PAGO</span>
-              <span className={`ci-detail-value ci-status-txt ${reg.paid ? 'ci-txt--ok' : 'ci-txt--pending'}`}>
-                {reg.paid ? 'PAGADO' : 'PENDIENTE DE PAGO'}
-              </span>
-            </div>
-            <div className="ci-detail-item">
-              <span className="ci-detail-label">REGISTRADO</span>
-              <span className="ci-detail-value ci-detail-value--small">
-                {String(reg.created_at || '').slice(0, 16).replace('T', ' ')}
-              </span>
-            </div>
+        )}
+        {scanState === 'ready' && (
+          <div className="ci-result-status-pill ci-result-status-pill--ok">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            PAGADO · LISTO PARA ENTRAR
           </div>
+        )}
+        {scanState === 'unpaid_transfer' && (
+          <div className="ci-result-status-pill ci-result-status-pill--warn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            TRANSFERENCIA · VERIFICA COMPROBANTE
+          </div>
+        )}
+        {scanState === 'unpaid_cash' && (
+          <div className="ci-result-status-pill ci-result-status-pill--warn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            COBRO PENDIENTE
+          </div>
+        )}
 
-          {status === 'confirmed' && (
-            <div className="ci-toast ci-toast--ok">Entrada confirmada</div>
-          )}
-          {status === 'undone' && (
-            <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>
-          )}
+        <h1 className="ci-result-name">{reg.full_name}</h1>
+        <p className="ci-result-event">{reg.event_name || reg.activity_name || '—'}</p>
+      </div>
 
-          <div className="ci-actions">
-            {isCheckedIn ? (
-              <button className="ci-btn-action ci-btn-action--undo" onClick={handleUndo} disabled={updating}>
-                {updating ? 'Procesando...' : 'Deshacer confirmación'}
-              </button>
-            ) : (
-              <button className="ci-btn-action ci-btn-action--confirm" onClick={handleCheckIn} disabled={updating}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                {updating ? 'Confirmando...' : 'Confirmar entrada'}
-              </button>
-            )}
+      {/* Ticket strip */}
+      <div className="ci-ticket-strip">
+        <span className="ci-ticket-label">TICKET</span>
+        <span className="ci-ticket-num">#{String(reg.id).padStart(4, '0')}</span>
+      </div>
+
+      {/* Aviso comprobante — solo para transferencia sin validar */}
+      {scanState === 'unpaid_transfer' && (
+        <div className="ci-transfer-notice">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <div>
+            <span className="ci-transfer-notice__title">Pago por transferencia bancaria</span>
+            <span className="ci-transfer-notice__sub">Solicita y verifica el comprobante antes de confirmar la entrada</span>
           </div>
         </div>
+      )}
+
+      {/* Detalles */}
+      <div className="ci-result-body">
+        <div className="ci-result-row">
+          <div className="ci-result-icon ci-result-icon--phone">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div className="ci-result-row-info">
+            <span className="ci-result-row-label">Teléfono</span>
+            <span className="ci-result-row-value">{reg.phone}</span>
+          </div>
+        </div>
+
+        <div className="ci-result-row">
+          <div className={`ci-result-icon ${isPaid ? 'ci-result-icon--paid' : 'ci-result-icon--unpaid'}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+          </div>
+          <div className="ci-result-row-info">
+            <span className="ci-result-row-label">Método de pago</span>
+            <span className={`ci-result-row-value ci-result-row-value--tag ${isPaid ? 'ci-tag--paid' : 'ci-tag--unpaid'}`}>
+              {isPaid
+                ? `✓ Pagado${reg.payment_method ? ` · ${reg.payment_method}` : ''}`
+                : reg.payment_method
+                  ? `Pendiente · ${reg.payment_method}`
+                  : 'Sin pago registrado'}
+            </span>
+          </div>
+        </div>
+
+        {isCheckedIn && reg.checked_in_at && (
+          <div className="ci-result-row">
+            <div className="ci-result-icon ci-result-icon--date">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div className="ci-result-row-info">
+              <span className="ci-result-row-label">Hora de entrada</span>
+              <span className="ci-result-row-value">{String(reg.checked_in_at).slice(0, 16).replace('T', ' ')}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="ci-result-row">
+          <div className="ci-result-icon ci-result-icon--date">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div className="ci-result-row-info">
+            <span className="ci-result-row-label">Registrado</span>
+            <span className="ci-result-row-value">{String(reg.created_at || '').slice(0, 16).replace('T', ' ')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Toasts */}
+      {status === 'paid_confirmed' && <div className="ci-toast ci-toast--ok">✓ Pago registrado · Entrada confirmada</div>}
+      {status === 'confirmed' && <div className="ci-toast ci-toast--ok">✓ Entrada confirmada</div>}
+      {status === 'undone' && <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>}
+      {status === 'error' && <div className="ci-toast ci-toast--warn">Error al procesar. Intenta de nuevo.</div>}
+
+      {/* Footer de acciones */}
+      <div className="ci-result-footer">
+        {scanState === 'duplicate' && (
+          <button className="ci-btn-action ci-btn-action--undo" onClick={handleUndo} disabled={updating}>
+            {updating ? 'Procesando...' : 'Deshacer confirmación'}
+          </button>
+        )}
+
+        {scanState === 'ready' && (
+          <button className="ci-btn-action ci-btn-action--confirm" onClick={handleCheckIn} disabled={updating}>
+            {updating ? <span className="ci-login-btn-spinner" /> : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Confirmar entrada
+              </>
+            )}
+          </button>
+        )}
+
+        {scanState === 'unpaid_transfer' && (
+          <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaidAndCheckIn} disabled={updating}>
+            {updating ? <span className="ci-login-btn-spinner" /> : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Comprobante verificado · Confirmar
+              </>
+            )}
+          </button>
+        )}
+
+        {scanState === 'unpaid_cash' && (
+          <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaidAndCheckIn} disabled={updating}>
+            {updating ? <span className="ci-login-btn-spinner" /> : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Cobrar y confirmar entrada
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   )

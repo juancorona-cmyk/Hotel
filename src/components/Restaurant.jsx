@@ -36,7 +36,7 @@ export default function Restaurant() {
             {t('restaurante.p2Fin')}
           </p>
           <a
-            href="https://wa.me/5214431234567?text=Hola,%20me%20gustaría%20ver%20el%20menú%20del%20restaurante"
+            href="https://wa.me/5214433972720?text=Hola,%20me%20gustaría%20ver%20el%20menú%20del%20restaurante"
             target="_blank"
             rel="noopener noreferrer"
             className="restaurant__btn"

@@ -128,7 +128,7 @@
 
 .arm-event-banner__desc {
   font-size: 12px;
-  color: #666;
+  color: #666666;
   margin: 4px 0 0;
   line-height: 1.5;
   text-align: center;
@@ -343,7 +343,7 @@
 .arm-success__msg {
   font-size: 14px;
   line-height: 1.6;
-  color: #666;
+  color: #666666;
   margin: 0;
   max-width: 300px;
 }
@@ -406,16 +406,6 @@
   transition: color 0.15s;
   font-family: inherit;
 }
-.arm-success__close-btn:hover { color: #555; }
-  color: #666;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
 .arm-success__close-btn:hover { background: #eee; color: #111; }
 
 .arm-success small {
@@ -464,7 +454,7 @@
 
 .arm-soldout__msg {
   font-size: 14px;
-  color: #666;
+  color: #666666;
   margin: 0;
   line-height: 1.55;
   max-width: 300px;

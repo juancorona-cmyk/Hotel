@@ -36,7 +36,7 @@ export default async (req) => {
     })
   }
 
-  const KEY = process.env.OPENAI_API_KEY
+  const KEY = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY
   if (!KEY) {
     return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
       status: 500,

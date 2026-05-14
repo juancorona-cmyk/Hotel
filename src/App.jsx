@@ -176,7 +176,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
 export default function App() {
   const [bookingRoom, setBookingRoom] = useState(null)
   const [showAdmin, setShowAdmin] = useState(false)
-  const [showMaintenance] = useState(true)
+  const [showMaintenance] = useState(false)
   const [maintenanceUnlocked, setMaintenanceUnlocked] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
   const navigate = useNavigate()
