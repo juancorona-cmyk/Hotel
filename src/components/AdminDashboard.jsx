@@ -1881,7 +1881,7 @@ export default function AdminDashboard({ onClose }) {
           <div className="adm-dash__header">
             <div className="adm-dash__hl">
               <div className="adm-dash__logo-box">
-                <img src="/logo/logoNegro.svg" alt="logo" className="adm-dash__logo"/>
+                <img src="/logo/icono.svg" alt="logo" className="adm-dash__logo"/>
               </div>
               <div>
                 <div className="adm-dash__name">
