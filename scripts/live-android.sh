@@ -2,28 +2,23 @@
 set -e
 export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 
-# Verificar dispositivo ADB conectado por USB
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+echo -e "${GREEN}🏨 Hotel Punta Galería — Live Reload${NC}"
+
+# ── Verificar dispositivo ──────────────────────────────────────────────────────
 DEVICE=$(adb devices | grep -v "List" | grep "device$" | awk '{print $1}' | head -1)
-[ -z "$DEVICE" ] && echo "❌ No se detectó dispositivo Android. Verifica el cable USB y modo depuración." && exit 1
+if [ -z "$DEVICE" ]; then
+  echo -e "${RED}❌ No se detectó dispositivo Android.${NC}"
+  echo "   Verifica: cable USB conectado y depuración USB activada."
+  exit 1
+fi
 echo "📱 Dispositivo: $DEVICE"
 
-CAP_CONFIG="capacitor.config.ts"
-CAP_BACKUP="capacitor.config.ts.bak"
+VITE_PID=""
+NETLIFY_PID=""
 
-cleanup() {
-  echo ""
-  echo "🔄 Restaurando capacitor.config.ts..."
-  cp "$CAP_BACKUP" "$CAP_CONFIG" 2>/dev/null && rm -f "$CAP_BACKUP"
-  # Quitar port forwarding
-  adb -s "$DEVICE" reverse --remove tcp:8888 2>/dev/null || true
-  kill $NETLIFY_PID 2>/dev/null || true
-  echo "👋 Listo"
-}
-trap cleanup EXIT INT TERM
-
-# Parchear config para usar localhost via adb reverse (USB)
-cp "$CAP_CONFIG" "$CAP_BACKUP"
-cat > "$CAP_CONFIG" << 'EOF'
+restore_prod_config() {
+  cat > capacitor.config.ts << 'PRODEOF'
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -31,64 +26,119 @@ const config: CapacitorConfig = {
   appName: 'Hotel Punta Galeria',
   webDir: 'dist',
   server: {
-    url: 'http://localhost:8888',
-    cleartext: true
+    url: 'https://hotelpuntagaleria.mx',
+    androidScheme: 'https'
+  }
+};
+
+export default config;
+PRODEOF
+  echo "🔁 capacitor.config.ts → producción restaurado"
+}
+
+cleanup() {
+  echo ""
+  echo "🔄 Cerrando servidores..."
+  [ -n "$VITE_PID" ]    && kill "$VITE_PID"    2>/dev/null || true
+  [ -n "$NETLIFY_PID" ] && kill "$NETLIFY_PID" 2>/dev/null || true
+  # matar procesos huérfanos en esos puertos
+  lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+  lsof -ti:8888 | xargs kill -9 2>/dev/null || true
+  adb -s "$DEVICE" reverse --remove-all 2>/dev/null || true
+  restore_prod_config
+  echo "👋 Hasta luego"
+}
+trap cleanup EXIT INT TERM
+
+# ── Config dev: apuntar a Vite en 5173 ────────────────────────────────────────
+cat > capacitor.config.ts << 'EOF'
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.hotelpuntagaleria.app',
+  appName: 'Hotel Punta Galeria',
+  webDir: 'dist',
+  server: {
+    url: 'http://localhost:5173',
+    cleartext: true,
+    androidScheme: 'http'
   }
 };
 
 export default config;
 EOF
 
-echo "📝 server.url → http://localhost:8888 (via adb reverse)"
+# ── Rebuild y reinstalación inteligente ───────────────────────────────────────
+CONFIG_HASH=$(md5 -q capacitor.config.ts 2>/dev/null || md5sum capacitor.config.ts 2>/dev/null | awk '{print $1}')
+STORED_HASH=$(cat .live-apk-hash 2>/dev/null || echo "none")
+INSTALL_MARKER=".live-installed-${DEVICE}-${CONFIG_HASH}"
 
-# Build web + sync Android
-echo "🔨 Building..."
-npx vite build
+NEEDS_BUILD=false
+NEEDS_INSTALL=false
 
-echo "🔄 Syncing Android..."
-npx cap sync android
+if [ ! -f "HotelPuntaGaleria-live.apk" ] || [ "$CONFIG_HASH" != "$STORED_HASH" ]; then
+  NEEDS_BUILD=true
+  NEEDS_INSTALL=true
+elif [ ! -f "$INSTALL_MARKER" ]; then
+  NEEDS_INSTALL=true
+fi
 
-# Build APK
-echo "🏗  Building APK..."
-cd android
-./gradlew assembleDebug --quiet
-cd ..
-cp android/app/build/outputs/apk/debug/app-debug.apk HotelPuntaGaleria-live.apk
+if $NEEDS_BUILD; then
+  echo ""
+  echo -e "${YELLOW}📦 Compilando APK de live reload...${NC}"
+  npx vite build
+  npx cap sync android
+  cd android && ./gradlew assembleDebug --quiet && cd ..
+  cp android/app/build/outputs/apk/debug/app-debug.apk HotelPuntaGaleria-live.apk
+  echo "$CONFIG_HASH" > .live-apk-hash
+fi
 
-# Iniciar netlify dev ANTES de instalar el APK
-echo "🚀 Iniciando servidor local en puerto 8888..."
-netlify dev --no-open &
+if $NEEDS_INSTALL; then
+  echo "📲 Instalando APK en el dispositivo..."
+  adb -s "$DEVICE" install -r HotelPuntaGaleria-live.apk
+  rm -f .live-installed-* 2>/dev/null || true
+  touch "$INSTALL_MARKER"
+  echo -e "${GREEN}✅ APK instalado${NC}"
+else
+  echo "✅ APK ya instalado en este dispositivo"
+fi
+
+# ── Tunnel USB: puertos 5173 (Vite + HMR) y 8888 (Netlify functions) ──────────
+echo "🔌 Configurando tunnels ADB..."
+adb -s "$DEVICE" reverse tcp:5173 tcp:5173
+adb -s "$DEVICE" reverse tcp:8888 tcp:8888
+echo "   ✓ :5173 (Vite + HMR WebSocket)"
+echo "   ✓ :8888 (Netlify functions / DB)"
+
+# ── Netlify dev (solo functions, sin framework) ────────────────────────────────
+echo "⚙️  Iniciando Netlify functions en :8888..."
+netlify dev --no-open > /tmp/netlify-live.log 2>&1 &
 NETLIFY_PID=$!
 
-echo "⏳ Esperando que el servidor esté listo..."
-READY=0
-for i in $(seq 1 45); do
-  if curl -sf "http://localhost:8888/.netlify/functions/turso-proxy" > /dev/null 2>&1; then
-    READY=1
-    break
+# ── Vite (sin pipe para capturar PID real y no perder HMR) ───────────────────
+echo "⚡ Iniciando Vite en :5173..."
+npx vite > /tmp/vite-live.log 2>&1 &
+VITE_PID=$!
+
+printf "   Esperando que Vite esté listo"
+for i in $(seq 1 40); do
+  if curl -sf "http://localhost:5173" > /dev/null 2>&1; then
+    echo " ✓"; break
   fi
-  printf "."
-  sleep 1
+  printf "."; sleep 1
 done
-echo ""
-[ "$READY" -eq 0 ] && echo "⚠️  El servidor tardó más de 45s, continuando de todas formas..."
 
-# Redirigir puerto via USB (el teléfono accede a localhost:8888 del Mac)
-echo "🔌 Configurando adb reverse tcp:8888..."
-adb -s "$DEVICE" reverse tcp:8888 tcp:8888
-
-# Instalar APK
-echo "📲 Instalando APK en $DEVICE..."
-adb -s "$DEVICE" install -r HotelPuntaGaleria-live.apk
-
-# Abrir la app
-echo "▶️  Abriendo app..."
+# ── Abrir app ─────────────────────────────────────────────────────────────────
+echo "▶️  Abriendo app en el dispositivo..."
 adb -s "$DEVICE" shell am start -n "com.hotelpuntagaleria.app/.MainActivity" 2>/dev/null || true
 
 echo ""
-echo "✅ Live reload activo"
-echo "   El teléfono accede al servidor Mac via USB (no necesita WiFi)"
-echo "   Ctrl+C para detener y restaurar config"
+echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║  ✅  Live reload activo                   ║${NC}"
+echo -e "${GREEN}║  Edita → guarda → cambio instantáneo     ║${NC}"
+echo -e "${GREEN}║  Logs: tail -f /tmp/vite-live.log        ║${NC}"
+echo -e "${GREEN}║  Ctrl+C para detener                     ║${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
 
-wait $NETLIFY_PID
+wait $VITE_PID

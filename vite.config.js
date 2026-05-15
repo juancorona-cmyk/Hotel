@@ -10,6 +10,12 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react-i18next', 'i18next'],
   },
   server: {
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 5173,
+      clientPort: 5173,
+    },
     proxy: {
       '/.netlify/functions': {
         target: 'http://localhost:8888',
