@@ -70,6 +70,11 @@ export const handler = async (event) => {
     }
   } catch (err) {
     console.error(err)
-    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) }
+    const isTokenError = /expired|revoked|invalid_grant/i.test(err.message)
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ error: isTokenError ? 'token_expired' : err.message }),
+    }
   }
 }

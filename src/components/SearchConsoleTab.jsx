@@ -141,6 +141,7 @@ export default function SearchConsoleTab() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       if (json.error === 'not_configured') { setError('not_configured'); return }
+      if (json.error === 'token_expired') { setError('token_expired'); return }
       if (json.error) throw new Error(json.error)
       setData(json)
     } catch (e) {
@@ -153,6 +154,12 @@ export default function SearchConsoleTab() {
   useEffect(() => { load(period.days) }, [period, load])
 
   if (error === 'not_configured') return <NotConfigured />
+  if (error === 'token_expired') return (
+    <div style={{ padding: '32px', textAlign: 'center', color: '#888' }}>
+      <p style={{ fontSize: 15, marginBottom: 8 }}>El token de Google Search Console ha expirado.</p>
+      <p style={{ fontSize: 13 }}>Ejecuta <code style={{ background: '#f3f3f0', padding: '2px 6px', borderRadius: 4 }}>node scripts/gsc-auth.mjs</code> para regenerar el token y actualízalo en Netlify.</p>
+    </div>
+  )
   if (error) return <p className="adm-users__err" style={{ padding: '28px 0', textAlign: 'center' }}>Error: {error}</p>
 
   const t = data?.totals
