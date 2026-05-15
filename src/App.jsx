@@ -73,71 +73,72 @@ function CheckInBrowserGateway() {
     }
   }, [rid])
 
-  // ── Estilos ──────────────────────────────────────────────────────────────────
+  // ── Estilos — diseño compacto que cabe en una sola pantalla ─────────────────
   const S = {
     page: {
-      minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-      background: '#ede9e1', fontFamily: "'Montserrat',sans-serif",
+      height: '100dvh', display: 'flex', flexDirection: 'column',
+      background: '#ede9e1', fontFamily: "'Montserrat',sans-serif", overflow: 'hidden',
     },
     hero: {
       background: 'linear-gradient(160deg,#3d4d10 0%,#5a6c1e 100%)',
-      padding: '48px 24px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+      flexShrink: 0,
     },
     logoRow: {
-      display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32,
+      display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14,
       alignSelf: 'stretch',
-      background: 'rgba(0,0,0,0.15)', borderRadius: 14,
-      padding: '10px 14px',
+      background: 'rgba(0,0,0,0.15)', borderRadius: 11,
+      padding: '7px 11px',
     },
     logoBox: {
-      width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.2)',
+      width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.2)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    hotelName: { color: '#fff', fontWeight: 800, fontSize: 13.5, lineHeight: 1.2 },
-    hotelSub:  { color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontSize: 10.5, marginTop: 2 },
+    hotelName: { color: '#fff', fontWeight: 800, fontSize: 12.5, lineHeight: 1.2 },
+    hotelSub:  { color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontSize: 10, marginTop: 1 },
     heroIcon: {
-      width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.18)',
-      border: '2px solid rgba(255,255,255,0.35)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+      width: 58, height: 58, borderRadius: '50%', background: 'rgba(255,255,255,0.18)',
+      border: '2px solid rgba(255,255,255,0.3)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
     },
-    heroTitle: { color: '#fff', fontWeight: 900, fontSize: 24, margin: '0 0 10px', textAlign: 'center' },
-    heroSub:   { color: 'rgba(255,255,255,0.78)', fontSize: 13.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6 },
-    body: { flex: 1, padding: '0 16px 40px' },
+    heroTitle: { color: '#fff', fontWeight: 900, fontSize: 19, margin: '0 0 5px', textAlign: 'center' },
+    heroSub:   { color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.45 },
+    body: { flex: 1, padding: '0 14px 14px', overflow: 'auto' },
     ticket: {
-      background: '#fff', borderRadius: '0 0 24px 24px',
-      padding: '20px 20px 0', marginBottom: 12,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.07)',
+      background: '#fff', borderRadius: '0 0 20px 20px',
+      padding: '14px 16px 0', marginBottom: 10,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.07)',
     },
     strip: {
-      borderTop: '1.5px dashed #e0dbd3', margin: '0 -20px',
-      padding: '14px 20px',
+      borderTop: '1.5px dashed #e0dbd3', margin: '0 -16px',
+      padding: '11px 16px',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     },
-    stripLabel: { fontSize: 11, fontWeight: 700, color: '#b0a898', letterSpacing: '0.07em', textTransform: 'uppercase' },
-    stripNum:   { fontSize: 18, fontWeight: 900, color: '#5a6c1e', letterSpacing: '0.5px' },
+    stripLabel: { fontSize: 10, fontWeight: 700, color: '#b0a898', letterSpacing: '0.06em', textTransform: 'uppercase' },
+    stripNum:   { fontSize: 16, fontWeight: 900, color: '#5a6c1e', letterSpacing: '0.5px' },
     row: {
-      display: 'flex', alignItems: 'center', gap: 12,
-      borderBottom: '1px solid #f5f0eb', padding: '14px 0',
+      display: 'flex', alignItems: 'center', gap: 10,
+      borderBottom: '1px solid #f5f0eb', padding: '9px 0',
     },
     rowIcon: (bg) => ({
-      width: 38, height: 38, borderRadius: 10, background: bg, flexShrink: 0,
+      width: 32, height: 32, borderRadius: 8, background: bg, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }),
-    rowLabel: { fontSize: 11, color: '#9ca3af', fontWeight: 600, display: 'block' },
-    rowVal:   { fontSize: 14.5, color: '#1a1f0e', fontWeight: 700, display: 'block', marginTop: 2 },
+    rowLabel: { fontSize: 10, color: '#9ca3af', fontWeight: 600, display: 'block' },
+    rowVal:   { fontSize: 13.5, color: '#1a1f0e', fontWeight: 700, display: 'block', marginTop: 1 },
     notice: {
-      display: 'flex', gap: 12, alignItems: 'flex-start',
-      background: '#f0f4e4', borderRadius: 16, padding: '16px', marginTop: 12,
+      display: 'flex', gap: 10, alignItems: 'flex-start',
+      background: '#f0f4e4', borderRadius: 13, padding: '12px 13px',
     },
-    noticeText: { fontSize: 13, color: '#3d4a0f', fontWeight: 600, lineHeight: 1.55, margin: 0 },
+    noticeText: { fontSize: 12, color: '#3d4a0f', fontWeight: 600, lineHeight: 1.5, margin: 0 },
     spinner: {
-      width: 48, height: 48, borderRadius: '50%',
+      width: 44, height: 44, borderRadius: '50%',
       border: '4px solid rgba(255,255,255,0.3)', borderTopColor: '#fff',
-      animation: 'gw-spin 0.8s linear infinite', marginBottom: 18,
+      animation: 'gw-spin 0.8s linear infinite', marginBottom: 14,
     },
     errIcon: {
-      width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,255,255,0.12)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+      width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.12)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
     },
   }
 
@@ -211,12 +212,12 @@ function CheckInBrowserGateway() {
         </div>
 
         <div style={S.heroIcon}>
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
         <p style={S.heroTitle}>Tu lugar está confirmado</p>
-        <p style={{ ...S.heroSub, maxWidth: 280 }}>Te esperamos en el evento. Presenta este QR a la entrada.</p>
+        <p style={{ ...S.heroSub, maxWidth: 260 }}>Te esperamos en el evento. Presenta este QR a la entrada.</p>
       </div>
 
       {/* Contenido */}
@@ -276,7 +277,7 @@ function CheckInBrowserGateway() {
 
         {/* Instrucción */}
         <div style={S.notice}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           <p style={S.noticeText}>

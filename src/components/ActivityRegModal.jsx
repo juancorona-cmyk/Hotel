@@ -316,6 +316,10 @@ export default function ActivityRegModal({ activity, event, onClose }) {
         <div class="info-lbl">Actividad / Evento</div>
         <div class="info-val">${activity.name}${event ? ' — ' + event.name : ''}</div>
       </div>
+      ${event?.date ? `<div class="info-item full">
+        <div class="info-lbl">Fecha del Evento</div>
+        <div class="info-val">${fmtFecha(event.date, true)}</div>
+      </div>` : ''}
       <div class="info-item">
         <div class="info-lbl">Precio</div>
         <div class="info-val">${event?.price > 0 ? '$' + parseFloat(event.price).toFixed(2) + ' MXN' : 'GRATIS'}</div>
