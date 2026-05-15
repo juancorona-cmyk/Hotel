@@ -54,9 +54,23 @@
 }
 
 @media (max-width: 600px) {
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
   .stats__item {
-    padding: 36px 20px;
+    padding: 32px 16px;
     border-right: none;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+    outline: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .stats__value {
+    font-size: 36px;
+  }
+
+  .stats__label {
+    font-size: 12px;
   }
 }

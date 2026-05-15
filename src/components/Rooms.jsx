@@ -18,6 +18,7 @@ export default function Rooms({ onBook }) {
   const [current, setCurrent] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
   const sectionRef = useRef(null)
+  const touchStartX = useRef(null)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -27,6 +28,14 @@ export default function Rooms({ onBook }) {
     if (sectionRef.current) observer.observe(sectionRef.current)
     return () => observer.disconnect()
   }, [])
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(dx) > 40) dx < 0 ? next() : prev()
+    touchStartX.current = null
+  }
 
   const rooms = [
     {
@@ -81,7 +90,7 @@ export default function Rooms({ onBook }) {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
-        <div className="rooms__card">
+        <div className="rooms__card" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <div className="rooms__image-wrap">
             <img src={room.image} alt={room.name} className="rooms__image" />
           </div>
