@@ -477,6 +477,28 @@ export default function ActivityRegModal({ activity, event, onClose }) {
                 <span className="arm-success__ticket-id">#{ticketId}</span>
                 <span className="arm-success__ticket-name">{fullName}</span>
               </div>
+
+              {/* Meta: evento + fecha */}
+              <div className="arm-success__ticket-meta">
+                {(event?.name || activity?.name) && (
+                  <div className="arm-success__ticket-meta-row">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span>{event?.name || activity?.name}</span>
+                  </div>
+                )}
+                {event?.date && (
+                  <div className="arm-success__ticket-meta-row">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span>{fmtFecha(event.date, true)}</span>
+                  </div>
+                )}
+              </div>
+
               <div className="arm-success__ticket-dots" aria-hidden="true"/>
               <div className="arm-success__ticket-bottom">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">

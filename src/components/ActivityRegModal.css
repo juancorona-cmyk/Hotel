@@ -336,6 +336,23 @@
   letter-spacing: 0.06em;
 }
 
+.arm-success__ticket-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 24px 14px;
+  border-top: 1px solid #e8f0cc;
+}
+
+.arm-success__ticket-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3d5012;
+}
+
 .arm-success__ticket-dots {
   height: 1px;
   background-image: repeating-linear-gradient(

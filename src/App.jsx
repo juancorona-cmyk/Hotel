@@ -18,6 +18,7 @@ import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
 import { setupDB, trackEvent, getProxyConfig, getRegistrationById } from './lib/turso'
+import { fmtFecha } from './lib/utils'
 import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
 
@@ -247,6 +248,21 @@ function CheckInBrowserGateway() {
               <div>
                 <span style={S.rowLabel}>Evento</span>
                 <span style={S.rowVal}>{reg.event_name || reg.activity_name}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Fecha del evento */}
+          {reg.event_date && (
+            <div style={S.row}>
+              <div style={S.rowIcon('#eef4e8')}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <div>
+                <span style={S.rowLabel}>Fecha del evento</span>
+                <span style={S.rowVal}>{fmtFecha(reg.event_date, true)}</span>
               </div>
             </div>
           )}
