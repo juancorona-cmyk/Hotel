@@ -874,10 +874,13 @@ function ActivitiesSection() {
 
 // ── Hotel Reservations view ──────────────────────────────
 function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
-  const [data, setData]       = useState([])
-  const [loading, setLoading] = useState(false)
-  const [view, setView]       = useState('confirmed') // 'confirmed' | 'intents'
-  const [sortDir, setSortDir] = useState('desc')
+  const [data, setData]               = useState([])
+  const [loading, setLoading]         = useState(false)
+  const [view, setView]               = useState('confirmed')
+  const [sortDir, setSortDir]         = useState('desc')
+  const [selected, setSelected]       = useState(new Set())
+  const [deleting, setDeleting]       = useState(false)
+  const [confirmModal, setConfirmModal] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -888,20 +891,9 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
 
   useEffect(() => { load() }, [load])
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este registro?')) return
-    try {
-      await deleteBotEvent(id)
-      load()
-    } catch {
-      alert('Error al eliminar')
-    }
-  }
-
   const filtered = data.filter(r => {
     if (view === 'confirmed' && r.event_type !== 'reserva_confirmada') return false
-    if (view === 'intents' && r.event_type !== 'reserva_click') return false
-    
+    if (view === 'intents'   && r.event_type !== 'reserva_click')      return false
     if (dateFrom || dateTo) {
       const d = r.created_at ? r.created_at.slice(0, 10) : ''
       if (dateFrom && d < dateFrom) return false
@@ -915,19 +907,79 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
     return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
   })
 
+  const toggleSelect  = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleAll     = () => selected.size === sorted.length ? setSelected(new Set()) : setSelected(new Set(sorted.map(r => r.id)))
+
+  const handleDelete = (id) => {
+    setConfirmModal({
+      title: 'Eliminar reserva',
+      message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        setDeleting(true)
+        try { await deleteBotEvent(id); setSelected(prev => { const n = new Set(prev); n.delete(id); return n }); load() }
+        catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
+  }
+
+  const handleDeleteSelected = () => {
+    if (selected.size === 0) return
+    const ids = [...selected]
+    setConfirmModal({
+      title: `Eliminar ${selected.size} reserva${selected.size > 1 ? 's' : ''}`,
+      message: `Se eliminarán ${selected.size} registro(s) seleccionado(s). Esta acción no se puede deshacer.`,
+      confirmLabel: `Eliminar ${selected.size}`,
+      onConfirm: async () => {
+        setDeleting(true)
+        try { for (const id of ids) await deleteBotEvent(id); setSelected(new Set()); load() }
+        catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
+  }
+
+  const handleClearAll = () => {
+    if (sorted.length === 0) return
+    setConfirmModal({
+      title: 'Vaciar reservas',
+      message: `Se eliminarán ${sorted.length} registro(s) visibles. Esta acción no se puede deshacer.`,
+      confirmLabel: `Vaciar ${sorted.length}`,
+      onConfirm: async () => {
+        setDeleting(true)
+        try { for (const r of sorted) await deleteBotEvent(r.id); setSelected(new Set()); load() }
+        catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
+  }
+
   return (
     <div className="adm-activities">
       <div className="adm-users__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>Reservas Hotel</span>
           <div className="adm-ins-toggle">
-            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => setView('confirmed')}>Confirmadas</button>
-            <button className={view === 'intents' ? 'active' : ''} onClick={() => setView('intents')}>Intentos</button>
+            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => { setView('confirmed'); setSelected(new Set()) }}>Confirmadas</button>
+            <button className={view === 'intents'   ? 'active' : ''} onClick={() => { setView('intents');   setSelected(new Set()) }}>Intentos</button>
           </div>
         </div>
-        <span className="adm-users__count">
-          {sorted.length}{data.length > 0 ? ` de ${data.filter(r => r.event_type === (view === 'confirmed' ? 'reserva_confirmada' : 'reserva_click')).length}` : ''}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          {selected.size > 0 && (
+            <button className="adm-btn-sm adm-btn-sm--red" onClick={handleDeleteSelected} disabled={deleting}>
+              Eliminar {selected.size} sel.
+            </button>
+          )}
+          {sorted.length > 0 && (
+            <button className="adm-btn-sm adm-btn-sm--red-outline" onClick={handleClearAll} disabled={deleting}>
+              Vaciar todo
+            </button>
+          )}
+          <span className="adm-users__count">
+            {sorted.length}{data.length > 0 ? ` de ${data.filter(r => r.event_type === (view === 'confirmed' ? 'reserva_confirmada' : 'reserva_click')).length}` : ''}
+          </span>
+        </div>
       </div>
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
@@ -938,6 +990,12 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
             <table className="adm-table">
               <thead>
                 <tr>
+                  <th style={{ width: 32, textAlign: 'center' }}>
+                    <input type="checkbox" className="adm-chk"
+                      checked={sorted.length > 0 && selected.size === sorted.length}
+                      onChange={toggleAll}
+                    />
+                  </th>
                   <th>Origen</th>
                   <th>Habitación</th>
                   {view === 'confirmed' && <th>Noches</th>}
@@ -949,10 +1007,11 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
               </thead>
               <tbody>
                 {sorted.map(r => (
-                  <tr key={r.id}>
-                    <td>
-                      <span className="adm-how-badge">{RESERVA_LABELS[r.source] ?? r.source ?? '—'}</span>
+                  <tr key={r.id} className={selected.has(r.id) ? 'adm-tr--selected' : ''}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="checkbox" className="adm-chk" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} />
                     </td>
+                    <td><span className="adm-how-badge">{RESERVA_LABELS[r.source] ?? r.source ?? '—'}</span></td>
                     <td><strong style={{ textTransform: 'capitalize' }}>{r.room ?? '—'}</strong></td>
                     {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
                     <td className="adm-table__date">{fmtDBDate(r.created_at)}</td>
@@ -967,6 +1026,17 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
             </table>
           )}
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          loading={deleting}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => { if (!deleting) setConfirmModal(null) }}
+        />
       )}
     </div>
   )
