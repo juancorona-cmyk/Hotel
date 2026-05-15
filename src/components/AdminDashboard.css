@@ -1114,9 +1114,40 @@
   background: #8fa030;
 }
 
+.adm-btn-sm--red {
+  background: #d93025;
+  border-color: #d93025;
+  color: #fff;
+}
+
+.adm-btn-sm--red:hover:not(:disabled) {
+  background: #b5261d;
+}
+
+.adm-btn-sm--red-outline {
+  background: transparent;
+  border-color: #d93025;
+  color: #d93025;
+}
+
+.adm-btn-sm--red-outline:hover:not(:disabled) {
+  background: #fdf1f0;
+}
+
 .adm-btn-sm:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.adm-chk {
+  width: 15px;
+  height: 15px;
+  accent-color: #7a8c2e;
+  cursor: pointer;
+}
+
+.adm-tr--selected {
+  background: #f5f8e8 !important;
 }
 
 /* ─── Activities section ─────────────────────────────── */

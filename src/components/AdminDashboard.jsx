@@ -974,6 +974,8 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   const [howFilter, setHowFilter] = useState('')
   const [sortKey, setSortKey]     = useState('date')
   const [sortDir, setSortDir]     = useState('desc')
+  const [selected, setSelected]   = useState(new Set())
+  const [deleting, setDeleting]   = useState(false)
 
   // Auto-filter by ID if search param exists
   useEffect(() => {
@@ -1007,10 +1009,46 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
     try {
       if (view === 'confirmed') await deleteActivityRegistration(id)
       else await deleteBotEvent(id)
+      setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
       loadData()
     } catch {
       alert('Error al eliminar')
     }
+  }
+
+  const toggleSelect = (id) => setSelected(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
+  })
+
+  const handleDeleteSelected = async () => {
+    if (selected.size === 0) return
+    if (!confirm(`¿Eliminar ${selected.size} registro(s) seleccionado(s)? Esta acción no se puede deshacer.`)) return
+    setDeleting(true)
+    try {
+      for (const id of selected) {
+        if (view === 'confirmed') await deleteActivityRegistration(id)
+        else await deleteBotEvent(id)
+      }
+      setSelected(new Set())
+      loadData()
+    } catch { alert('Error al eliminar') }
+    finally { setDeleting(false) }
+  }
+
+  const handleClearAll = async () => {
+    const target = sorted
+    if (target.length === 0) return
+    if (!confirm(`¿Vaciar ${target.length} registro(s) visibles? Esta acción no se puede deshacer.`)) return
+    setDeleting(true)
+    try {
+      for (const r of target) {
+        if (view === 'confirmed') await deleteActivityRegistration(r.id)
+        else await deleteBotEvent(r.id)
+      }
+      setSelected(new Set())
+      loadData()
+    } catch { alert('Error al vaciar') }
+    finally { setDeleting(false) }
   }
 
   const handleTogglePaid = async (id, currentPaid) => {
@@ -1077,13 +1115,25 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span>Inscripciones</span>
           <div className="adm-ins-toggle">
-            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => { setView('confirmed'); setEvtFilter(''); setHowFilter('') }}>Confirmadas</button>
-            <button className={view === 'intents' ? 'active' : ''} onClick={() => { setView('intents'); setEvtFilter(''); setHowFilter('') }}>Intentos</button>
+            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => { setView('confirmed'); setEvtFilter(''); setHowFilter(''); setSelected(new Set()) }}>Confirmadas</button>
+            <button className={view === 'intents' ? 'active' : ''} onClick={() => { setView('intents'); setEvtFilter(''); setHowFilter(''); setSelected(new Set()) }}>Intentos</button>
           </div>
         </div>
-        <span className="adm-users__count">
-          {sorted.length}{hasFilters ? ` de ${currentData.length}` : ' en total'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          {selected.size > 0 && (
+            <button className="adm-btn-sm adm-btn-sm--red" onClick={handleDeleteSelected} disabled={deleting}>
+              Eliminar {selected.size} sel.
+            </button>
+          )}
+          {sorted.length > 0 && (
+            <button className="adm-btn-sm adm-btn-sm--red-outline" onClick={handleClearAll} disabled={deleting}>
+              Vaciar todo
+            </button>
+          )}
+          <span className="adm-users__count">
+            {sorted.length}{hasFilters ? ` de ${currentData.length}` : ' en total'}
+          </span>
+        </div>
         {new URLSearchParams(window.location.search).get('regId') && (
           <button className="adm-btn-sm adm-btn-sm--green" onClick={clearSearch} style={{ marginLeft: 12 }}>
             Ver todos
@@ -1145,6 +1195,13 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
             <table className="adm-table">
               <thead>
                 <tr>
+                  <th style={{ width: 32, textAlign: 'center' }}>
+                    <input type="checkbox"
+                      className="adm-chk"
+                      checked={sorted.length > 0 && selected.size === sorted.length}
+                      onChange={() => selected.size === sorted.length ? setSelected(new Set()) : setSelected(new Set(sorted.map(r => r.id)))}
+                    />
+                  </th>
                   <th className="adm-th-sort" onClick={() => toggleSort('event')}>Evento{sortIcon('event')}</th>
                   <th className="adm-th-sort" onClick={() => toggleSort('name')}>Nombre{sortIcon('name')}</th>
                   <th>Teléfono</th>
@@ -1156,7 +1213,10 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
               </thead>
               <tbody>
                 {sorted.map(r => (
-                  <tr key={r.id}>
+                  <tr key={r.id} className={selected.has(r.id) ? 'adm-tr--selected' : ''}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="checkbox" className="adm-chk" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} />
+                    </td>
                     <td><strong>{getLabel(r)}</strong></td>
                     <td>{r.full_name}</td>
                     <td>{r.phone}</td>
