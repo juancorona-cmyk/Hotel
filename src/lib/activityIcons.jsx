@@ -1,4 +1,4 @@
-const P = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.6' }
+const P = { width: '22', height: '22', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: '1.6' }
 
 export function getActivityIcon(name = '') {
   const n = name.toLowerCase()
