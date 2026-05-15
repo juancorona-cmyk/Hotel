@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
+import { getActivityIcon } from '../lib/activityIcons'
 import './StaffApp.css'
 
 const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
@@ -645,10 +646,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   <div key={ev.id} className="sa-event-card" style={{ animationDelay: `${idx * 0.05}s` }} onClick={() => viewAttendees(ev)}>
                     <div className="sa-event-main">
                       <div className="sa-icon-box">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <rect x="3" y="4" width="18" height="18" rx="2"/>
-                          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
+                        {getActivityIcon(ev.name)}
                       </div>
                       <div className="sa-ev-info">
                         <span className="sa-ev-name">{ev.name}</span>
@@ -740,9 +738,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   <div key={ev.id} className="sa-event-card sa-event-card--archived" style={{ animationDelay: `${idx * 0.05}s`, cursor: 'pointer' }} onClick={() => viewAttendees(ev)}>
                     <div className="sa-event-main">
                       <div className="sa-icon-box sa-icon-box--archived">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
-                        </svg>
+                        {getActivityIcon(ev.name)}
                       </div>
                       <div className="sa-ev-info">
                         <span className="sa-ev-name">{ev.name}</span>
@@ -862,10 +858,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 <div key={ev.id} className="sa-event-card" style={{ animationDelay: `${idx * 0.05}s` }}>
                   <div className="sa-event-main" style={{ marginBottom: 0 }}>
                     <div className="sa-icon-box" style={{ background: '#f8fafc', color: '#64748b' }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
+                      {getActivityIcon(ev.name)}
                     </div>
                     <div className="sa-ev-info">
                       <span className="sa-ev-name">{ev.name}</span>
@@ -934,9 +927,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                     <div key={ev.id} className="sa-event-card sa-event-card--archived" style={{ animationDelay: `${idx * 0.05}s`, cursor: 'pointer' }} onClick={() => viewAttendees(ev)}>
                       <div className="sa-event-main" style={{ marginBottom: 0 }}>
                         <div className="sa-icon-box sa-icon-box--archived">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
-                          </svg>
+                          {getActivityIcon(ev.name)}
                         </div>
                         <div className="sa-ev-info">
                           <span className="sa-ev-name">{ev.name}</span>
