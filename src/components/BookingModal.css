@@ -248,6 +248,30 @@
   color: #1a1a1a;
 }
 
+/* Extra persons notice */
+.bm-extra-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #fffbeb;
+  border: 1.5px solid #f5d06a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #7a5c00;
+  font-weight: 500;
+  margin-top: 6px;
+}
+.bm-extra-notice svg {
+  color: #c98a00;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.bm-extra-notice strong {
+  font-weight: 800;
+  color: #5a4000;
+}
+
 /* Footer */
 .bm-footer {
   border-top: 1px solid #edeee6;

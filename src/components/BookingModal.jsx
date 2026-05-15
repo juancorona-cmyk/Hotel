@@ -51,8 +51,9 @@ export default function BookingModal({ initialRoom, onClose }) {
   const [children, setChildren] = useState(0)
   const [rooms,    setRooms]    = useState(1)
 
-  const room   = ROOMS.find(r => r.id === roomId)
-  const nights = nightsBetween(checkin, checkout)
+  const room         = ROOMS.find(r => r.id === roomId)
+  const nights       = nightsBetween(checkin, checkout)
+  const extraPersons = Math.max(0, adults - room.maxAdults * rooms)
 
   useEffect(() => {
     if (adults > room.maxAdults)     setAdults(room.maxAdults)
@@ -86,6 +87,7 @@ export default function BookingModal({ initialRoom, onClose }) {
       `👤 ${t('modal.adultosLbl')}: ${adults}`,
       ...(room.maxChildren > 0 ? [`👶 ${t('modal.ninosLbl')}: ${children}`] : []),
       `🛏 ${t('modal.habitacionesLbl')}: ${rooms}`,
+      ...(extraPersons > 0 ? [`⚠️ Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra × $200 = $${extraPersons * 200} MXN por noche`] : []),
       ``,
       t('modal.waMsg.gracias'),
     ].join('\n')
@@ -160,7 +162,7 @@ export default function BookingModal({ initialRoom, onClose }) {
                   <span className="bm-counter-name">{t('modal.adultosLbl')}</span>
                   <span className="bm-counter-sub">{t('modal.maxPorHabitacion', { count: room.maxAdults })}</span>
                 </div>
-                <Counter value={adults} onChange={setAdults} min={1} max={room.maxAdults * rooms} />
+                <Counter value={adults} onChange={setAdults} min={1} max={room.maxAdults * rooms + 4} />
               </div>
               {room.maxChildren > 0 && (
                 <div className="bm-counter-row">
@@ -179,6 +181,17 @@ export default function BookingModal({ initialRoom, onClose }) {
                 <Counter value={rooms} onChange={setRooms} min={1} max={5} />
               </div>
             </div>
+            {extraPersons > 0 && (
+              <div className="bm-extra-notice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>
+                  {extraPersons} persona{extraPersons > 1 ? 's' : ''} adicional{extraPersons > 1 ? 'es' : ''} · <strong>$200 extra c/u por noche</strong>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Summary + CTA */}
