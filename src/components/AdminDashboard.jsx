@@ -2007,6 +2007,11 @@ export default function AdminDashboard({ onClose }) {
     const t = setInterval(() => load(period.days), 30000)
     return () => clearInterval(t)
   }, [authed, period, load])
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   const login = (username, isFallback, role = 'admin', permissions = null) => {
     sessionStorage.setItem('adm_user', username)
