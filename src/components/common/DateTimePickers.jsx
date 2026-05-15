@@ -28,10 +28,14 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
   const firstDay = new Date(view.y, view.m, 1).getDay()
   const daysInMonth = new Date(view.y, view.m + 1, 0).getDate()
 
-  function prevMonth() { setView(v => v.m === 0 ? { y: v.y-1, m: 11 } : { y: v.y, m: v.m-1 }) }
+  const isCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth()
+
+  function prevMonth() { if (!isCurrentMonth) setView(v => v.m === 0 ? { y: v.y-1, m: 11 } : { y: v.y, m: v.m-1 }) }
   function nextMonth() { setView(v => v.m === 11 ? { y: v.y+1, m: 0 } : { y: v.y, m: v.m+1 }) }
 
   function selectDay(day) {
+    const candidate = new Date(view.y, view.m, day)
+    if (candidate <= today) return
     const mm = String(view.m + 1).padStart(2, '0')
     const dd = String(day).padStart(2, '0')
     onChange(`${view.y}-${mm}-${dd}`)
@@ -64,7 +68,7 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
       {open && (
         <div className="adm-dp__cal">
           <div className="adm-dp__cal-head">
-            <button type="button" className="adm-dp__nav" onClick={prevMonth}>‹</button>
+            <button type="button" className={`adm-dp__nav ${isCurrentMonth ? 'adm-dp__nav--disabled' : ''}`} onClick={prevMonth} disabled={isCurrentMonth}>‹</button>
             <span className="adm-dp__cal-title">{MESES_CORTOS[view.m]} {view.y}</span>
             <button type="button" className="adm-dp__nav" onClick={nextMonth}>›</button>
           </div>
@@ -74,13 +78,16 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
           <div className="adm-dp__grid">
             {cells.map((day, i) => {
               if (!day) return <span key={`e${i}`} />
+              const candidate = new Date(view.y, view.m, day)
+              const isPast  = candidate <= today
               const isToday = today.getFullYear() === view.y && today.getMonth() === view.m && today.getDate() === day
               const isSel   = selectedDay === day
               return (
                 <button
                   key={day}
                   type="button"
-                  className={`adm-dp__day ${isSel ? 'adm-dp__day--sel' : ''} ${isToday && !isSel ? 'adm-dp__day--today' : ''}`}
+                  disabled={isPast}
+                  className={`adm-dp__day ${isSel ? 'adm-dp__day--sel' : ''} ${isToday && !isSel ? 'adm-dp__day--today' : ''} ${isPast ? 'adm-dp__day--past' : ''}`}
                   onClick={() => selectDay(day)}
                 >{day}</button>
               )

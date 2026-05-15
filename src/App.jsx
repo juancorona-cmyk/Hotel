@@ -17,7 +17,7 @@ import Testimonials from './components/Testimonials'
 import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
-import { setupDB, trackEvent, getProxyConfig } from './lib/turso'
+import { setupDB, trackEvent, getProxyConfig, getRegistrationById } from './lib/turso'
 import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
 
@@ -35,99 +35,192 @@ function LazyFallback() {
   return <div className="lazy-fallback" aria-hidden="true" />
 }
 
-// Página que intenta abrir la app nativa al escanear el QR desde el navegador
+// Visitante en browser: muestra el ticket del registro directamente
 function CheckInBrowserGateway() {
   const [searchParams] = useSearchParams()
   const rid = searchParams.get('rid')
-  const [tried, setTried] = useState(false)
+  const [reg, setReg] = useState(null)
+  const [fetched, setFetched] = useState(false)
 
   useEffect(() => {
-    if (!rid) return
-    // Intent URL: si la app está instalada la abre; si no, queda en la página
-    const fallback = encodeURIComponent(window.location.href)
-    const intentUrl = `intent://hotelpuntagaleria.mx/checkin?rid=${rid}#Intent;scheme=https;package=${PKG};S.browser_fallback_url=${fallback};end`
-    window.location.href = intentUrl
-    setTimeout(() => setTried(true), 2500)
+    if (!rid) { setFetched(true); return }
+    getRegistrationById(parseInt(rid))
+      .then(r => setReg(r))
+      .catch(() => setReg(null))
+      .finally(() => setFetched(true))
   }, [rid])
 
+  const S = {
+    page: {
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'linear-gradient(160deg,#f5f2ed 0%,#eae5dc 100%)',
+      fontFamily: "'Montserrat',sans-serif", padding: '32px 20px',
+    },
+    card: {
+      background: '#fff', borderRadius: 28, width: '100%', maxWidth: 380,
+      boxShadow: '0 12px 48px rgba(0,0,0,0.10)', overflow: 'hidden',
+    },
+    header: {
+      background: '#5a6c1e', padding: '28px 28px 24px',
+      display: 'flex', alignItems: 'center', gap: 14,
+    },
+    logoWrap: {
+      width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.15)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    hotelName: { color: '#fff', fontWeight: 800, fontSize: 15, lineHeight: 1.2 },
+    hotelSub:  { color: 'rgba(255,255,255,0.7)', fontWeight: 600, fontSize: 11, marginTop: 2 },
+    body: { padding: '28px 28px 32px' },
+    spinner: {
+      width: 52, height: 52, borderRadius: '50%',
+      border: '4px solid #e5e0d8', borderTopColor: '#5a6c1e',
+      animation: 'gw-spin 0.8s linear infinite', margin: '0 auto 20px',
+    },
+    iconCircle: (color) => ({
+      width: 72, height: 72, borderRadius: '50%', background: color,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+    }),
+    title: { fontWeight: 800, fontSize: 18, color: '#1a1f0e', margin: '0 0 8px', textAlign: 'center' },
+    sub:   { fontSize: 13, color: '#6b7280', margin: '0 0 24px', lineHeight: 1.6, textAlign: 'center' },
+    divider: { height: 1, background: '#f0ede8', margin: '20px 0' },
+    row: {
+      display: 'flex', alignItems: 'center', gap: 12,
+      background: '#f9f7f4', borderRadius: 14, padding: '12px 14px', marginBottom: 10,
+    },
+    rowIcon: (bg) => ({
+      width: 36, height: 36, borderRadius: 10, background: bg, flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }),
+    rowLabel: { fontSize: 11, color: '#9ca3af', fontWeight: 600, display: 'block' },
+    rowVal:   { fontSize: 14, color: '#1a1f0e', fontWeight: 700, display: 'block', marginTop: 1 },
+    ticketStrip: {
+      background: '#f5f2ed', borderTop: '1px dashed #d1ccc4',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '12px 28px', margin: '0 -28px',
+    },
+    ticketLabel: { fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.06em' },
+    ticketNum:   { fontSize: 15, fontWeight: 800, color: '#5a6c1e' },
+    notice: {
+      display: 'flex', gap: 12, alignItems: 'flex-start',
+      background: '#f0f4e4', borderRadius: 14, padding: '14px 16px', marginTop: 16,
+    },
+    noticeIcon: { flexShrink: 0, marginTop: 1 },
+    noticeText: { fontSize: 12.5, color: '#3d4a0f', fontWeight: 600, lineHeight: 1.55 },
+    footer: {
+      textAlign: 'center', fontSize: 11.5, color: '#b0a898', fontWeight: 600, marginTop: 24,
+    },
+  }
+
+  const CardShell = ({ sub, children }) => (
+    <div style={S.page}>
+      <style>{`@keyframes gw-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={S.card}>
+        <div style={S.header}>
+          <div style={S.logoWrap}>
+            <img src="/logo/logNegro.svg" alt="" style={{ height: 26, filter: 'brightness(0) invert(1)' }} />
+          </div>
+          <div>
+            <div style={S.hotelName}>Hotel Punta Galería</div>
+            <div style={S.hotelSub}>{sub}</div>
+          </div>
+        </div>
+        <div style={S.body}>{children}</div>
+      </div>
+      <div style={S.footer}>hotelpuntagaleria.mx</div>
+    </div>
+  )
+
+  // Cargando registro desde DB
+  if (!fetched) {
+    return (
+      <CardShell sub="Confirmación de registro">
+        <div style={S.spinner} />
+        <p style={{ ...S.title, marginTop: 8 }}>Cargando tu ticket…</p>
+      </CardShell>
+    )
+  }
+
+  // Sin rid — página genérica
   if (!rid) return <Navigate to="/" replace />
 
-  return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#f0f2f5',
-      fontFamily: "'Montserrat', sans-serif", padding: 24
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 24, padding: '40px 28px',
-        textAlign: 'center', maxWidth: 360, width: '100%',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.10)'
-      }}>
-        <img src="/logo/logNegro.svg" alt="Hotel Punta Galería"
-          style={{ height: 36, marginBottom: 28 }} />
+  // Registro no encontrado
+  if (!reg) {
+    return (
+      <CardShell sub="Control de accesos">
+        <div style={S.iconCircle('#fff0f0')}>
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="1.8">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <p style={S.title}>Registro no encontrado</p>
+        <p style={S.sub}>No pudimos encontrar este ticket. Contacta al personal del hotel.</p>
+      </CardShell>
+    )
+  }
 
-        {!tried ? (
-          <>
-            <div style={{
-              width: 64, height: 64, borderRadius: '50%',
-              border: '4px solid #e2e8f0', borderTopColor: '#5a6c1e',
-              animation: 'spin 0.8s linear infinite', margin: '0 auto 20px'
-            }} />
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            <p style={{ fontWeight: 800, fontSize: 17, color: '#1e293b', margin: '0 0 8px' }}>
-              Abriendo la app…
-            </p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-              Redirigiendo al sistema de accesos del hotel
-            </p>
-          </>
-        ) : (
-          <>
-            <div style={{
-              width: 60, height: 60, borderRadius: '50%', background: '#f1f5f9',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 20px'
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="#5a6c1e" strokeWidth="2">
-                <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" />
-                <path d="M12 8v4l3 3" />
-              </svg>
-            </div>
-            <p style={{ fontWeight: 800, fontSize: 16, color: '#1e293b', margin: '0 0 8px' }}>
-              Instala la app del staff
-            </p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
-              Este QR es para el personal del hotel. Instala la app para confirmar asistencia.
-            </p>
-            <div style={{
-              background: '#f8fafc', borderRadius: 14, padding: '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left'
-            }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 10, background: '#5a6c1e',
-                flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                  stroke="#fff" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="3" />
-                  <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="3" />
-                  <line x1="9" y1="15" x2="9.01" y2="15" strokeWidth="3" />
-                  <line x1="15" y1="15" x2="15.01" y2="15" strokeWidth="3" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#1e293b' }}>
-                  Hotel Punta Galería Staff
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Ticket #{String(rid).padStart(4, '0')}</div>
-              </div>
-            </div>
-          </>
-        )}
+  // ─── Ticket del invitado ───
+  return (
+    <CardShell sub="¡Gracias por tu registro!">
+      {/* Check animado */}
+      <div style={{ ...S.iconCircle('#f0f4e4'), position: 'relative' }}>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
       </div>
-    </div>
+
+      <p style={S.title}>¡Gracias por registrarte!</p>
+      <p style={{ ...S.sub, marginBottom: 20 }}>Tu lugar está confirmado. Te esperamos en el evento.</p>
+
+      {/* Nombre */}
+      <div style={S.row}>
+        <div style={S.rowIcon('#eef4e8')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div>
+          <span style={S.rowLabel}>Asistente</span>
+          <span style={S.rowVal}>{reg.full_name}</span>
+        </div>
+      </div>
+
+      {/* Evento */}
+      {reg.event_name && (
+        <div style={S.row}>
+          <div style={S.rowIcon('#eef4e8')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div>
+            <span style={S.rowLabel}>Evento</span>
+            <span style={S.rowVal}>{reg.event_name}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket # */}
+      <div style={{ ...S.ticketStrip, marginTop: 20 }}>
+        <span style={S.ticketLabel}>N° DE TICKET</span>
+        <span style={S.ticketNum}>#{String(reg.id).padStart(4, '0')}</span>
+      </div>
+
+      {/* Instrucción de acceso */}
+      <div style={S.notice}>
+        <div style={S.noticeIcon}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <p style={{ ...S.noticeText, margin: 0 }}>
+          En la entrada, el personal del hotel escaneará tu QR para confirmar tu acceso.
+        </p>
+      </div>
+    </CardShell>
   )
 }
 

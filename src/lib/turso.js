@@ -163,7 +163,8 @@ export async function setupDB() {
     `ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
-    `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`
+    `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`,
+    `ALTER TABLE activity_registrations ADD COLUMN transfer_proof_url TEXT DEFAULT NULL`
   ]
 
   for (const sql of migrations) {
@@ -174,7 +175,11 @@ export async function setupDB() {
 // ── Activities ────────────────────────────────────────────
 export async function getActivities() {
   const res = await exec(
-    'SELECT id, name, fecha, hora, semanas FROM activities WHERE active = 1 ORDER BY id ASC'
+    `SELECT a.id, a.name, a.fecha, a.hora, a.semanas
+     FROM activities a
+     INNER JOIN hotel_events e ON e.activity_id = a.id AND e.active = 1
+     WHERE a.active = 1
+     ORDER BY a.id ASC`
   )
   return parseRows(res)
 }
@@ -354,6 +359,30 @@ export async function updateEvent(id, name, slug, price, description, date, capa
 
 export async function deleteEvent(id) {
   await exec('DELETE FROM hotel_events WHERE id = ?', [int(id)])
+}
+
+export async function closeEvent(id) {
+  await exec('UPDATE hotel_events SET active = 0 WHERE id = ?', [int(id)])
+  await exec(
+    'UPDATE activities SET active = 0 WHERE id = (SELECT activity_id FROM hotel_events WHERE id = ?)',
+    [int(id)]
+  )
+}
+
+export async function copyEventRegistrations(oldEventId, newEventId, newEventName, activityId) {
+  await exec(
+    `INSERT INTO activity_registrations (activity_id, activity_name, event_id, event_name, full_name, phone, how_found, whatsapp, paid, checked_in)
+     SELECT ?, ?, ?, ?, full_name, phone, how_found, whatsapp, 0, 0
+     FROM activity_registrations WHERE event_id = ?`,
+    [int(activityId ?? 0), txt(newEventName), int(newEventId), txt(newEventName), int(oldEventId)]
+  )
+}
+
+export async function getArchivedEvents() {
+  const res = await exec(
+    'SELECT e.id, e.name, e.slug, e.price, e.description, e.date, e.capacity, e.active, e.activity_id, a.hora FROM hotel_events e LEFT JOIN activities a ON e.activity_id = a.id WHERE e.active = 0 ORDER BY e.date DESC, e.created_at DESC'
+  )
+  return parseRows(res)
 }
 
 export async function createRegistration(eventId, fullName, email, phone, notes) {
@@ -567,8 +596,16 @@ export async function undoCheckInRegistration(id) {
 
 export async function getRegistrationById(id) {
   const res = await exec(
-    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, payment_method, paid, checked_in, checked_in_at, created_at FROM activity_registrations WHERE id = ?',
+    'SELECT id, activity_id, activity_name, event_id, event_name, full_name, phone, payment_method, paid, checked_in, checked_in_at, transfer_proof_url, created_at FROM activity_registrations WHERE id = ?',
     [int(id)]
   )
   return parseRows(res)[0] ?? null
+}
+
+export async function updateTransferProof(id, proofUrl) {
+  const now = `datetime('now')`
+  await exec(
+    `UPDATE activity_registrations SET transfer_proof_url = ?, paid = 1, paid_at = ${now} WHERE id = ?`,
+    [txt(proofUrl), int(id)]
+  )
 }

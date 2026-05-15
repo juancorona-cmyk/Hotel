@@ -16,6 +16,10 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[functions."export-pdf"]
+  node_bundler = "nft"
+  timeout = 26
+
 # Security headers
 [[headers]]
   for = "/*"

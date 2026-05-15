@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, adminLoginSingle } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE } from '../lib/turso'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
@@ -26,6 +26,8 @@ export default function CheckInPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [status, setStatus] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(null)
 
   useEffect(() => {
     if (!isNativeApp && rid) {
@@ -173,6 +175,36 @@ export default function CheckInPage() {
       setStatus('error')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleUploadProof = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !reg) return
+    setUploading(true)
+    try {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (ev) => resolve(ev.target.result)
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch(`${API_BASE}/.netlify/functions/upload-proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, registrationId: reg.id }),
+      })
+      const data = await res.json()
+      if (!data.url) throw new Error(data.error ?? 'Sin URL')
+      await updateTransferProof(reg.id, data.url)
+      setReg(r => ({ ...r, transfer_proof_url: data.url, paid: 1 }))
+      setStatus('proof_uploaded')
+      setTimeout(() => setStatus(''), 4000)
+    } catch (err) {
+      console.error(err)
+      setStatus('error')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
@@ -460,19 +492,32 @@ export default function CheckInPage() {
         <span className="ci-ticket-num">#{String(reg.id).padStart(4, '0')}</span>
       </div>
 
-      {/* Aviso comprobante — solo para transferencia sin validar */}
+      {/* Comprobante de transferencia */}
       {scanState === 'unpaid_transfer' && (
-        <div className="ci-transfer-notice">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          <div>
-            <span className="ci-transfer-notice__title">Pago por transferencia bancaria</span>
-            <span className="ci-transfer-notice__sub">Solicita y verifica el comprobante antes de confirmar la entrada</span>
+        reg.transfer_proof_url ? (
+          <div className="ci-proof-section">
+            <div className="ci-proof-label">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Comprobante adjunto
+            </div>
+            <a href={reg.transfer_proof_url} target="_blank" rel="noopener noreferrer" className="ci-proof-img-wrap">
+              <img src={reg.transfer_proof_url} alt="Comprobante de transferencia" className="ci-proof-img" />
+              <span className="ci-proof-img-hint">Toca para ampliar</span>
+            </a>
           </div>
-        </div>
+        ) : (
+          <div className="ci-transfer-notice">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <div>
+              <span className="ci-transfer-notice__title">Sin comprobante adjunto</span>
+              <span className="ci-transfer-notice__sub">Sube la foto del comprobante o verifica manualmente</span>
+            </div>
+          </div>
+        )
       )}
 
       {/* Detalles */}
@@ -539,6 +584,7 @@ export default function CheckInPage() {
       {status === 'paid_confirmed' && <div className="ci-toast ci-toast--ok">✓ Pago registrado · Entrada confirmada</div>}
       {status === 'confirmed' && <div className="ci-toast ci-toast--ok">✓ Entrada confirmada</div>}
       {status === 'undone' && <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>}
+      {status === 'proof_uploaded' && <div className="ci-toast ci-toast--ok">✓ Comprobante subido · Pago marcado</div>}
       {status === 'error' && <div className="ci-toast ci-toast--warn">Error al procesar. Intenta de nuevo.</div>}
 
       {/* Footer de acciones */}
@@ -563,16 +609,43 @@ export default function CheckInPage() {
         )}
 
         {scanState === 'unpaid_transfer' && (
-          <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaidAndCheckIn} disabled={updating}>
-            {updating ? <span className="ci-login-btn-spinner" /> : (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Comprobante verificado · Confirmar
-              </>
+          <div className="ci-transfer-actions">
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileRef}
+              onChange={handleUploadProof}
+              style={{ display: 'none' }}
+            />
+            {!reg.transfer_proof_url && (
+              <button
+                className="ci-btn-action ci-btn-action--upload"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading || updating}
+              >
+                {uploading ? <span className="ci-login-btn-spinner" /> : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Subir comprobante
+                  </>
+                )}
+              </button>
             )}
-          </button>
+            <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaidAndCheckIn} disabled={updating || uploading}>
+              {updating ? <span className="ci-login-btn-spinner" /> : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {reg.transfer_proof_url ? 'Comprobante verificado · Confirmar entrada' : 'Verificar y confirmar entrada'}
+                </>
+              )}
+            </button>
+          </div>
         )}
 
         {scanState === 'unpaid_cash' && (

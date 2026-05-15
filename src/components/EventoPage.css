@@ -659,3 +659,117 @@
   .ep-grid { grid-template-columns: 1fr; gap: 24px; }
   .ep-col-info { position: static; }
 }
+
+/* ── Panel de datos bancarios (paso 2 - transferencia) ── */
+.ep-transfer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 16px;
+  padding: 18px 16px;
+}
+
+.ep-transfer-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.ep-transfer-panel__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #bbf7d0;
+}
+.ep-transfer-panel__row:last-of-type { border-bottom: none; }
+
+.ep-transfer-panel__label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4ade80;
+}
+
+.ep-transfer-panel__value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #14532d;
+  letter-spacing: 0.5px;
+}
+
+.ep-transfer-panel__note {
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.5;
+  margin: 4px 0 0;
+  background: #dcfce7;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+/* ── Aviso WhatsApp en pantalla de éxito (transferencia) ── */
+.ep-transfer-success {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.ep-transfer-success__icon {
+  width: 44px;
+  height: 44px;
+  background: #25D366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.ep-transfer-success__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ep-transfer-success__text strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #14532d;
+}
+
+.ep-transfer-success__text span {
+  font-size: 12px;
+  color: #166534;
+  line-height: 1.4;
+}
+
+.ep-transfer-success__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #25D366;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 12px 22px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.ep-transfer-success__btn:hover { opacity: 0.9; }

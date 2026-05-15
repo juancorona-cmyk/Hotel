@@ -22,12 +22,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- App Links verificados: solo https sin www para que Android pueda verificar assetlinks.json -->
+            <!-- App Links verificados vía assetlinks.json -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="hotelpuntagaleria.mx" android:pathPrefix="/checkin" />
+            </intent-filter>
+
+            <!-- Esquema personalizado hotelpg:// — identificador exclusivo del APK -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="hotelpg" android:host="hotelpuntagaleria.mx" />
             </intent-filter>
 
         </activity>

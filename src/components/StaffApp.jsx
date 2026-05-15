@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, deleteActivity, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import './StaffApp.css'
 
-const FILTERS = { all: 'Todos', confirmed: 'Confirmados', pending: 'Pendientes' }
+const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
 const DESC_MAX = 200
 
 export default function StaffApp({ onStartScan, onLogout }) {
@@ -17,12 +17,26 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [attendees, setAttendees] = useState([])
   const [events, setEvents] = useState([])
+  const [archivedEvents, setArchivedEvents] = useState([])
   const [allRegs, setAllRegs] = useState([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [showSplash, setShowSplash] = useState(true)
   const [showEventPicker, setShowEventPicker] = useState(false)
+  const [showFilterPicker, setShowFilterPicker] = useState(false)
+  const [showEditionPicker, setShowEditionPicker] = useState(null) // archived event or null
+
+  // ── Modal & Toast ──
+  const [modal, setModal] = useState(null)
+  const [toast, setToast] = useState(null)
+  const toastTimer = useRef(null)
+
+  const showToast = useCallback((message, type = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast({ message, type })
+    toastTimer.current = setTimeout(() => setToast(null), 2800)
+  }, [])
 
   // ── Create Event State ──
   const [newEvt, setNewEvt] = useState({ name: '', date: '', time: '', price: '', capacity: '', description: '' })
@@ -32,7 +46,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [createdSlug, setCreatedSlug] = useState(null)
 
   const handleAiGenerate = async () => {
-    if (!newEvt.name?.trim()) { alert('Ingresa primero el nombre del evento'); return }
+    if (!newEvt.name?.trim()) { showToast('Ingresa primero el nombre del evento', 'error'); return }
     setAiLoading(true)
     try {
       const path = '/.netlify/functions/ai-description'
@@ -53,7 +67,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
       }
     } catch (err) {
       console.error(err)
-      alert('Error al generar la descripción')
+      showToast('Error al generar la descripción', 'error')
     } finally {
       setAiLoading(false)
     }
@@ -112,18 +126,109 @@ export default function StaffApp({ onStartScan, onLogout }) {
     setView('create')
   }
 
-  const handleDeleteEvent = async (ev) => {
-    if (!window.confirm(`¿Estás seguro de eliminar el evento "${ev.name}"?`)) return
+  const handleDeleteEvent = (ev) => {
+    setModal({
+      icon: 'delete',
+      title: 'Eliminar evento',
+      message: `"${ev.name}" se eliminará permanentemente junto con todos sus datos.`,
+      confirmLabel: 'Eliminar',
+      danger: true,
+      onConfirm: async () => {
+        setModal(null)
+        setLoading(true)
+        try {
+          await deleteEvent(ev.id)
+          if (ev.activity_id) await deleteActivity(ev.activity_id)
+          const [evs, archived] = await Promise.all([getEvents(), getArchivedEvents()])
+          setEvents(evs)
+          setArchivedEvents(archived)
+          showToast('Evento eliminado')
+        } catch (err) {
+          console.error(err)
+          showToast('Error al eliminar el evento', 'error')
+        } finally {
+          setLoading(false)
+        }
+      }
+    })
+  }
+
+  const handleCloseEvent = (ev, e) => {
+    if (e) e.stopPropagation()
+    setModal({
+      icon: 'lock',
+      title: 'Cerrar evento',
+      message: `"${ev.name}" se moverá al historial. Desde ahí podrás crear una nueva edición para la siguiente semana.`,
+      confirmLabel: 'Cerrar evento',
+      danger: false,
+      onConfirm: async () => {
+        setModal(null)
+        setLoading(true)
+        try {
+          await closeEvent(ev.id)
+          const [evs, archived] = await Promise.all([getEvents(), getArchivedEvents()])
+          setEvents(evs)
+          setArchivedEvents(archived)
+          showToast(`"${ev.name}" archivado`)
+        } catch (err) {
+          console.error(err)
+          showToast('Error al cerrar el evento', 'error')
+        } finally {
+          setLoading(false)
+        }
+      }
+    })
+  }
+
+  const calcNextWeekStr = (dateStr) => {
+    const now = new Date(); now.setHours(0, 0, 0, 0)
+    if (!dateStr) {
+      const d = new Date(); d.setDate(d.getDate() + 7)
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    }
+    // Advance from the event's own date in 7-day steps until we pass today
+    const next = new Date(dateStr + 'T00:00:00')
+    do { next.setDate(next.getDate() + 7) } while (next <= now)
+    return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`
+  }
+
+  const handlePersonalizar = (ev) => {
+    setShowEditionPicker(null)
+    setEditingId(null)
+    setCreatedSlug(null)
+    setNewEvt({
+      name: ev.name || '',
+      date: calcNextWeekStr(ev.date),
+      time: ev.hora || '',
+      price: ev.price || '',
+      capacity: ev.capacity || '',
+      description: ev.description || ''
+    })
+    setView('create')
+  }
+
+  const handleRenovarIgual = async (ev) => {
+    setShowEditionPicker(null)
     setLoading(true)
     try {
-      await deleteEvent(ev.id)
-      if (ev.activity_id) await deleteActivity(ev.activity_id)
-      const evs = await getEvents()
+      const nextDate = calcNextWeekStr(ev.date)
+      const activityId = await saveActivity(ev.name, nextDate, ev.hora || '')
+      await upsertActivityEvent(
+        activityId,
+        ev.name,
+        parseFloat(ev.price) || 0,
+        ev.description || '',
+        nextDate,
+        parseInt(ev.capacity) || 0
+      )
+      const [evs, archived, regs] = await Promise.all([getEvents(), getArchivedEvents(), getAllActivityRegistrations()])
       setEvents(evs)
-      alert('Evento eliminado')
+      setArchivedEvents(archived)
+      setAllRegs(regs)
+      showToast(`"${ev.name}" publicado para ${nextDate}`)
     } catch (err) {
       console.error(err)
-      alert('Error al eliminar el evento')
+      showToast('Error al crear nueva edición', 'error')
     } finally {
       setLoading(false)
     }
@@ -131,7 +236,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault()
-    if (!newEvt.name.trim()) { alert('El nombre es obligatorio'); return }
+    if (!newEvt.name.trim()) { showToast('El nombre es obligatorio', 'error'); return }
     setCreating(true)
     try {
       let activityId = editingId
@@ -157,19 +262,19 @@ export default function StaffApp({ onStartScan, onLogout }) {
         setNewEvt({ name: '', date: '', time: '', price: '', capacity: '', description: '' })
       }
       // Refresh events
-      const evs = await getEvents()
+      const [evs, archived, regs] = await Promise.all([getEvents(), getArchivedEvents(), getAllActivityRegistrations()])
       setEvents(evs)
-      const regs = await getAllActivityRegistrations()
+      setArchivedEvents(archived)
       setAllRegs(regs)
       
       if (!slug || editingId) {
         setView('dashboard')
         setEditingId(null)
-        if (editingId) alert('Evento actualizado exitosamente')
+        if (editingId) showToast('Evento actualizado')
       }
     } catch (err) {
       console.error(err)
-      alert('Error al procesar el evento')
+      showToast('Error al procesar el evento', 'error')
     } finally {
       setCreating(false)
     }
@@ -184,7 +289,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const copyInvitation = () => {
     const url = `https://hotelpuntagaleria.mx/evento/${createdSlug}`
     navigator.clipboard.writeText(url)
-    alert('Enlace copiado al portapapeles')
+    showToast('Enlace copiado al portapapeles')
   }
 
   useEffect(() => {
@@ -198,19 +303,48 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }, [])
 
   useEffect(() => {
+    const autoCloseExpired = async (evs) => {
+      const now = new Date()
+      const expired = evs.filter(ev => {
+        if (!ev.date) return false
+        const t = ev.hora || '23:59'
+        return new Date(`${ev.date}T${t}`) < now
+      })
+      if (expired.length === 0) return { evs, changed: false }
+      await Promise.all(expired.map(e => closeEvent(e.id)))
+      const [fresh, freshArchived] = await Promise.all([getEvents(), getArchivedEvents()])
+      return { evs: fresh, freshArchived, changed: true, names: expired.map(e => e.name) }
+    }
+
     setLoading(true)
-    Promise.all([getEvents(), getAllActivityRegistrations()])
-      .then(([evs, regs]) => {
-        setEvents(evs)
+    Promise.all([getEvents(), getArchivedEvents(), getAllActivityRegistrations()])
+      .then(async ([evs, archived, regs]) => {
+        const { evs: finalEvs, freshArchived, changed, names } = await autoCloseExpired(evs)
+        setEvents(finalEvs)
+        setArchivedEvents(changed ? freshArchived : archived)
         setAllRegs(regs)
+        if (changed) showToast(`${names.length === 1 ? `"${names[0]}"` : `${names.length} eventos`} cerrado${names.length > 1 ? 's' : ''} automáticamente`)
         const eid = searchParams.get('eid')
-        if (eid && evs.length > 0) {
-          const ev = evs.find(e => String(e.id) === String(eid))
+        if (eid && finalEvs.length > 0) {
+          const ev = finalEvs.find(e => String(e.id) === String(eid))
           if (ev) viewAttendees(ev)
         }
       })
       .catch(err => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
+
+    // Re-check every 60 s while the app is open
+    const intervalId = setInterval(async () => {
+      const evs = await getEvents().catch(() => [])
+      if (evs.length === 0) return
+      const { changed, names, evs: fresh, freshArchived } = await autoCloseExpired(evs)
+      if (changed) {
+        setEvents(fresh)
+        setArchivedEvents(freshArchived)
+        showToast(`"${names.join(', ')}" cerrado automáticamente`)
+      }
+    }, 60_000)
+    return () => clearInterval(intervalId)
 
     const timer = setTimeout(() => setShowSplash(false), 2000)
     return () => clearTimeout(timer)
@@ -261,36 +395,39 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }
 
   const handleNavConfirmados = () => {
-    viewAllAttendees('confirmed')
+    viewAllAttendees('paid')
   }
 
   const handleNavPendientes = () => {
     viewAllAttendees('pending')
   }
 
-  const isCheckedIn = (r) => r.checked_in === 1 || r.checked_in === '1'
-  const isPaid = (r) => r.paid === 1 || r.paid === '1'
+  const isCheckedIn  = (r) => r.checked_in === 1  || r.checked_in === '1'
+  const isPaid       = (r) => r.paid === 1         || r.paid === '1'
+  const isTransfer   = (r) => (r.payment_method || '').toLowerCase().includes('transfer')
 
-  const totalConfirmed = allRegs.filter(isCheckedIn).length
-  const totalPending = allRegs.filter(r => !isCheckedIn(r)).length
+  const totalPaid    = allRegs.filter(isPaid).length
+  const totalPending = allRegs.filter(r => !isPaid(r)).length
 
   const filteredAttendees = attendees.filter(a => {
     const matchSearch = (a.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
       (a.phone || '').includes(search)
     if (!matchSearch) return false
-    if (filter === 'confirmed') return isCheckedIn(a)
-    if (filter === 'pending') return !isCheckedIn(a)
+    if (filter === 'paid')     return isPaid(a)
+    if (filter === 'pending')  return !isPaid(a)
+    if (filter === 'attended') return isCheckedIn(a)
     return true
   })
 
-  const checkedCount = attendees.filter(isCheckedIn).length
-  const pendingCount = attendees.length - checkedCount
+  const paidCount     = attendees.filter(isPaid).length
+  const pendingCount  = attendees.filter(r => !isPaid(r)).length
+  const attendedCount = attendees.filter(isCheckedIn).length
 
   // ── Active tab logic ──
   const activeTab = view === 'dashboard'
     ? 'home'
     : view === 'create' || view === 'events_list' ? 'events'
-    : filter === 'confirmed' ? 'confirmed'
+    : filter === 'paid' ? 'confirmed'
     : filter === 'pending' ? 'pending'
     : 'asistentes'
 
@@ -366,9 +503,9 @@ export default function StaffApp({ onStartScan, onLogout }) {
         onClick={handleNavConfirmados}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12"/>
+          <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
         </svg>
-        <span>Confirmados</span>
+        <span>Pagados</span>
       </button>
     </nav>
   )
@@ -379,14 +516,47 @@ export default function StaffApp({ onStartScan, onLogout }) {
       <div className="sa-root">
         {showSplash && (
           <div className="sa-splash">
-            <img src="/logo/logNegro.svg" alt="Loading..." className="sa-splash-logo" />
+            <div className="sa-splash-skeleton">
+              {/* top bar */}
+              <div className="sa-skel-topbar">
+                <div className="sa-skel-avatar" />
+                <div className="sa-skel-greeting">
+                  <div className="sa-skel-line sa-skel-line--sm" />
+                  <div className="sa-skel-line sa-skel-line--md" />
+                </div>
+                <div className="sa-skel-icon-btn" />
+              </div>
+              {/* stats */}
+              <div className="sa-skel-stats">
+                {[1,2,3].map(i => <div key={i} className="sa-skel-stat-box" />)}
+              </div>
+              {/* tabs */}
+              <div className="sa-skel-tabs">
+                {[1,2,3].map(i => <div key={i} className="sa-skel-tab" />)}
+              </div>
+              {/* cards */}
+              <div className="sa-skel-cards">
+                {[1,2,3].map(i => (
+                  <div key={i} className="sa-skel-card">
+                    <div className="sa-skel-card-icon" />
+                    <div className="sa-skel-card-body">
+                      <div className="sa-skel-line sa-skel-line--lg" />
+                      <div className="sa-skel-line sa-skel-line--md" />
+                      <div className="sa-skel-line sa-skel-line--sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
         <section className="sa-header-hero-section">
           <div className="sa-top-bar">
             <div className="sa-top-left">
-              <div className="sa-avatar-circle">{role === 'admin' ? 'A' : 'S'}</div>
+              <div className="sa-avatar-circle">
+                <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="sa-avatar-logo" />
+              </div>
               <div className="sa-greeting-block">
                 <span className="sa-greeting-sub">Bienvenido</span>
                 <span className="sa-greeting-role">{role === 'admin' ? 'Administrador' : 'Staff'}</span>
@@ -419,8 +589,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
               <span className="sa-stat-label">Eventos</span>
             </div>
             <div className="sa-stat-card sa-stat-card--active">
-              <span className="sa-stat-num">{loading ? '…' : totalConfirmed}</span>
-              <span className="sa-stat-label">Confirmados</span>
+              <span className="sa-stat-num">{loading ? '…' : totalPaid}</span>
+              <span className="sa-stat-label">Pagados</span>
             </div>
             <div className="sa-stat-card">
               <span className="sa-stat-num">{loading ? '…' : totalPending}</span>
@@ -521,7 +691,6 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       )}
                     </div>
 
-                    {/* Botones de compartir */}
                     {ev.slug && (
                       <div className="sa-event-share" onClick={e => e.stopPropagation()}>
                         <button
@@ -538,10 +707,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                           WhatsApp
                         </button>
-                        <button className="sa-share-btn sa-share-btn--share" onClick={e => handleNativeShare(ev, e)}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                          Compartir
-                        </button>
+                        {canCreate && (
+                          <button className="sa-share-btn sa-share-btn--close" onClick={e => handleCloseEvent(ev, e)}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            Cerrar
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -551,6 +724,56 @@ export default function StaffApp({ onStartScan, onLogout }) {
           )}
         </div>
 
+        {archivedEvents.length > 0 && (
+          <div className="sa-history-section">
+            <div className="sa-section-header">
+              <h2 className="sa-section-title">Historial</h2>
+              <span className="sa-badge-count">{archivedEvents.length}</span>
+            </div>
+            <div className="sa-event-list">
+              {archivedEvents.map((ev, idx) => {
+                const evRegs = allRegs.filter(r => String(r.event_id) === String(ev.id))
+                const total = evRegs.length
+                const paid = evRegs.filter(isPaid).length
+                const attended = evRegs.filter(isCheckedIn).length
+                return (
+                  <div key={ev.id} className="sa-event-card sa-event-card--archived" style={{ animationDelay: `${idx * 0.05}s`, cursor: 'pointer' }} onClick={() => viewAttendees(ev)}>
+                    <div className="sa-event-main">
+                      <div className="sa-icon-box sa-icon-box--archived">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                        </svg>
+                      </div>
+                      <div className="sa-ev-info">
+                        <span className="sa-ev-name">{ev.name}</span>
+                        <span className="sa-ev-date">{ev.date || 'Sin fecha'}</span>
+                      </div>
+                      <div className="sa-arrow-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="sa-archived-stats">
+                      <span className="sa-archived-stat"><b>{total}</b> registrados</span>
+                      <span className="sa-archived-stat sa-archived-stat--paid"><b>{paid}</b> pagados</span>
+                      <span className="sa-archived-stat sa-archived-stat--attended"><b>{attended}</b> asistieron</span>
+                    </div>
+                    {canCreate && (
+                      <button className="sa-new-edition-btn sa-new-edition-btn--full" onClick={e => { e.stopPropagation(); setShowEditionPicker(ev) }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+                        </svg>
+                        Nueva edición
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {canCreate && view !== 'create' && (
           <button className="sa-fab" onClick={handleCreateView} aria-label="Nuevo Evento">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -559,7 +782,46 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </button>
         )}
 
+        {showEditionPicker && (
+          <div className="sa-picker-overlay" onClick={() => setShowEditionPicker(null)}>
+            <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+              <div className="sa-picker-header">
+                <span className="sa-picker-title">Nueva edición</span>
+                <span className="sa-picker-subtitle">{showEditionPicker.name}</span>
+              </div>
+              <button className="sa-edition-opt sa-edition-opt--primary" onClick={() => handleRenovarIgual(showEditionPicker)}>
+                <div className="sa-edition-opt-icon sa-edition-opt-icon--green">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                </div>
+                <div className="sa-edition-opt-body">
+                  <span className="sa-edition-opt-title">Renovar igual</span>
+                  <span className="sa-edition-opt-sub">Lista nueva · siguiente semana</span>
+                  <div className="sa-edition-opt-tags">
+                    {parseFloat(showEditionPicker.price) > 0
+                      ? <span className="sa-edition-tag">${parseFloat(showEditionPicker.price).toFixed(0)}</span>
+                      : <span className="sa-edition-tag">Gratuito</span>}
+                    {parseInt(showEditionPicker.capacity) > 0 && <span className="sa-edition-tag">{showEditionPicker.capacity} lugares</span>}
+                    {showEditionPicker.hora && <span className="sa-edition-tag">{showEditionPicker.hora}</span>}
+                  </div>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button className="sa-edition-opt" onClick={() => handlePersonalizar(showEditionPicker)}>
+                <div className="sa-edition-opt-icon sa-edition-opt-icon--olive">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <div className="sa-edition-opt-body">
+                  <span className="sa-edition-opt-title">Personalizar</span>
+                  <span className="sa-edition-opt-sub">Editar detalles antes de publicar</span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        )}
         <BottomNav />
+        {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+        {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
     )
   }
@@ -634,8 +896,19 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       </button>
                       <button
                         className="sa-edit-card-btn"
+                        onClick={e => handleCloseEvent(ev, e)}
+                        style={{ background: '#fff7ed', color: '#ea580c' }}
+                        title="Cerrar evento"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="sa-edit-card-btn"
                         onClick={() => handleDeleteEvent(ev)}
                         style={{ background: '#fff1f2', color: '#ef4444' }}
+                        title="Eliminar evento"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
@@ -647,6 +920,44 @@ export default function StaffApp({ onStartScan, onLogout }) {
               ))}
             </div>
           )}
+
+          {archivedEvents.length > 0 && (
+            <>
+              <div className="sa-section-header" style={{ marginTop: 24 }}>
+                <h2 className="sa-section-title">Historial</h2>
+                <span className="sa-badge-count">{archivedEvents.length}</span>
+              </div>
+              <div className="sa-event-list">
+                {archivedEvents.map((ev, idx) => {
+                  const evRegs = allRegs.filter(r => String(r.event_id) === String(ev.id))
+                  return (
+                    <div key={ev.id} className="sa-event-card sa-event-card--archived" style={{ animationDelay: `${idx * 0.05}s`, cursor: 'pointer' }} onClick={() => viewAttendees(ev)}>
+                      <div className="sa-event-main" style={{ marginBottom: 0 }}>
+                        <div className="sa-icon-box sa-icon-box--archived">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+                          </svg>
+                        </div>
+                        <div className="sa-ev-info">
+                          <span className="sa-ev-name">{ev.name}</span>
+                          <span className="sa-ev-date">{ev.date || 'Sin fecha'} · {evRegs.length} reg.</span>
+                        </div>
+                        <button
+                          className="sa-new-edition-btn sa-new-edition-btn--compact"
+                          onClick={e => { e.stopPropagation(); setShowEditionPicker(ev) }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+                          </svg>
+                          Nueva edición
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         {canCreate && (
@@ -657,7 +968,46 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </button>
         )}
 
+        {showEditionPicker && (
+          <div className="sa-picker-overlay" onClick={() => setShowEditionPicker(null)}>
+            <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+              <div className="sa-picker-header">
+                <span className="sa-picker-title">Nueva edición</span>
+                <span className="sa-picker-subtitle">{showEditionPicker.name}</span>
+              </div>
+              <button className="sa-edition-opt sa-edition-opt--primary" onClick={() => handleRenovarIgual(showEditionPicker)}>
+                <div className="sa-edition-opt-icon sa-edition-opt-icon--green">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+                </div>
+                <div className="sa-edition-opt-body">
+                  <span className="sa-edition-opt-title">Renovar igual</span>
+                  <span className="sa-edition-opt-sub">Lista nueva · siguiente semana</span>
+                  <div className="sa-edition-opt-tags">
+                    {parseFloat(showEditionPicker.price) > 0
+                      ? <span className="sa-edition-tag">${parseFloat(showEditionPicker.price).toFixed(0)}</span>
+                      : <span className="sa-edition-tag">Gratuito</span>}
+                    {parseInt(showEditionPicker.capacity) > 0 && <span className="sa-edition-tag">{showEditionPicker.capacity} lugares</span>}
+                    {showEditionPicker.hora && <span className="sa-edition-tag">{showEditionPicker.hora}</span>}
+                  </div>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button className="sa-edition-opt" onClick={() => handlePersonalizar(showEditionPicker)}>
+                <div className="sa-edition-opt-icon sa-edition-opt-icon--olive">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <div className="sa-edition-opt-body">
+                  <span className="sa-edition-opt-title">Personalizar</span>
+                  <span className="sa-edition-opt-sub">Editar detalles antes de publicar</span>
+                </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+          </div>
+        )}
         <BottomNav />
+        {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+        {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
     )
   }
@@ -702,6 +1052,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
             </div>
           </div>
           <BottomNav />
+          {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+          {toast && <StaffToast message={toast.message} type={toast.type} />}
         </div>
       )
     }
@@ -815,6 +1167,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </div>
 
         <BottomNav />
+        {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+        {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
     )
   }
@@ -822,86 +1176,92 @@ export default function StaffApp({ onStartScan, onLogout }) {
   // ── Attendees View ──
   return (
     <div className="sa-root">
-      <div className="sa-sticky-top sa-top-gradient">
-        <header className="sa-attendees-header">
-          <button className="sa-back-btn" onClick={goBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <div className="sa-header-titles">
-            <span className="sa-h-title">{selectedEvent ? selectedEvent.name : 'Todos los Asistentes'}</span>
-            <span className="sa-h-subtitle">{selectedEvent ? (selectedEvent.date || 'Sin fecha') : 'Registros globales del hotel'}</span>
-          </div>
-          <button className="sa-top-btn" onClick={onLogout} aria-label="Salir">
+      <div className="sa-sticky-top">
+        <div className="sa-top-gradient">
+          <header className="sa-attendees-header">
+            <button className="sa-back-btn" onClick={goBack}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+            </button>
+            <div className="sa-header-titles">
+              <span className="sa-h-title">{selectedEvent ? selectedEvent.name : 'Todos los Asistentes'}</span>
+              <span className="sa-h-subtitle">
+                {selectedEvent
+                  ? `${selectedEvent.date || 'Sin fecha'}${selectedEvent.active === 0 || selectedEvent.active === '0' ? ' · Cerrado' : ''}`
+                  : 'Registros globales del hotel'}
+              </span>
+            </div>
+            <button className="sa-top-btn" onClick={onLogout} aria-label="Salir">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4757" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
             </button>
-        </header>
+          </header>
 
-        <div className="sa-search-container">
-          <div className="sa-search-box">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="sa-search-icon">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="search"
-              placeholder="Buscar por nombre o teléfono..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {search && (
-              <button className="sa-search-clear" onClick={() => setSearch('')}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            )}
+          <div className="sa-search-container">
+            <div className="sa-search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="sa-search-icon">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="search"
+                placeholder="Buscar por nombre o teléfono..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && (
+                <button className="sa-search-clear" onClick={() => setSearch('')}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="sa-attendees-stats-row">
+            <div className="sa-stat-card">
+              <span className="sa-stat-num">{loading ? '…' : attendees.length}</span>
+              <span className="sa-stat-label">Total</span>
+            </div>
+            <div className="sa-stat-card sa-stat-card--active">
+              <span className="sa-stat-num">{loading ? '…' : paidCount}</span>
+              <span className="sa-stat-label">Pagados</span>
+            </div>
+            <div className="sa-stat-card">
+              <span className="sa-stat-num">{loading ? '…' : pendingCount}</span>
+              <span className="sa-stat-label">Pendientes</span>
+            </div>
           </div>
         </div>
 
-        <div className="sa-attendees-stats-row">
-          <div className="sa-stat-card">
-            <span className="sa-stat-num">{loading ? '…' : attendees.length}</span>
-            <span className="sa-stat-label">Total</span>
-          </div>
-          <div className="sa-stat-card sa-stat-card--active">
-            <span className="sa-stat-num">{loading ? '…' : checkedCount}</span>
-            <span className="sa-stat-label">Confirmados</span>
-          </div>
-          <div className="sa-stat-card">
-            <span className="sa-stat-num">{loading ? '…' : pendingCount}</span>
-            <span className="sa-stat-label">Pendientes</span>
-          </div>
-        </div>
-
-        <div className="sa-filter-scroll">
+        <div className="sa-filter-bar">
+          {/* Selector de evento */}
           <button
             className="sa-filter-chip sa-filter-chip--event"
             onClick={() => setShowEventPicker(true)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <path d="M6 9l6 6 6-9"/>
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
-            {selectedEvent ? selectedEvent.name : 'Todos'}
+            <span className="sa-chip-event-label">{selectedEvent ? selectedEvent.name : 'Todos los eventos'}</span>
           </button>
-          
-          {Object.entries(FILTERS).map(([key, label]) => {
-            if (key === 'all') return null // Handled by event picker chip
-            return (
-              <button
-                key={key}
-                className={`sa-filter-chip ${filter === key ? 'sa-filter-chip--active' : ''}`}
-                onClick={() => setFilter(key)}
-              >
-                {key === 'confirmed' && <span className="sa-chip-dot sa-chip-dot--ok" />}
-                {key === 'pending' && <span className="sa-chip-dot sa-chip-dot--pending" />}
-                {label}
-              </button>
-            )
-          })}
+
+          {/* Selector de estado — un solo botón desplegable */}
+          <button
+            className={`sa-filter-chip sa-filter-chip--estado ${filter !== 'all' ? 'sa-filter-chip--active' : ''}`}
+            onClick={() => setShowFilterPicker(true)}
+          >
+            {filter === 'all'      && <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Todos</>}
+            {filter === 'paid'     && <><span className="sa-chip-dot sa-chip-dot--paid" />Pagados <span className="sa-chip-count">{paidCount}</span></>}
+            {filter === 'pending'  && <><span className="sa-chip-dot sa-chip-dot--pending" />Pendientes <span className="sa-chip-count">{pendingCount}</span></>}
+            {filter === 'attended' && <><span className="sa-chip-dot sa-chip-dot--attended" />Asistieron <span className="sa-chip-count">{attendedCount}</span></>}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" style={{ marginLeft: 2 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -935,6 +1295,40 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </div>
       )}
 
+      {showFilterPicker && (
+        <div className="sa-picker-overlay" onClick={() => setShowFilterPicker(false)}>
+          <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+            <div className="sa-picker-header">
+              <span className="sa-picker-title">Filtrar por estado</span>
+              <button className="sa-picker-close" onClick={() => setShowFilterPicker(false)}>✕</button>
+            </div>
+            <div className="sa-picker-list">
+              {[
+                { key: 'all',      label: 'Todos',       count: attendees.length, dot: null },
+                { key: 'paid',     label: 'Pagados',     count: paidCount,        dot: 'sa-chip-dot--paid' },
+                { key: 'pending',  label: 'Pendientes',  count: pendingCount,     dot: 'sa-chip-dot--pending' },
+                { key: 'attended', label: 'Asistieron',  count: attendedCount,    dot: 'sa-chip-dot--attended' },
+              ].map(({ key, label, count, dot }) => (
+                <button
+                  key={key}
+                  className={`sa-picker-item ${filter === key ? 'sa-picker-item--sel' : ''}`}
+                  onClick={() => { setFilter(key); setShowFilterPicker(false) }}
+                >
+                  <span className="sa-picker-item__left">
+                    {dot && <span className={`sa-chip-dot ${dot}`} style={{ width: 9, height: 9 }} />}
+                    {label}
+                  </span>
+                  <span className="sa-picker-item__right">
+                    <span className="sa-picker-count">{count}</span>
+                    {filter === key && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="sa-body">
         {loading ? (
           <div className="sa-attendee-list">
@@ -942,23 +1336,40 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </div>
         ) : (
           <div className={`sa-attendee-list ${search ? 'sa-searching' : ''}`}>
-            {filteredAttendees.map((a, idx) => (
-              <div key={a.id} className="sa-attendee-card" style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}>
-                <div className={`sa-status-dot ${isCheckedIn(a) ? 'sa-dot--confirmed' : 'sa-dot--pending'}`} />
-                <div className="sa-att-info">
-                  <span className="sa-att-name">{a.full_name}</span>
-                  <span className="sa-att-phone">{a.phone}</span>
+            {filteredAttendees.map((a, idx) => {
+              const paid      = isPaid(a)
+              const attended  = isCheckedIn(a)
+              const transfer  = isTransfer(a)
+              const dotClass  = attended ? 'sa-dot--attended'
+                : paid      ? 'sa-dot--paid'
+                : transfer  ? 'sa-dot--transfer'
+                :             'sa-dot--unpaid'
+              return (
+                <div key={a.id} className="sa-attendee-card" style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}>
+                  <div className={`sa-status-dot ${dotClass}`} />
+                  <div className="sa-att-info">
+                    <span className="sa-att-name">{a.full_name}</span>
+                    <span className="sa-att-phone">{a.phone}</span>
+                  </div>
+                  <div className="sa-att-tags">
+                    {attended ? (
+                      <span className="sa-tag sa-tag--attended">Asistió</span>
+                    ) : paid ? (
+                      <span className="sa-tag sa-tag--paid">
+                        {transfer ? 'Transferencia' : 'Pagado'}
+                      </span>
+                    ) : transfer ? (
+                      <span className="sa-tag sa-tag--transfer">Transf. pend.</span>
+                    ) : (
+                      <span className="sa-tag sa-tag--unpaid">Sin pago</span>
+                    )}
+                  </div>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
                 </div>
-                <div className="sa-att-tags">
-                  <span className={`sa-tag ${isCheckedIn(a) ? 'sa-tag--paid' : 'sa-tag--pending'}`}>
-                    {isCheckedIn(a) ? 'Confirmado' : 'Pendiente'}
-                  </span>
-                </div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </div>
-            ))}
+              )
+            })}
             {filteredAttendees.length === 0 && (
               <div className="sa-empty" style={{ padding: '40px', textAlign: 'center' }}>
                 <p>No se encontraron resultados</p>
@@ -976,7 +1387,104 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </button>
       )}
 
+      {showEditionPicker && (
+        <div className="sa-picker-overlay" onClick={() => setShowEditionPicker(null)}>
+          <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+            <div className="sa-picker-header">
+              <span className="sa-picker-title">Nueva edición</span>
+              <span className="sa-picker-subtitle">{showEditionPicker.name}</span>
+            </div>
+            <button className="sa-edition-opt sa-edition-opt--primary" onClick={() => handleRenovarIgual(showEditionPicker)}>
+              <div className="sa-edition-opt-icon sa-edition-opt-icon--green">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+                </svg>
+              </div>
+              <div className="sa-edition-opt-body">
+                <span className="sa-edition-opt-title">Renovar igual</span>
+                <span className="sa-edition-opt-sub">
+                  {allRegs.filter(r => String(r.event_id) === String(showEditionPicker.id)).length} participantes copiados · siguiente semana
+                </span>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+            <button className="sa-edition-opt" onClick={() => handlePersonalizar(showEditionPicker)}>
+              <div className="sa-edition-opt-icon sa-edition-opt-icon--olive">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </div>
+              <div className="sa-edition-opt-body">
+                <span className="sa-edition-opt-title">Personalizar</span>
+                <span className="sa-edition-opt-sub">Editar detalles antes de publicar</span>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
+      {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+      {toast && <StaffToast message={toast.message} type={toast.type} />}
+    </div>
+  )
+}
+
+// ── In-app Modal ──────────────────────────────────────────
+function StaffModal({ icon, title, message, confirmLabel = 'Confirmar', danger = false, onConfirm, onCancel }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  const iconEl = icon === 'delete' ? (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+    </svg>
+  ) : icon === 'lock' ? (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  ) : (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  )
+
+  return (
+    <div className="sa-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className="sa-modal-sheet">
+        <div className={`sa-modal-icon-wrap ${danger ? 'sa-modal-icon-wrap--danger' : 'sa-modal-icon-wrap--warn'}`}>
+          {iconEl}
+        </div>
+        <h3 className="sa-modal-title">{title}</h3>
+        <p className="sa-modal-msg">{message}</p>
+        <div className="sa-modal-actions">
+          <button className="sa-modal-btn sa-modal-btn--cancel" onClick={onCancel}>Cancelar</button>
+          <button className={`sa-modal-btn ${danger ? 'sa-modal-btn--danger' : 'sa-modal-btn--confirm'}`} onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Toast notification ────────────────────────────────────
+function StaffToast({ message, type }) {
+  const icon = type === 'error'
+    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+  return (
+    <div className={`sa-toast sa-toast--${type ?? 'success'}`}>
+      <span className="sa-toast-icon">{icon}</span>
+      <span className="sa-toast-msg">{message}</span>
     </div>
   )
 }

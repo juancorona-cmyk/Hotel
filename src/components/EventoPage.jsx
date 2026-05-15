@@ -23,6 +23,12 @@ export default function EventoPage() {
   const [registrationId, setRegistrationId] = useState(null)
   const [copied, setCopied]     = useState(false)
   const [ticketCopied, setTicketCopied] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [showTransferInfo, setShowTransferInfo] = useState(false)
+
+  const HOTEL_WA = '5214431234567'
+  const HOTEL_CLABE = '5512382370397442'
+  const HOTEL_TITULAR = 'Hotel Punta Galería'
 
   const pageUrl = window.location.href
 
@@ -78,6 +84,7 @@ export default function EventoPage() {
   const handlePayment = async (method) => {
     setError('')
     setSubmitting(true)
+    setShowTransferInfo(false)
     try {
       const regId = await createActivityRegistration(
         event.activity_id ?? 0,
@@ -98,6 +105,7 @@ export default function EventoPage() {
         source: 'link'
       })
       if (spotsLeft !== null) setSpotsLeft(s => Math.max(0, s - 1))
+      setPaymentMethod(method)
       setRegistrationId(regId)
       setSuccess(true)
     } catch {
@@ -275,6 +283,26 @@ export default function EventoPage() {
                     </div>
                   )}
 
+                  {paymentMethod === 'transferencia' && registrationId && (
+                    <div className="ep-transfer-success">
+                      <div className="ep-transfer-success__icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                      </div>
+                      <div className="ep-transfer-success__text">
+                        <strong>Envía tu comprobante de transferencia</strong>
+                        <span>El staff del hotel lo revisará y confirmará tu pago antes del evento.</span>
+                      </div>
+                      <a
+                        className="ep-transfer-success__btn"
+                        href={`https://wa.me/${HOTEL_WA}?text=${encodeURIComponent(`Hola, acabo de registrarme para el evento *${event?.name}* 🏨\nNombre: ${fullName}\nTicket: #${String(registrationId).padStart(4, '0')}\n\nAdjunto mi comprobante de transferencia.`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Enviar comprobante por WhatsApp
+                      </a>
+                    </div>
+                  )}
+
                   <div className="ep-success-actions">
                     {registrationId && (
                       <button
@@ -369,11 +397,47 @@ export default function EventoPage() {
                   <h2 className="ep-form-title">Método de pago</h2>
                   <p className="ep-pay-sub">¿Cómo realizarás tu pago{event.price > 0 ? ` de $${parseFloat(event.price).toFixed(2)}` : ''}?</p>
 
+                  {showTransferInfo ? (
+                    <div className="ep-transfer-panel">
+                      <div className="ep-transfer-panel__header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        <span>Datos para transferencia</span>
+                      </div>
+                      <div className="ep-transfer-panel__row">
+                        <span className="ep-transfer-panel__label">CLABE</span>
+                        <strong className="ep-transfer-panel__value">{HOTEL_CLABE}</strong>
+                      </div>
+                      <div className="ep-transfer-panel__row">
+                        <span className="ep-transfer-panel__label">Titular</span>
+                        <strong className="ep-transfer-panel__value">{HOTEL_TITULAR}</strong>
+                      </div>
+                      {event.price > 0 && (
+                        <div className="ep-transfer-panel__row">
+                          <span className="ep-transfer-panel__label">Monto</span>
+                          <strong className="ep-transfer-panel__value">${parseFloat(event.price).toFixed(2)}</strong>
+                        </div>
+                      )}
+                      <p className="ep-transfer-panel__note">
+                        Realiza la transferencia y después confirma tu registro. En la siguiente pantalla encontrarás el enlace para enviar tu comprobante por WhatsApp al hotel.
+                      </p>
+                      <button
+                        type="button"
+                        className="ep-submit"
+                        onClick={() => handlePayment('transferencia')}
+                        disabled={submitting}
+                      >
+                        {submitting ? 'Registrando…' : 'Ya hice la transferencia · Confirmar registro'}
+                      </button>
+                      <button type="button" className="ep-back-btn" onClick={() => setShowTransferInfo(false)} style={{ marginTop: 8 }}>
+                        ← Regresar
+                      </button>
+                    </div>
+                  ) : (
                   <div className="ep-pay-options">
                     <button
                       type="button"
                       className="ep-pay-card"
-                      onClick={() => handlePayment('transferencia')}
+                      onClick={() => setShowTransferInfo(true)}
                       disabled={submitting}
                     >
                       <div className="ep-pay-card__icon">
@@ -384,7 +448,7 @@ export default function EventoPage() {
                       </div>
                       <div className="ep-pay-card__info">
                         <strong>Transferencia bancaria</strong>
-                        <span>Te enviamos los datos por WhatsApp</span>
+                        <span>Ver CLABE y confirmar pago</span>
                       </div>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
@@ -408,6 +472,7 @@ export default function EventoPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                   </div>
+                  )}
 
                   {error && <p className="ep-error" style={{ marginTop: 12 }}>{error}</p>}
                   {submitting && <p style={{ textAlign:'center', color:'#888', fontSize:13, marginTop:12 }}>Registrando…</p>}
