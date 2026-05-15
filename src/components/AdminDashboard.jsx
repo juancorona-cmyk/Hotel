@@ -78,6 +78,19 @@ function todayLabel() {
 function clock() {
   return new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
+// SQLite stores datetime('now') as UTC without 'Z' — append it so JS parses correctly
+function parseDBDate(str) {
+  if (!str) return new Date(NaN)
+  const s = str.trim()
+  return new Date(s.endsWith('Z') || s.includes('+') ? s : s.replace(' ', 'T') + 'Z')
+}
+function fmtDBDate(str) {
+  return parseDBDate(str).toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Mexico_City',
+  })
+}
 
 // ── Fill last 14 days ────────────────────────────────────
 function buildChartData(byDayType) {
@@ -942,12 +955,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
                     </td>
                     <td><strong style={{ textTransform: 'capitalize' }}>{r.room ?? '—'}</strong></td>
                     {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
-                    <td className="adm-table__date">
-                      {new Date(r.created_at).toLocaleString('es-MX', {
-                        day: '2-digit', month: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                      })}
-                    </td>
+                    <td className="adm-table__date">{fmtDBDate(r.created_at)}</td>
                     <td>
                       <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id)} title="Eliminar">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
@@ -1284,20 +1292,14 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
                             <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> PENDIENTE</>
                           )}
                         </button>
-                        {r.paid_at && <div className="adm-paid-at">{new Date(r.paid_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short' })}</div>}
+                        {r.paid_at && <div className="adm-paid-at">{parseDBDate(r.paid_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short', timeZone:'America/Mexico_City' })}</div>}
                       </td>
                     )}
                     <td>
                       <span className="adm-how-badge">{r.how_found || '—'}</span>
                     </td>
                     <td className="adm-table__date">
-                      {new Date(r.created_at).toLocaleString('es-MX', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {fmtDBDate(r.created_at)}
                     </td>
                     {view === 'confirmed' && (
                       <td>
@@ -1508,7 +1510,7 @@ function EventosSection() {
     const combined = [
       ...r1.map(r => ({ ...r, source: 'event' })),
       ...r2.map(r => ({ ...r, source: 'activity', email: '—', notes: r.how_found || '—' }))
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    ].sort((a, b) => parseDBDate(b.created_at) - parseDBDate(a.created_at))
     setRegistrations(combined)
     setRegLoading(false)
   }
@@ -1627,7 +1629,7 @@ function EventosSection() {
                           {r.source === 'activity' ? 'Actividad' : 'Evento'}
                         </span>
                       </td>
-                      <td className="adm-table__date">{new Date(r.created_at).toLocaleDateString()}</td>
+                      <td className="adm-table__date">{fmtDBDate(r.created_at)}</td>
                       <td>
                         <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDeleteReg(r.id, r.full_name, r.source)} title="Eliminar">
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
