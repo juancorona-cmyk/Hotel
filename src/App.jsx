@@ -80,25 +80,27 @@ function CheckInBrowserGateway() {
     },
     hero: {
       background: 'linear-gradient(160deg,#3d4d10 0%,#5a6c1e 100%)',
-      padding: '52px 24px 36px', display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '48px 24px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center',
     },
     logoRow: {
-      display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28,
-      alignSelf: 'flex-start',
+      display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32,
+      alignSelf: 'stretch',
+      background: 'rgba(0,0,0,0.15)', borderRadius: 14,
+      padding: '10px 14px',
     },
     logoBox: {
-      width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.18)',
+      width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.2)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
-    hotelName: { color: '#fff', fontWeight: 800, fontSize: 14, lineHeight: 1.2 },
-    hotelSub:  { color: 'rgba(255,255,255,0.65)', fontWeight: 600, fontSize: 11, marginTop: 2 },
+    hotelName: { color: '#fff', fontWeight: 800, fontSize: 13.5, lineHeight: 1.2 },
+    hotelSub:  { color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontSize: 10.5, marginTop: 2 },
     heroIcon: {
-      width: 76, height: 76, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
-      border: '2px solid rgba(255,255,255,0.3)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+      width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.18)',
+      border: '2px solid rgba(255,255,255,0.35)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20,
     },
-    heroTitle: { color: '#fff', fontWeight: 900, fontSize: 22, margin: '0 0 8px', textAlign: 'center' },
-    heroSub:   { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 600, textAlign: 'center', lineHeight: 1.55 },
+    heroTitle: { color: '#fff', fontWeight: 900, fontSize: 24, margin: '0 0 10px', textAlign: 'center' },
+    heroSub:   { color: 'rgba(255,255,255,0.78)', fontSize: 13.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6 },
     body: { flex: 1, padding: '0 16px 40px' },
     ticket: {
       background: '#fff', borderRadius: '0 0 24px 24px',
@@ -144,7 +146,10 @@ function CheckInBrowserGateway() {
       <div style={S.hero}>
         <div style={S.logoRow}>
           <div style={S.logoBox}>
-            <img src="/logo/logNegro.svg" alt="" style={{ height: 24, filter: 'brightness(0) invert(1)' }} />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
           </div>
           <div>
             <div style={S.hotelName}>Hotel Punta Galería</div>
@@ -193,7 +198,10 @@ function CheckInBrowserGateway() {
       <div style={S.hero}>
         <div style={S.logoRow}>
           <div style={S.logoBox}>
-            <img src="/logo/logNegro.svg" alt="" style={{ height: 24, filter: 'brightness(0) invert(1)' }} />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
           </div>
           <div>
             <div style={S.hotelName}>Hotel Punta Galería</div>
