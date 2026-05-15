@@ -474,24 +474,20 @@ export default function ActivityRegModal({ activity, event, onClose }) {
 
             <h2 className="arm-success__title">¡Registro exitoso!</h2>
 
-            {/* Ticket card */}
+            {/* Ticket card — dos columnas: # izquierda, evento+fecha derecha */}
             <div className="arm-success__ticket">
-              <div className="arm-success__ticket-top">
-                <span className="arm-success__ticket-label">TICKET DE ACCESO</span>
-                <span className="arm-success__ticket-id">#{ticketId}</span>
-                <span className="arm-success__ticket-name">{fullName}</span>
-
-                {/* Evento y fecha — siempre visible */}
-                <div className="arm-success__ticket-event-info">
-                  <span className="arm-success__ticket-event-row">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-                      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
+              <div className="arm-success__ticket-cols">
+                <div className="arm-success__ticket-left">
+                  <span className="arm-success__ticket-label">TICKET</span>
+                  <span className="arm-success__ticket-id">#{ticketId}</span>
+                </div>
+                <div className="arm-success__ticket-divider" aria-hidden="true"/>
+                <div className="arm-success__ticket-right">
+                  <span className="arm-success__ticket-event-name">
                     {event?.name || activity?.name || 'Evento'}
                   </span>
                   {event?.date && (
-                    <span className="arm-success__ticket-event-row">
+                    <span className="arm-success__ticket-date">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                       </svg>
@@ -499,14 +495,6 @@ export default function ActivityRegModal({ activity, event, onClose }) {
                     </span>
                   )}
                 </div>
-              </div>
-
-              <div className="arm-success__ticket-dots" aria-hidden="true"/>
-              <div className="arm-success__ticket-bottom">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="2" strokeLinecap="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span>Descarga o guarda este ticket. El staff lo escaneará a tu llegada.</span>
               </div>
             </div>
 
