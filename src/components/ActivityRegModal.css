@@ -336,21 +336,24 @@
   letter-spacing: 0.06em;
 }
 
-.arm-success__ticket-meta {
+.arm-success__ticket-event-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 24px 14px;
-  border-top: 1px solid #e8f0cc;
+  gap: 5px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #c8d89a;
+  width: 100%;
 }
 
-.arm-success__ticket-meta-row {
+.arm-success__ticket-event-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 700;
-  color: #3d5012;
+  color: #4a6010;
 }
 
 .arm-success__ticket-dots {
