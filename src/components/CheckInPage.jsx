@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE } from '../lib/turso'
+import { CDN } from '../lib/cdn'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
@@ -435,6 +436,18 @@ export default function CheckInPage() {
       ? 'ci-result-hero--unpaid'
       : ''
 
+  const heroOverlay = scanState === 'duplicate'
+    ? 'linear-gradient(170deg, rgba(8,18,32,0.90) 0%, rgba(15,30,55,0.80) 100%)'
+    : (scanState === 'unpaid_transfer' || scanState === 'unpaid_cash')
+    ? 'linear-gradient(170deg, rgba(28,10,0,0.90) 0%, rgba(70,28,0,0.80) 100%)'
+    : 'linear-gradient(170deg, rgba(8,18,5,0.88) 0%, rgba(18,38,8,0.76) 100%)'
+
+  const heroStyle = {
+    backgroundImage: `${heroOverlay}, url(${CDN.FOTO_INICIO})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  }
+
   // Formatea fecha a "15 may · 7:40 p.m."
   const fmtDate = (raw) => {
     if (!raw) return '—'
@@ -450,7 +463,7 @@ export default function CheckInPage() {
 
   return (
     <div className="ci-result-root">
-      <div className={`ci-result-hero ${heroClass}`}>
+      <div className={`ci-result-hero ${heroClass}`} style={heroStyle}>
         <div className="ci-result-topbar">
           <button className="ci-result-back" onClick={goBackToApp}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

@@ -466,17 +466,10 @@
 
 /* Hero header */
 .ci-result-hero {
-  background: linear-gradient(150deg, #1a2e0d 0%, #2d4a1a 55%, #3a5a20 100%);
   padding: 48px 20px 28px;
   position: relative;
-}
-
-.ci-result-hero--duplicate {
-  background: linear-gradient(150deg, #0d1a26 0%, #162840 55%, #1c3350 100%);
-}
-
-.ci-result-hero--unpaid {
-  background: linear-gradient(150deg, #1c0e00 0%, #321800 55%, #4a2400 100%);
+  background-size: cover;
+  background-position: center;
 }
 
 .ci-result-topbar {
