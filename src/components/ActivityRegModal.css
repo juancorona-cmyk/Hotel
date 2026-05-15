@@ -378,6 +378,21 @@
   color: #5a6c1e;
 }
 
+.arm-success__access-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6c1e;
+  background: #f0f4e4;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0;
+  width: 100%;
+  text-align: left;
+}
+
 /* Buttons stacked */
 .arm-success__actions {
   display: flex;

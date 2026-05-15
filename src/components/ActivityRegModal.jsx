@@ -498,6 +498,14 @@ export default function ActivityRegModal({ activity, event, onClose }) {
               </div>
             </div>
 
+            {/* Aviso de acceso */}
+            <p className="arm-success__access-note">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Para acceder al evento presenta este ticket en la entrada.
+            </p>
+
             {/* Botones apilados */}
             <div className="arm-success__actions">
               <button className="arm-success__btn arm-success__btn--wa" onClick={handleShareWhatsApp}>
