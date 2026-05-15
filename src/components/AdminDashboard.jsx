@@ -1295,7 +1295,7 @@ function LoginScreen({ onLogin }) {
     <div className="adm-login">
       <div className="adm-login__accent"/>
       <div className="adm-login__logo-wrap">
-        <img src="/logo/logoNegro.svg" alt="Hotel Punta Galería" className="adm-login__logo"/>
+        <img src="/logo/icono.svg" alt="Hotel Punta Galería" className="adm-login__logo"/>
       </div>
       <h2 className="adm-login__title">PANEL ADMIN</h2>
       <p className="adm-login__sub">
