@@ -964,6 +964,37 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
   )
 }
 
+// ── Confirm Modal ────────────────────────────────────────
+function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Eliminar', loading = false }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !loading) onCancel() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onCancel, loading])
+
+  return (
+    <div className="adm-confirm-overlay" onClick={(e) => { if (e.target === e.currentTarget && !loading) onCancel() }}>
+      <div className="adm-confirm-card">
+        <div className="adm-confirm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="26" height="26">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+          </svg>
+        </div>
+        <h3 className="adm-confirm-title">{title}</h3>
+        <p className="adm-confirm-msg">{message}</p>
+        <div className="adm-confirm-actions">
+          <button className="adm-confirm-cancel" onClick={onCancel} disabled={loading}>Cancelar</button>
+          <button className="adm-confirm-ok" onClick={onConfirm} disabled={loading}>
+            {loading ? 'Eliminando…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Activity Registrations view ──────────────────────────
 function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   const [regs, setRegs]           = useState([])
@@ -976,6 +1007,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   const [sortDir, setSortDir]     = useState('desc')
   const [selected, setSelected]   = useState(new Set())
   const [deleting, setDeleting]   = useState(false)
+  const [confirmModal, setConfirmModal] = useState(null)
 
   // Auto-filter by ID if search param exists
   useEffect(() => {
@@ -1004,51 +1036,70 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
     loadData()
   }, [loadData])
 
-  const handleDelete = async (id, name) => {
-    if (!confirm(`¿Eliminar este registro de ${name}?`)) return
-    try {
-      if (view === 'confirmed') await deleteActivityRegistration(id)
-      else await deleteBotEvent(id)
-      setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
-      loadData()
-    } catch {
-      alert('Error al eliminar')
-    }
+  const handleDelete = (id, name) => {
+    setConfirmModal({
+      title: 'Eliminar registro',
+      message: `¿Eliminar el registro de ${name}? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      onConfirm: async () => {
+        setDeleting(true)
+        try {
+          if (view === 'confirmed') await deleteActivityRegistration(id)
+          else await deleteBotEvent(id)
+          setSelected(prev => { const n = new Set(prev); n.delete(id); return n })
+          loadData()
+        } catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
   }
 
   const toggleSelect = (id) => setSelected(prev => {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n
   })
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selected.size === 0) return
-    if (!confirm(`¿Eliminar ${selected.size} registro(s) seleccionado(s)? Esta acción no se puede deshacer.`)) return
-    setDeleting(true)
-    try {
-      for (const id of selected) {
-        if (view === 'confirmed') await deleteActivityRegistration(id)
-        else await deleteBotEvent(id)
-      }
-      setSelected(new Set())
-      loadData()
-    } catch { alert('Error al eliminar') }
-    finally { setDeleting(false) }
+    const ids = [...selected]
+    setConfirmModal({
+      title: `Eliminar ${selected.size} registro${selected.size > 1 ? 's' : ''}`,
+      message: `Se eliminarán ${selected.size} registro(s) seleccionado(s). Esta acción no se puede deshacer.`,
+      confirmLabel: `Eliminar ${selected.size}`,
+      onConfirm: async () => {
+        setDeleting(true)
+        try {
+          for (const id of ids) {
+            if (view === 'confirmed') await deleteActivityRegistration(id)
+            else await deleteBotEvent(id)
+          }
+          setSelected(new Set())
+          loadData()
+        } catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
   }
 
-  const handleClearAll = async () => {
+  const handleClearAll = () => {
     const target = sorted
     if (target.length === 0) return
-    if (!confirm(`¿Vaciar ${target.length} registro(s) visibles? Esta acción no se puede deshacer.`)) return
-    setDeleting(true)
-    try {
-      for (const r of target) {
-        if (view === 'confirmed') await deleteActivityRegistration(r.id)
-        else await deleteBotEvent(r.id)
-      }
-      setSelected(new Set())
-      loadData()
-    } catch { alert('Error al vaciar') }
-    finally { setDeleting(false) }
+    setConfirmModal({
+      title: 'Vaciar registros',
+      message: `Se eliminarán ${target.length} registro(s) visibles${hasFilters ? ' (filtrados)' : ''}. Esta acción no se puede deshacer.`,
+      confirmLabel: `Vaciar ${target.length}`,
+      onConfirm: async () => {
+        setDeleting(true)
+        try {
+          for (const r of target) {
+            if (view === 'confirmed') await deleteActivityRegistration(r.id)
+            else await deleteBotEvent(r.id)
+          }
+          setSelected(new Set())
+          loadData()
+        } catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
   }
 
   const handleTogglePaid = async (id, currentPaid) => {
@@ -1261,6 +1312,17 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
             </table>
           )}
         </div>
+      )}
+
+      {confirmModal && (
+        <ConfirmModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel={confirmModal.confirmLabel}
+          loading={deleting}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => { if (!deleting) setConfirmModal(null) }}
+        />
       )}
     </div>
   )
