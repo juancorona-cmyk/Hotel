@@ -420,7 +420,6 @@ export default function CheckInPage() {
   const isCheckedIn = reg.checked_in === 1 || reg.checked_in === '1'
   const isPaid = reg.paid === 1 || reg.paid === '1'
   const isTransfer = (reg.payment_method || '').toLowerCase().includes('transfer')
-  // scanState: 'duplicate' | 'ready' | 'unpaid_transfer' | 'unpaid_cash'
   const scanState = isCheckedIn
     ? 'duplicate'
     : isPaid
@@ -436,6 +435,19 @@ export default function CheckInPage() {
       ? 'ci-result-hero--unpaid'
       : ''
 
+  // Formatea fecha a "15 may · 7:40 p.m."
+  const fmtDate = (raw) => {
+    if (!raw) return '—'
+    const d = new Date(String(raw).includes('T') || String(raw).includes('Z') ? raw : raw + 'Z')
+    if (isNaN(d)) return String(raw).slice(0, 16).replace('T', ' ')
+    const fecha = d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    const hora  = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true })
+    return `${fecha} · ${hora}`
+  }
+
+  // Iniciales del nombre para el avatar
+  const initials = (reg.full_name || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+
   return (
     <div className="ci-result-root">
       <div className={`ci-result-hero ${heroClass}`}>
@@ -448,48 +460,58 @@ export default function CheckInPage() {
           <button className="ci-result-exit" onClick={handleLogout}>Salir</button>
         </div>
 
-        {scanState === 'duplicate' && (
-          <div className="ci-result-status-pill ci-result-status-pill--duplicate">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            YA INGRESÓ
-          </div>
-        )}
-        {scanState === 'ready' && (
-          <div className="ci-result-status-pill ci-result-status-pill--ok">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            PAGADO · LISTO PARA ENTRAR
-          </div>
-        )}
-        {scanState === 'unpaid_transfer' && (
-          <div className="ci-result-status-pill ci-result-status-pill--warn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-            </svg>
-            TRANSFERENCIA · VERIFICA COMPROBANTE
-          </div>
-        )}
-        {scanState === 'unpaid_cash' && (
-          <div className="ci-result-status-pill ci-result-status-pill--warn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            COBRO PENDIENTE
-          </div>
-        )}
+        <div className="ci-result-hero-body">
+          {/* Avatar con iniciales */}
+          <div className="ci-result-avatar">{initials}</div>
 
-        <h1 className="ci-result-name">{reg.full_name}</h1>
-        <p className="ci-result-event">{reg.event_name || reg.activity_name || '—'}</p>
+          <div className="ci-result-hero-info">
+            {/* Badge de estado */}
+            {scanState === 'duplicate' && (
+              <div className="ci-result-status-pill ci-result-status-pill--duplicate">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Ya ingresó
+              </div>
+            )}
+            {scanState === 'ready' && (
+              <div className="ci-result-status-pill ci-result-status-pill--ok">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Listo para entrar
+              </div>
+            )}
+            {scanState === 'unpaid_transfer' && (
+              <div className="ci-result-status-pill ci-result-status-pill--warn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Verifica transferencia
+              </div>
+            )}
+            {scanState === 'unpaid_cash' && (
+              <div className="ci-result-status-pill ci-result-status-pill--warn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                Cobro pendiente
+              </div>
+            )}
+
+            <h1 className="ci-result-name">{reg.full_name}</h1>
+            <div className="ci-result-event-row">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".7">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span className="ci-result-event">{reg.event_name || reg.activity_name || '—'}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Ticket strip */}
       <div className="ci-ticket-strip">
-        <span className="ci-ticket-label">TICKET</span>
-        <span className="ci-ticket-num">#{String(reg.id).padStart(4, '0')}</span>
+        <div className="ci-ticket-strip-left">
+          <span className="ci-ticket-label">TICKET</span>
+          <span className="ci-ticket-num">#{String(reg.id).padStart(4, '0')}</span>
+        </div>
+        <div className="ci-ticket-strip-right">
+          <span className="ci-ticket-label">EVENTO</span>
+          <span className="ci-ticket-event-name">{reg.event_name || reg.activity_name || '—'}</span>
+        </div>
       </div>
 
       {/* Comprobante de transferencia */}
@@ -561,7 +583,7 @@ export default function CheckInPage() {
             </div>
             <div className="ci-result-row-info">
               <span className="ci-result-row-label">Hora de entrada</span>
-              <span className="ci-result-row-value">{String(reg.checked_in_at).slice(0, 16).replace('T', ' ')}</span>
+              <span className="ci-result-row-value">{fmtDate(reg.checked_in_at)}</span>
             </div>
           </div>
         )}
@@ -575,7 +597,7 @@ export default function CheckInPage() {
           </div>
           <div className="ci-result-row-info">
             <span className="ci-result-row-label">Registrado</span>
-            <span className="ci-result-row-value">{String(reg.created_at || '').slice(0, 16).replace('T', ' ')}</span>
+            <span className="ci-result-row-value">{fmtDate(reg.created_at)}</span>
           </div>
         </div>
       </div>
