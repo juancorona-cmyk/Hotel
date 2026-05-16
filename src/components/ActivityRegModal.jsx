@@ -510,7 +510,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                 size={180}
                 level="H"
                 includeMargin={true}
-                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0, overflow: 'hidden' }}
+                style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}
               />
             )}
 
