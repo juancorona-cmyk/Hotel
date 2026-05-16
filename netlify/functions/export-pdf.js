@@ -82,7 +82,7 @@ export default async (req) => {
 
   let browser = null
   try {
-    const { html, filename = 'reporte.pdf' } = await req.json()
+    const { html, filename = 'reporte.pdf', pageWidth, pageHeight } = await req.json()
     const { executablePath, args } = await getBrowserConfig()
 
     browser = await puppeteer.launch({
@@ -93,17 +93,27 @@ export default async (req) => {
 
     const page = await browser.newPage()
 
-    // Permitir fuentes externas para el nuevo diseño
     await page.setRequestInterception(false)
 
-    await page.setViewport({ width: 1200, height: 1600, deviceScaleFactor: 2 })
+    const vpW = pageWidth || 1200
+    await page.setViewport({ width: vpW, height: 2000, deviceScaleFactor: 2 })
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 })
 
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 },
-    })
+    let pdfOptions
+    if (pageWidth) {
+      const ph = pageHeight || await page.evaluate(() => document.body.scrollHeight)
+      pdfOptions = {
+        width: `${pageWidth}px`,
+        height: `${ph}px`,
+        printBackground: true,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+        pageRanges: '1',
+      }
+    } else {
+      pdfOptions = { format: 'A4', printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } }
+    }
+
+    const pdf = await page.pdf(pdfOptions)
 
     return new Response(new Blob([pdf], { type: 'application/pdf' }), {
       status: 200,

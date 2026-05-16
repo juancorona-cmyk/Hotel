@@ -402,7 +402,7 @@ export async function getRegistrationsByEvent(eventId) {
 
 export async function getActivityRegistrationsByEvent(eventId) {
   const res = await exec(
-    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, checked_in, checked_in_at, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
+    'SELECT id, full_name, phone, how_found, whatsapp, payment_method, paid, paid_at, checked_in, checked_in_at, transfer_proof_url, created_at FROM activity_registrations WHERE event_id = ? ORDER BY created_at DESC',
     [int(eventId)]
   )
   return parseRows(res)
@@ -599,7 +599,7 @@ export async function getRegistrationById(id) {
     `SELECT r.id, r.activity_id, r.activity_name, r.event_id, r.event_name,
             r.full_name, r.phone, r.payment_method, r.paid, r.checked_in,
             r.checked_in_at, r.transfer_proof_url, r.created_at,
-            e.date as event_date
+            e.date as event_date, e.price as event_price, e.description as event_description
      FROM activity_registrations r
      LEFT JOIN hotel_events e ON r.event_id = e.id
      WHERE r.id = ?`,
@@ -612,6 +612,13 @@ export async function updateTransferProof(id, proofUrl) {
   const now = `datetime('now')`
   await exec(
     `UPDATE activity_registrations SET transfer_proof_url = ?, paid = 1, paid_at = ${now} WHERE id = ?`,
+    [txt(proofUrl), int(id)]
+  )
+}
+
+export async function saveTransferProof(id, proofUrl) {
+  await exec(
+    `UPDATE activity_registrations SET transfer_proof_url = ? WHERE id = ?`,
     [txt(proofUrl), int(id)]
   )
 }

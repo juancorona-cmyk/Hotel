@@ -854,3 +854,169 @@
   background: #f5f2ed;
 }
 
+/* ── Public ticket view ── */
+.ci-page--public {
+  align-items: flex-start;
+  padding: 20px 16px 32px;
+}
+
+.ci-pub-ticket {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #ebebea;
+  padding: 28px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #4a5a1e;
+  animation: ci-fade-up 0.4s ease-out;
+}
+
+.ci-pub-check {
+  width: 56px;
+  height: 56px;
+  background: #eef4e8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #236d00;
+}
+
+.ci-pub-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.ci-pub-event {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: #f7f8f3;
+  border: 1px solid #e8ead8;
+  border-radius: 12px;
+  padding: 10px 16px;
+  width: 100%;
+}
+
+.ci-pub-event__name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #5a6c1e;
+  text-align: center;
+}
+
+.ci-pub-event__desc {
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.45;
+}
+
+.ci-pub-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef4e8;
+  border: 1px solid #c9d98a;
+  border-radius: 99px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a5a1e;
+  text-align: center;
+}
+
+.ci-pub-qr {
+  background: #f5f2ed;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1.5px solid #e5e0d8;
+}
+
+.ci-pub-qr svg {
+  border-radius: 10px;
+  display: block;
+}
+
+.ci-pub-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.ci-pub-num {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #838c2f;
+  text-transform: uppercase;
+}
+
+.ci-pub-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #323f48;
+}
+
+.ci-pub-evname {
+  font-size: 13px;
+  color: #c7b7a4;
+  font-weight: 600;
+}
+
+.ci-pub-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.ci-pub-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a6c1e;
+}
+
+.ci-pub-row svg {
+  flex-shrink: 0;
+  color: #838c2f;
+}
+
+.ci-pub-footer {
+  margin-top: 4px;
+}
+
+.ci-pub-logo {
+  height: 28px;
+  opacity: 0.55;
+}
+
+@media (max-width: 480px) {
+  .ci-pub-ticket { padding: 20px 14px; gap: 10px; }
+  .ci-pub-title { font-size: 18px; }
+  .ci-pub-check { width: 46px; height: 46px; }
+  .ci-pub-check svg { width: 22px; height: 22px; }
+  .ci-pub-qr svg { width: 140px !important; height: 140px !important; }
+  .ci-pub-num { font-size: 10px; }
+  .ci-pub-name { font-size: 14px; }
+}
+

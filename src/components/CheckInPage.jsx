@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
+import { QRCodeSVG } from 'qrcode.react'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE } from '../lib/turso'
 import { CDN } from '../lib/cdn'
+import { fmtFecha } from '../lib/utils'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
@@ -252,44 +254,61 @@ export default function CheckInPage() {
       )
     }
 
-    // Public ticket preview — minimal info, no sensitive data
+    // Public ticket preview — same format as EventoPage success card
     return (
       <div className="ci-page ci-page--public">
-        <div className="ci-card ci-card--public">
-          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-public-logo" />
-          <div className="ci-public-check">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
+        <div className="ci-pub-ticket">
+          <div className="ci-pub-check">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
             </svg>
           </div>
-          <h2 className="ci-public-title">¡Tu registro está confirmado!</h2>
-          <div className="ci-public-details">
-            <div className="ci-public-detail">
-              <span className="ci-public-label">Asistente</span>
-              <span className="ci-public-value">{reg.full_name}</span>
+          <h2 className="ci-pub-title">¡Registro exitoso!</h2>
+
+          {(reg.event_name || reg.event_description) && (
+            <div className="ci-pub-event">
+              {reg.event_name && <span className="ci-pub-event__name">{reg.event_name}</span>}
+              {reg.event_description && <span className="ci-pub-event__desc">{reg.event_description}</span>}
             </div>
-            {reg.event_name && (
-              <div className="ci-public-detail">
-                <span className="ci-public-label">Evento</span>
-                <span className="ci-public-value">{reg.event_name}</span>
+          )}
+
+          <div className="ci-pub-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M3 14h7v7H3z"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/></svg>
+            Este QR es tu entrada — el staff lo escaneará al llegar
+          </div>
+
+          <div className="ci-pub-qr">
+            <QRCodeSVG
+              value={`https://hotelpuntagaleria.mx/checkin?rid=${reg.id}`}
+              size={180}
+              level="H"
+              includeMargin={true}
+              style={{ borderRadius: 12 }}
+            />
+            <div className="ci-pub-meta">
+              <span className="ci-pub-num">TICKET #{String(reg.id).padStart(4, '0')}</span>
+              <span className="ci-pub-name">{reg.full_name}</span>
+              {reg.event_name && <span className="ci-pub-evname">{reg.event_name}</span>}
+            </div>
+          </div>
+
+          <div className="ci-pub-rows">
+            {reg.event_date && (
+              <div className="ci-pub-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>{fmtFecha(reg.event_date)}</span>
               </div>
             )}
-            <div className="ci-public-detail">
-              <span className="ci-public-label">Ticket</span>
-              <span className="ci-public-value ci-public-ticket">#{String(reg.id).padStart(4, '0')}</span>
-            </div>
+            {reg.event_price != null && (
+              <div className="ci-pub-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>{reg.event_price === 0 ? 'Gratuito' : `$${Number(reg.event_price).toLocaleString('es-MX')} MXN`}</span>
+              </div>
+            )}
           </div>
-          <div className="ci-public-message">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            <p>Presenta este código al staff en la entrada del evento para confirmar tu asistencia.</p>
-          </div>
-          <div className="ci-public-footer">
-            <span>Hotel Punta Galería</span>
+
+          <div className="ci-pub-footer">
+            <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-pub-logo" />
           </div>
         </div>
       </div>
