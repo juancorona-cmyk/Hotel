@@ -23,3 +23,23 @@ export function isValidPhone(raw) {
   if (/^\d{7}$/.test(digits)) return true
   return false
 }
+
+export function compressImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      img.onload = () => {
+        const MAX = 1400
+        let w = img.width, h = img.height
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX }
+        const canvas = document.createElement('canvas')
+        canvas.width = w; canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', 0.82))
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}

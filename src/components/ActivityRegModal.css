@@ -273,6 +273,7 @@
   flex: 1;
   justify-content: center;
   overflow-y: auto;
+  position: relative;
 }
 
 .arm-success__check {

@@ -312,13 +312,11 @@ export async function getHotelReservationEvents() {
 }
 
 export async function getRegistrationCountByEvent(eventId) {
-  const [r1, r2] = await Promise.all([
-    exec('SELECT COUNT(*) as cnt FROM activity_registrations WHERE event_id = ?', [int(eventId)]),
-    exec('SELECT COUNT(*) as cnt FROM event_registrations WHERE event_id = ?', [int(eventId)])
-  ])
-  return Number(parseRows(r1)[0]?.cnt ?? 0) + Number(parseRows(r2)[0]?.cnt ?? 0)
+  const res = await exec('SELECT COUNT(*) as cnt FROM activity_registrations WHERE event_id = ?', [int(eventId)])
+  return Number(parseRows(res)[0]?.cnt ?? 0)
 }
 
+// @legacy — la tabla event_registrations ya no recibe escrituras del frontend
 export async function deleteEventRegistration(id) {
   await exec('DELETE FROM event_registrations WHERE id = ?', [int(id)])
 }
@@ -385,6 +383,7 @@ export async function getArchivedEvents() {
   return parseRows(res)
 }
 
+// @legacy — la tabla event_registrations ya no recibe escrituras del frontend
 export async function createRegistration(eventId, fullName, email, phone, notes) {
   return exec(
     'INSERT INTO event_registrations (event_id, full_name, email, phone, notes) VALUES (?, ?, ?, ?, ?)',

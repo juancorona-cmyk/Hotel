@@ -1,40 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { createActivityRegistration, getRegistrationCountByEvent, trackEvent, getRegistrationById, saveTransferProof, API_BASE } from '../lib/turso'
-import { fmtFecha, isValidPhone } from '../lib/utils'
+import { fmtFecha } from '../lib/utils'
+import { HOTEL_CLABE, HOTEL_TITULAR } from '../lib/registrationConstants'
+import { useRegistration, WHATSAPP_OPTIONS, HOW_FOUND_OPTIONS } from '../hooks/useRegistration'
 import './ActivityRegModal.css'
 
 export default function ActivityRegModal({ activity, event, onClose }) {
-  const [step, setStep]                   = useState(1)
-  const [fullName, setFullName]           = useState('')
-  const [phone, setPhone]                 = useState('')
-  const [howFound, setHowFound]           = useState('')
-  const [howFoundOther, setHowFoundOther] = useState('')
-  const [whatsapp, setWhatsapp]           = useState('')
-  const [error, setError]                 = useState('')
-  const [saving, setSaving]               = useState(false)
-  const [success, setSuccess]             = useState(false)
-  const [regId, setRegId]                 = useState(null)
-  const [exporting, setExporting]         = useState(false)
-  const [payMethod, setPayMethod]         = useState('')
-  const [paymentPending, setPaymentPending] = useState(false)
-  const [showTransferInfo, setShowTransferInfo] = useState(false)
-  const [copiedClabe, setCopiedClabe] = useState(false)
-  const [proofUploaded, setProofUploaded] = useState(false)
-  const [uploadingProof, setUploadingProof] = useState(false)
-  const [proofError, setProofError] = useState('')
-
-  const qrSvgRef = useRef(null)
-
-  const HOTEL_WA      = '5214431234567'
-  const HOTEL_CLABE   = '5512382370397442'
-  const HOTEL_TITULAR = 'Hotel Punta Galería'
-
-  // Capacity tracking
-  const [spotsLeft, setSpotsLeft]   = useState(null)
-  const [spotsLoading, setSpotsLoading] = useState(false)
-
-  const capacity = event?.capacity > 0 ? Number(event.capacity) : 0
+  const reg = useRegistration({ event, activity })
 
   // Bloquear scroll del body mientras el modal esté abierto
   useEffect(() => {
@@ -43,232 +15,19 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  useEffect(() => {
-    if (!event?.id || !capacity) return
-    setSpotsLoading(true)
-    getRegistrationCountByEvent(event.id)
-      .then(count => setSpotsLeft(Math.max(0, capacity - count)))
-      .catch(() => setSpotsLeft(null))
-      .finally(() => setSpotsLoading(false))
-  }, [event?.id, capacity])
-
-  useEffect(() => {
-    if (!paymentPending || !regId) return
-    const interval = setInterval(async () => {
-      try {
-        const reg = await getRegistrationById(regId)
-        if (reg?.paid === 1 || reg?.paid === '1') setPaymentPending(false)
-      } catch {}
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [paymentPending, regId])
-
-  const isSoldOut = capacity > 0 && spotsLeft === 0 && !spotsLoading
-
-  const handleStep1 = (e) => {
-    e.preventDefault()
-    setError('')
-    if (!fullName.trim()) { setError('Por favor ingresa tu nombre completo'); return }
-    if (!phone.trim())    { setError('Por favor ingresa tu número de teléfono'); return }
-    if (!isValidPhone(phone)) { setError('Ingresa un número válido (ej: 667 123 4567 o +1 555 000 1234)'); return }
-    if (!howFound)        { setError('Por favor indica cómo te enteraste'); return }
-    if (!whatsapp)        { setError('Por favor responde la pregunta de WhatsApp'); return }
-    
-    trackEvent('activity_reg_intent', {
-      activity_id: activity.id,
-      activity_name: activity.name,
-      event_id: event?.id,
-      full_name: fullName.trim(),
-      phone: phone.trim(),
-      how_found: howFound === 'Otros' ? `Otros: ${howFoundOther.trim() || '?'}` : howFound,
-      whatsapp
-    })
-
-    setStep(2)
-  }
-
-  const handlePayment = async (method) => {
-    setError('')
-    setSaving(true)
-    const howFoundFinal = howFound === 'Otros' ? `Otros: ${howFoundOther.trim() || '?'}` : howFound
-    try {
-      const newId = await createActivityRegistration(
-        activity.id,
-        activity.name,
-        fullName.trim(),
-        phone.trim(),
-        howFoundFinal,
-        whatsapp,
-        event?.id ?? null,
-        event?.name ?? '',
-        method,
-      )
-      setRegId(newId)
-      setPayMethod(method)
-      if (method === 'transferencia') setPaymentPending(true)
-      trackEvent('activity_reg_confirm', {
-        activity_id: activity.id,
-        activity_name: activity.name,
-        event_id: event?.id,
-        payment_method: method
-      })
-      if (spotsLeft !== null) setSpotsLeft(s => Math.max(0, s - 1))
-      setSuccess(true)
-    } catch {
-      setError('Error al registrar. Intenta nuevamente.')
-      setStep(1)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // Spots badge config
-  const spotsColor = spotsLeft !== null && capacity > 0
-    ? spotsLeft <= 3 ? '#dc2626'
-    : spotsLeft <= 8 ? '#d97706'
-    : '#5a6c1e'
-    : '#5a6c1e'
-
-  const phoneTyped = phone.trim().length > 0
-  const phoneOk    = phoneTyped && isValidPhone(phone)
-  const phoneBad   = phoneTyped && !phoneOk
-
-  const ticketId = String(regId || '').padStart(4, '0')
-  const ticketVerificationCode = `${ticketId}-${String(fullName.length).padStart(2, '0')}${String(activity.id).padStart(2, '0')}`
-
-  const handleDownloadTicket = async () => {
-    setExporting(true)
-    const svgEl = qrSvgRef.current
-    try {
-      const svgStr = svgEl ? new XMLSerializer().serializeToString(svgEl) : ''
-      const svgB64 = svgStr ? `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgStr)))}` : ''
-      const eventDate = event?.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
-      const PW = 390
-      const PH = 844
-
-      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
-<style>
-@page{size:${PW}px ${PH}px;margin:0}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:${PW}px;height:${PH}px;overflow:hidden}
-body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-direction:column}
-.top{background:#5a6c1e;padding:24px 22px 18px;text-align:center;color:#fff;flex-shrink:0}
-.hotel{font-size:9px;font-weight:800;letter-spacing:2.5px;opacity:0.6;margin-bottom:6px;text-transform:uppercase}
-.event-name{font-size:22px;font-weight:900;line-height:1.1;margin-bottom:5px}
-.event-desc{font-size:11px;font-weight:500;opacity:0.82;line-height:1.4}
-.body{background:#fff;flex:1;display:flex;flex-direction:column;align-items:center;padding:16px 18px 0;overflow:hidden}
-.qr-wrap{background:#f7f8f3;border-radius:14px;padding:12px;margin-bottom:10px;flex-shrink:0}
-.qr-wrap img{width:200px;height:200px;display:block}
-.ticket-info{text-align:center;margin-bottom:10px;flex-shrink:0}
-.ticket-num{font-size:10px;font-weight:800;color:#8fa03a;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:3px}
-.ticket-name{font-size:18px;font-weight:900;color:#111;line-height:1.1}
-.hint{display:inline-flex;align-items:center;gap:5px;background:#eef4e8;border:1.5px solid #c9d98a;border-radius:99px;padding:4px 11px;font-size:9px;font-weight:700;color:#4a5a1e;margin-top:5px}
-.divider{width:100%;border:none;border-top:1.5px solid #f0f0ec;margin:0 0 10px;flex-shrink:0}
-.meta{width:100%;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-.row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f7f8f3;border-radius:9px}
-.lbl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#8fa03a}
-.val{font-size:12px;font-weight:700;color:#1a1a1a}
-.footer{background:#5a6c1e;width:100%;padding:12px 22px;text-align:center;font-size:9px;color:rgba(255,255,255,0.7);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0;margin-top:auto}
-</style></head><body>
-<div class="top">
-  <div class="hotel">Hotel Punta Galería</div>
-  <div class="event-name">${event?.name || activity.name}</div>
-  ${event?.description ? `<div class="event-desc">${event.description}</div>` : ''}
-</div>
-<div class="body">
-  ${svgB64 ? `<div class="qr-wrap"><img src="${svgB64}" alt="QR"/></div>` : ''}
-  <div class="ticket-info">
-    <div class="ticket-num">Ticket #${ticketId}</div>
-    <div class="ticket-name">${fullName}</div>
-    <div class="hint"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>Entrada confirmada</div>
-  </div>
-  <hr class="divider"/>
-  <div class="meta">
-    <div class="row"><span class="lbl">Nombre</span><span class="val">${fullName}</span></div>
-    ${eventDate ? `<div class="row"><span class="lbl">Fecha</span><span class="val">${eventDate}</span></div>` : ''}
-    ${event?.price > 0 ? `<div class="row"><span class="lbl">Precio</span><span class="val">$${parseFloat(event.price).toFixed(2)} MXN</span></div>` : ''}
-  </div>
-</div>
-<div class="footer">Presenta este QR en la entrada · Hotel Punta Galería</div>
-</body></html>`
-
-      const res = await fetch(`${API_BASE}/.netlify/functions/export-pdf`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html, filename: `ticket-hotel-${ticketId}.pdf`, pageWidth: PW, pageHeight: PH })
-      })
-      if (!res.ok) throw new Error('PDF fail')
-      const blob = await res.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `ticket-hotel-${ticketId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch {
-      alert('Error al generar PDF. Por favor toma una captura de pantalla de tu ticket.')
-    } finally {
-      setExporting(false)
-    }
-  }
-
   const handleShareWhatsApp = () => {
     const dateStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
-    const checkinUrl = `https://hotelpuntagaleria.mx/checkin?rid=${regId}`
+    const checkinUrl = `https://hotelpuntagaleria.mx/checkin?rid=${reg.registrationId}`
     const msg = `🎫 *TICKET DE ACCESO — Hotel Punta Galería*\n\n`
-      + `👤 *${fullName.trim()}*\n`
+      + `👤 *${reg.fullName.trim()}*\n`
       + `📋 *${activity.name}*${event ? ' — ' + event.name : ''}\n`
-      + `🎟️ Ticket: #${ticketId}\n`
+      + `🎟️ Ticket: #${reg.ticketId}\n`
       + `📅 ${dateStr}\n`
-      + `💵 ${event?.price > 0 ? '$' + parseFloat(event.price).toFixed(2) + ' MXN' : 'GRATIS'} | Pago: ${payMethod === 'transferencia' ? 'Transferencia' : 'Presencial'}\n\n`
+      + `💵 ${event?.price > 0 ? '$' + parseFloat(event.price).toFixed(2) + ' MXN' : 'GRATIS'} | Pago: ${reg.paymentMethod === 'transferencia' ? 'Transferencia' : 'Presencial'}\n\n`
       + `📍 Hotel Punta Galería, Morelia, Mich.\n\n`
       + `🔗 Link de check-in: ${checkinUrl}`
 
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
-  }
-
-  const compressImage = (file) => new Promise((resolve) => {
-    const img = new Image()
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      img.onload = () => {
-        const MAX = 1400
-        let w = img.width, h = img.height
-        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX }
-        const canvas = document.createElement('canvas')
-        canvas.width = w; canvas.height = h
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-        resolve(canvas.toDataURL('image/jpeg', 0.82))
-      }
-      img.src = e.target.result
-    }
-    reader.readAsDataURL(file)
-  })
-
-  const handleProofUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingProof(true)
-    setProofError('')
-    try {
-      const base64 = await compressImage(file)
-      const res = await fetch(`${API_BASE}/.netlify/functions/upload-proof`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, registrationId: regId, eventName: event?.name })
-      })
-      const data = await res.json()
-      if (!res.ok || !data.url) throw new Error(data.error || 'Error al subir')
-      await saveTransferProof(regId, data.url)
-      setProofUploaded(true)
-    } catch (err) {
-      setProofError('No se pudo subir el comprobante. Intenta de nuevo.')
-    } finally {
-      setUploadingProof(false)
-    }
   }
 
   return (
@@ -293,18 +52,16 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                     ${parseFloat(event.price).toFixed(2)}
                   </span>
                 )}
-                {capacity > 0 && (
-                  <span className="arm-header__pill arm-header__pill--spots" style={{ borderColor: spotsColor, color: spotsColor }}>
+                {reg.capacity > 0 && (
+                  <span className="arm-header__pill arm-header__pill--spots" style={{ borderColor: reg.spotsColor, color: reg.spotsColor }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                    {spotsLoading
-                      ? `${capacity} lugares`
-                      : spotsLeft !== null
-                        ? spotsLeft <= 3 && spotsLeft > 0
-                          ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'}!`
-                          : spotsLeft === 0
-                            ? 'Sin lugares'
-                            : `${spotsLeft} de ${capacity} disponibles`
-                        : `${capacity} lugares`
+                    {reg.spotsLeft === null
+                      ? `${reg.capacity} lugares`
+                      : reg.spotsLeft <= 3 && reg.spotsLeft > 0
+                        ? `¡Solo ${reg.spotsLeft} lugar${reg.spotsLeft === 1 ? '' : 'es'}!`
+                        : reg.spotsLeft === 0
+                          ? 'Sin lugares'
+                          : `${reg.spotsLeft} de ${reg.capacity} disponibles`
                     }
                   </span>
                 )}
@@ -319,7 +76,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
         </div>
 
         {/* Éxito siempre tiene prioridad — incluso si era el último lugar */}
-        {success && paymentPending ? (
+        {reg.success && reg.paymentPending ? (
           /* ── Transferencia pendiente ── */
           <div className="arm-pend">
 
@@ -340,12 +97,12 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             <h2 className="arm-pend__title">Registro recibido</h2>
             <p className="arm-pend__sub">Tu lugar está reservado. Cuando recepción confirme tu transferencia, tu ticket aparecerá aquí automáticamente.</p>
 
-            {regId && (
+            {reg.registrationId && (
               <div className="arm-pend__chip">
                 <span className="arm-pend__chip-label">Ticket</span>
-                <span className="arm-pend__chip-num">#{ticketId}</span>
+                <span className="arm-pend__chip-num">#{reg.ticketId}</span>
                 <span className="arm-pend__chip-sep"/>
-                <span className="arm-pend__chip-name">{fullName}</span>
+                <span className="arm-pend__chip-name">{reg.fullName}</span>
               </div>
             )}
 
@@ -356,18 +113,18 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                   <span className="arm-bank-field__clabe">{HOTEL_CLABE.replace(/(.{4})/g, '$1 ').trim()}</span>
                   <button
                     type="button"
-                    className={`arm-bank-copy${copiedClabe ? ' arm-bank-copy--ok' : ''}`}
+                    className={`arm-bank-copy${reg.copiedClabe ? ' arm-bank-copy--ok' : ''}`}
                     onClick={async () => {
                       try { await navigator.clipboard.writeText(HOTEL_CLABE) } catch {}
-                      setCopiedClabe(true)
-                      setTimeout(() => setCopiedClabe(false), 2200)
+                      reg.setCopiedClabe(true)
+                      setTimeout(() => reg.setCopiedClabe(false), 2200)
                     }}
                   >
-                    {copiedClabe
+                    {reg.copiedClabe
                       ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                       : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                     }
-                    {copiedClabe ? 'Copiada' : 'Copiar'}
+                    {reg.copiedClabe ? 'Copiada' : 'Copiar'}
                   </button>
                 </div>
               </div>
@@ -387,7 +144,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             </div>
 
             {/* Proof upload / sent status */}
-            {proofUploaded ? (
+            {reg.proofUploaded ? (
               <div className="arm-pend__proof-ok">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                 <div>
@@ -398,8 +155,8 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             ) : (
               <div className="arm-pend__upload">
                 <p className="arm-pend__upload-hint">Adjunta tu comprobante para agilizar la verificación</p>
-                <label className={`arm-pend__upload-btn${uploadingProof ? ' arm-pend__upload-btn--loading' : ''}`}>
-                  {uploadingProof ? (
+                <label className={`arm-pend__upload-btn${reg.uploadingProof ? ' arm-pend__upload-btn--loading' : ''}`}>
+                  {reg.uploadingProof ? (
                     <>
                       <svg className="arm-pend__upload-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
                       Subiendo…
@@ -410,9 +167,9 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                       Adjuntar comprobante
                     </>
                   )}
-                  <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={handleProofUpload} disabled={uploadingProof} />
+                  <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={reg.handleProofUpload} disabled={reg.uploadingProof} />
                 </label>
-                {proofError && <p className="arm-pend__upload-error">{proofError}</p>}
+                {reg.proofError && <p className="arm-pend__upload-error">{reg.proofError}</p>}
               </div>
             )}
 
@@ -425,7 +182,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             <button className="arm-success__close-btn" onClick={onClose}>Cerrar</button>
           </div>
 
-        ) : success ? (
+        ) : reg.success ? (
           /* ── Pago confirmado: mostrar ticket completo ── */
           <div className="arm-success">
             {/* Check animado */}
@@ -444,7 +201,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               <div className="arm-success__ticket-cols">
                 <div className="arm-success__ticket-left">
                   <span className="arm-success__ticket-label">TICKET</span>
-                  <span className="arm-success__ticket-id">#{ticketId}</span>
+                  <span className="arm-success__ticket-id">#{reg.ticketId}</span>
                 </div>
                 <div className="arm-success__ticket-divider" aria-hidden="true"/>
                 <div className="arm-success__ticket-right">
@@ -474,18 +231,18 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             {/* Botones apilados */}
             <div className="arm-success__actions">
               <button
-                className={`arm-success__btn arm-success__btn--pdf ${exporting ? 'loading' : ''}`}
-                onClick={handleDownloadTicket}
-                disabled={exporting}
+                className={`arm-success__btn arm-success__btn--pdf ${reg.downloadingPDF ? 'loading' : ''}`}
+                onClick={reg.handleDownloadPDF}
+                disabled={reg.downloadingPDF}
               >
                 <span className="arm-success__btn-icon">
-                  {exporting
+                  {reg.downloadingPDF
                     ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>
                     : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13"/><polyline points="8 12 12 16 16 12"/><path d="M4 19h16"/></svg>
                   }
                 </span>
                 <span className="arm-success__btn-label">
-                  <span className="arm-success__btn-title">{exporting ? 'Generando PDF…' : 'Descargar PDF'}</span>
+                  <span className="arm-success__btn-title">{reg.downloadingPDF ? 'Generando PDF…' : 'Descargar PDF'}</span>
                   <span className="arm-success__btn-sub">Guarda tu ticket en el celular</span>
                 </span>
               </button>
@@ -503,20 +260,21 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               </button>
             </div>
 
-            {regId && (
+            {/* QR oculto — solo para serializar en el PDF. opacity:0 + position:absolute garantiza que el navegador renderiza el SVG y XMLSerializer lo captura */}
+            {reg.registrationId && (
               <QRCodeSVG
-                ref={qrSvgRef}
-                value={`https://hotelpuntagaleria.mx/checkin?rid=${regId}`}
+                ref={reg.qrSvgRef}
+                value={`https://hotelpuntagaleria.mx/checkin?rid=${reg.registrationId}`}
                 size={180}
                 level="H"
                 includeMargin={true}
-                style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, opacity: 0, pointerEvents: 'none' }}
               />
             )}
 
             <button className="arm-success__close-btn" onClick={onClose}>Cerrar</button>
           </div>
-        ) : isSoldOut ? (
+        ) : reg.isSoldOut ? (
           <div className="arm-soldout">
             <div className="arm-soldout__icon">🌴</div>
             <p className="arm-soldout__title">¡Lugares agotados!</p>
@@ -528,8 +286,8 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               Avisarme del próximo evento
             </button>
           </div>
-        ) : step === 1 ? (
-          <form onSubmit={handleStep1} className="arm-form">
+        ) : reg.step === 1 ? (
+          <form onSubmit={reg.handleStep1} className="arm-form">
             <div className="arm-steps">
               <span className="arm-step arm-step--active">1</span>
               <span className="arm-step-line"/>
@@ -541,8 +299,8 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               <input
                 type="text"
                 className="arm-input"
-                value={fullName}
-                onChange={e => { setFullName(e.target.value); setError('') }}
+                value={reg.fullName}
+                onChange={e => { reg.setFullName(e.target.value); reg.setError('') }}
                 placeholder="Tu nombre completo"
               />
             </div>
@@ -551,28 +309,28 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               <label className="arm-label">Número de teléfono *</label>
               <input
                 type="tel"
-                className={`arm-input${phoneOk ? ' arm-input--ok' : phoneBad ? ' arm-input--error' : ''}`}
-                value={phone}
-                onChange={e => { setPhone(e.target.value); setError('') }}
+                className={`arm-input${reg.phoneOk ? ' arm-input--ok' : reg.phoneBad ? ' arm-input--error' : ''}`}
+                value={reg.phone}
+                onChange={e => { reg.setPhone(e.target.value); reg.setError('') }}
                 placeholder="Ej: 667 123 4567"
               />
-              {phoneBad && <p className="arm-phone-hint">Ej: 667 123 4567 · +1 555 000 1234 · +52 667 123 4567</p>}
+              {reg.phoneBad && <p className="arm-phone-hint">Ej: 667 123 4567 · +1 555 000 1234 · +52 667 123 4567</p>}
             </div>
 
             <div className="arm-field">
               <label className="arm-label">¿Cómo te enteraste del evento? *</label>
               <div className="arm-radio-group">
-                {['Instagram', 'Facebook', 'Conocido', 'Otros'].map(opt => (
-                  <label key={opt} className={`arm-radio-label ${howFound === opt ? 'arm-radio-label--active' : ''}`}>
-                    <input type="radio" name="howFound" value={opt} checked={howFound === opt}
-                      onChange={() => { setHowFound(opt); setError('') }} />
+                {HOW_FOUND_OPTIONS.map(opt => (
+                  <label key={opt} className={`arm-radio-label ${reg.howFound === opt ? 'arm-radio-label--active' : ''}`}>
+                    <input type="radio" name="howFound" value={opt} checked={reg.howFound === opt}
+                      onChange={() => { reg.setHowFound(opt); reg.setError('') }} />
                     {opt}
                   </label>
                 ))}
               </div>
-              {howFound === 'Otros' && (
+              {reg.howFound === 'Otros' && (
                 <input type="text" className="arm-input arm-input--sm"
-                  value={howFoundOther} onChange={e => setHowFoundOther(e.target.value)}
+                  value={reg.howFoundOther} onChange={e => reg.setHowFoundOther(e.target.value)}
                   placeholder="¿Cuál?" />
               )}
             </div>
@@ -580,17 +338,17 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
             <div className="arm-field">
               <label className="arm-label">¿Te gustaría unirte al grupo de WhatsApp? *</label>
               <div className="arm-radio-group">
-                {['Sí', 'No', 'Ya estoy dentro'].map(opt => (
-                  <label key={opt} className={`arm-radio-label ${whatsapp === opt ? 'arm-radio-label--active' : ''}`}>
-                    <input type="radio" name="whatsapp" value={opt} checked={whatsapp === opt}
-                      onChange={() => { setWhatsapp(opt); setError('') }} />
+                {WHATSAPP_OPTIONS.map(opt => (
+                  <label key={opt} className={`arm-radio-label ${reg.whatsapp === opt ? 'arm-radio-label--active' : ''}`}>
+                    <input type="radio" name="whatsapp" value={opt} checked={reg.whatsapp === opt}
+                      onChange={() => { reg.setWhatsapp(opt); reg.setError('') }} />
                     {opt}
                   </label>
                 ))}
               </div>
             </div>
 
-            {error && <p className="arm-error">{error}</p>}
+            {reg.error && <p className="arm-error">{reg.error}</p>}
 
             <button type="submit" className="arm-submit">
               Continuar al pago →
@@ -606,7 +364,7 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
 
             <p className="arm-pay-sub">¿Cómo realizarás tu pago{event?.price > 0 ? ` de $${parseFloat(event.price).toFixed(2)}` : ''}?</p>
 
-            {showTransferInfo ? (
+            {reg.showTransferInfo ? (
               <div className="arm-bank-card">
                 <div className="arm-bank-card__head">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
@@ -621,18 +379,18 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                     </span>
                     <button
                       type="button"
-                      className={`arm-bank-copy${copiedClabe ? ' arm-bank-copy--ok' : ''}`}
+                      className={`arm-bank-copy${reg.copiedClabe ? ' arm-bank-copy--ok' : ''}`}
                       onClick={async () => {
                         try { await navigator.clipboard.writeText(HOTEL_CLABE) } catch {}
-                        setCopiedClabe(true)
-                        setTimeout(() => setCopiedClabe(false), 2200)
+                        reg.setCopiedClabe(true)
+                        setTimeout(() => reg.setCopiedClabe(false), 2200)
                       }}
                     >
-                      {copiedClabe
+                      {reg.copiedClabe
                         ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                         : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                       }
-                      {copiedClabe ? 'Copiada' : 'Copiar'}
+                      {reg.copiedClabe ? 'Copiada' : 'Copiar'}
                     </button>
                   </div>
                 </div>
@@ -656,12 +414,12 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                   type="button"
                   className="arm-submit"
                   style={{ marginTop: 16 }}
-                  onClick={() => handlePayment('transferencia')}
-                  disabled={saving}
+                  onClick={() => reg.handlePayment('transferencia')}
+                  disabled={reg.submitting}
                 >
-                  {saving ? 'Registrando…' : 'Confirmar registro'}
+                  {reg.submitting ? 'Registrando…' : 'Confirmar registro'}
                 </button>
-                <button type="button" className="arm-back-link" onClick={() => setShowTransferInfo(false)}>
+                <button type="button" className="arm-back-link" onClick={() => reg.setShowTransferInfo(false)}>
                   ← Regresar
                 </button>
               </div>
@@ -670,8 +428,8 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                 <button
                   type="button"
                   className="arm-pay-card"
-                  onClick={() => setShowTransferInfo(true)}
-                  disabled={saving}
+                  onClick={() => reg.setShowTransferInfo(true)}
+                  disabled={reg.submitting}
                 >
                   <div className="arm-pay-card__icon">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -689,8 +447,8 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
                 <button
                   type="button"
                   className="arm-pay-card"
-                  onClick={() => handlePayment('presencial')}
-                  disabled={saving}
+                  onClick={() => reg.handlePayment('presencial')}
+                  disabled={reg.submitting}
                 >
                   <div className="arm-pay-card__icon">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -707,11 +465,11 @@ body{font-family:'Montserrat',sans-serif;background:#5a6c1e;display:flex;flex-di
               </div>
             )}
 
-            {error && <p className="arm-error" style={{ marginTop: 4 }}>{error}</p>}
-            {saving && <p style={{ textAlign:'center', color:'#888', fontSize:13, marginTop:8 }}>Registrando…</p>}
+            {reg.error && <p className="arm-error" style={{ marginTop: 4 }}>{reg.error}</p>}
+            {reg.submitting && <p style={{ textAlign:'center', color:'#888', fontSize:13, marginTop:8 }}>Registrando…</p>}
 
-            {!showTransferInfo && (
-              <button type="button" className="arm-back-link" onClick={() => setStep(1)}>
+            {!reg.showTransferInfo && (
+              <button type="button" className="arm-back-link" onClick={() => reg.setStep(1)}>
                 ← Regresar
               </button>
             )}
