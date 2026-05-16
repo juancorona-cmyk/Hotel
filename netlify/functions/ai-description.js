@@ -8,7 +8,7 @@ export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const KEY = process.env.OPENAI_API_KEY
+  const KEY = (process.env.OPENAI_API_KEY || '').trim()
   if (!KEY) return new Response(JSON.stringify({ error: 'No API key' }), { status: 500, headers: CORS })
 
   try {
@@ -43,6 +43,11 @@ Datos del evento: ${detalles}`
     })
 
     const data = await res.json()
+    console.log('OpenAI Response:', JSON.stringify(data))
+    if (data.error) {
+      console.error('OpenAI API Error:', data.error)
+      return new Response(JSON.stringify({ error: data.error.message || 'Error de OpenAI' }), { status: 500, headers: CORS })
+    }
     const description = (data.choices?.[0]?.message?.content ?? '').trim().slice(0, maxLen)
     return new Response(JSON.stringify({ description }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } })
   } catch (err) {

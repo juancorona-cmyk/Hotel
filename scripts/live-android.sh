@@ -46,9 +46,23 @@ cleanup() {
   lsof -ti:8888 | xargs kill -9 2>/dev/null || true
   adb -s "$DEVICE" reverse --remove-all 2>/dev/null || true
   restore_prod_config
+  # Reinstalar APK de producción para que la app quede funcional sin dev server
+  if [ -f "HotelPuntaGaleria.apk" ]; then
+    echo "📲 Restaurando APK de producción en el dispositivo..."
+    adb -s "$DEVICE" install -r HotelPuntaGaleria.apk 2>/dev/null && echo "✅ APK de producción restaurado" || echo "⚠️  No se pudo reinstalar el APK de producción"
+  fi
   echo "👋 Hasta luego"
 }
 trap cleanup EXIT INT TERM
+
+# ── Limpiar procesos y puertos de sesiones anteriores ────────────────────────
+echo "🧹 Limpiando procesos anteriores..."
+pkill -9 -f "vite" 2>/dev/null || true
+pkill -9 -f "netlify" 2>/dev/null || true
+lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+lsof -ti:5174 | xargs kill -9 2>/dev/null || true
+lsof -ti:8888 | xargs kill -9 2>/dev/null || true
+sleep 2
 
 # ── Config dev: apuntar a Vite en 5173 ────────────────────────────────────────
 cat > capacitor.config.ts << 'EOF'
@@ -68,22 +82,11 @@ const config: CapacitorConfig = {
 export default config;
 EOF
 
-# ── Rebuild y reinstalación inteligente ───────────────────────────────────────
+# ── Rebuild si el APK live no existe o el config cambió ──────────────────────
 CONFIG_HASH=$(md5 -q capacitor.config.ts 2>/dev/null || md5sum capacitor.config.ts 2>/dev/null | awk '{print $1}')
 STORED_HASH=$(cat .live-apk-hash 2>/dev/null || echo "none")
-INSTALL_MARKER=".live-installed-${DEVICE}-${CONFIG_HASH}"
-
-NEEDS_BUILD=false
-NEEDS_INSTALL=false
 
 if [ ! -f "HotelPuntaGaleria-live.apk" ] || [ "$CONFIG_HASH" != "$STORED_HASH" ]; then
-  NEEDS_BUILD=true
-  NEEDS_INSTALL=true
-elif [ ! -f "$INSTALL_MARKER" ]; then
-  NEEDS_INSTALL=true
-fi
-
-if $NEEDS_BUILD; then
   echo ""
   echo -e "${YELLOW}📦 Compilando APK de live reload...${NC}"
   npx vite build
@@ -93,15 +96,11 @@ if $NEEDS_BUILD; then
   echo "$CONFIG_HASH" > .live-apk-hash
 fi
 
-if $NEEDS_INSTALL; then
-  echo "📲 Instalando APK en el dispositivo..."
-  adb -s "$DEVICE" install -r HotelPuntaGaleria-live.apk
-  rm -f .live-installed-* 2>/dev/null || true
-  touch "$INSTALL_MARKER"
-  echo -e "${GREEN}✅ APK instalado${NC}"
-else
-  echo "✅ APK ya instalado en este dispositivo"
-fi
+# ── Instalar siempre (garantiza que la app esté en el dispositivo) ────────────
+echo "📲 Instalando APK en el dispositivo..."
+adb -s "$DEVICE" install -r HotelPuntaGaleria-live.apk
+rm -f .live-installed-* 2>/dev/null || true
+echo -e "${GREEN}✅ APK instalado${NC}"
 
 # ── Tunnel USB: puertos 5173 (Vite + HMR) y 8888 (Netlify functions) ──────────
 echo "🔌 Configurando tunnels ADB..."
@@ -117,19 +116,27 @@ NETLIFY_PID=$!
 
 # ── Vite (sin pipe para capturar PID real y no perder HMR) ───────────────────
 echo "⚡ Iniciando Vite en :5173..."
-npx vite > /tmp/vite-live.log 2>&1 &
+npx vite --port 5173 --strictPort > /tmp/vite-live.log 2>&1 &
 VITE_PID=$!
 
 printf "   Esperando que Vite esté listo"
 for i in $(seq 1 40); do
+  if ! kill -0 "$VITE_PID" 2>/dev/null; then
+    echo ""
+    echo -e "${RED}❌ Vite falló al iniciar. Últimas líneas del log:${NC}"
+    tail -10 /tmp/vite-live.log
+    exit 1
+  fi
   if curl -sf "http://localhost:5173" > /dev/null 2>&1; then
     echo " ✓"; break
   fi
   printf "."; sleep 1
 done
 
-# ── Abrir app ─────────────────────────────────────────────────────────────────
-echo "▶️  Abriendo app en el dispositivo..."
+# ── Abrir app (force-stop para garantizar carga fresca) ──────────────────────
+echo "▶️  Reiniciando app en el dispositivo..."
+adb -s "$DEVICE" shell am force-stop "com.hotelpuntagaleria.app" 2>/dev/null || true
+sleep 1
 adb -s "$DEVICE" shell am start -n "com.hotelpuntagaleria.app/.MainActivity" 2>/dev/null || true
 
 echo ""
