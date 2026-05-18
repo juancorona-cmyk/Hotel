@@ -204,7 +204,7 @@ export default function ActivityRegModal({ activity, event, onClose }) {
           <div className="arm-success">
             {/* Check animado */}
             <div className="arm-success__check">
-              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <svg width="50" height="50" viewBox="0 0 64 64" fill="none">
                 <circle cx="32" cy="32" r="32" fill="#eef4e0"/>
                 <circle cx="32" cy="32" r="26" fill="#d6e9a0"/>
                 <polyline points="20,33 28,41 44,23" stroke="#3d5012" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
