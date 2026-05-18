@@ -116,7 +116,7 @@ NETLIFY_PID=$!
 
 # ── Vite (sin pipe para capturar PID real y no perder HMR) ───────────────────
 echo "⚡ Iniciando Vite en :5173..."
-npx vite --port 5173 --strictPort > /tmp/vite-live.log 2>&1 &
+npx vite --port 5173 --host --strictPort > /tmp/vite-live.log 2>&1 &
 VITE_PID=$!
 
 printf "   Esperando que Vite esté listo"

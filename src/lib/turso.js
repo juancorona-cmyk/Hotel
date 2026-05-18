@@ -1,23 +1,28 @@
 import { Capacitor } from '@capacitor/core'
 
-// URL relativa: el WebView la resuelve contra el servidor activo.
-// - Producción APK: https://hotelpuntagaleria.mx  (androidScheme + hostname)
-// - Live dev APK:   http://localhost:8888          (server.url + adb reverse)
-// - Browser dev:    Vite proxy a netlify dev
-const API_BASE = ''
+// Auto-detección de API_BASE:
+// 1. En local dev (browser): '' (usa el proxy de Vite)
+// 2. En Live Reload (Capacitor con puerto): '' (usa el proxy de Vite via adb reverse)
+// 3. En Producción APK o Native sin dev server: 'https://hotelpuntagaleria.mx'
+const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const isLiveReload = isLocalDev && window.location.port !== ''
+
+const API_BASE = (Capacitor.isNativePlatform() && !isLiveReload)
+  ? 'https://hotelpuntagaleria.mx'
+  : ''
 
 export { API_BASE }
 
 export async function getProxyConfig() {
+  const url = `${API_BASE}/.netlify/functions/turso-proxy`
   try {
-    // En producción usamos la ruta directa para evitar redirecciones que rompan el JSON
-    const url = `${API_BASE}/.netlify/functions/turso-proxy`
     const res = await fetch(url)
     if (!res.ok) return null
     const text = await res.text()
-    if (text.trim().startsWith('<')) return null // Es HTML, no config
+    if (text.trim().startsWith('<')) return null 
     return JSON.parse(text)
-  } catch {
+  } catch (err) {
+    console.warn(`[getProxyConfig] Failed to fetch from ${url}:`, err)
     return null
   }
 }
@@ -38,22 +43,22 @@ async function pipeline(requests) {
     const text = await res.text()
 
     if (text.trim().startsWith('<')) {
-      throw new Error(`El servidor devolvió HTML. Verifica la URL: ${url}`)
+      throw new Error(`El servidor devolvió HTML (posible error 404 o 500). Verifica la URL: ${url}`)
     }
 
     if (!res.ok) {
       let errData = {}
       try { errData = JSON.parse(text) } catch {}
-      throw new Error(errData.error || errData.detail || `Error del servidor ${res.status}`)
+      throw new Error(errData.error || errData.detail || `Error del servidor ${res.status} en ${url}`)
     }
 
     const data = JSON.parse(text)
     if (data.error) throw new Error(data.error)
     return data
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('Tiempo de espera agotado. Verifica tu conexión a internet.')
+    if (e.name === 'AbortError') throw new Error(`Tiempo de espera agotado (15s) al conectar con: ${url}`)
     if (e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('network')) {
-      throw new Error('Sin conexión. Verifica tu internet.')
+      throw new Error(`Sin conexión al servidor (${url}). Verifica tu internet o el estado del servidor.`)
     }
     throw e
   } finally {
@@ -481,13 +486,13 @@ export async function adminLoginSingle(username, password, setupKey = null) {
     })
     const text = await res.text()
     let data
-    try { data = JSON.parse(text) } catch { throw new Error('Respuesta inválida del servidor') }
-    if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
+    try { data = JSON.parse(text) } catch { throw new Error(`Respuesta inválida del servidor en ${url}`) }
+    if (!res.ok) throw new Error(data.error || `Error ${res.status} en ${url}`)
     return data
   } catch (e) {
-    if (e.name === 'AbortError') throw new Error('Tiempo de espera agotado. Verifica tu conexión a internet.')
+    if (e.name === 'AbortError') throw new Error(`Tiempo de espera agotado (15s) al conectar con: ${url}`)
     if (e.message.toLowerCase().includes('failed to fetch') || e.message.toLowerCase().includes('network')) {
-      throw new Error('Sin conexión al servidor. Verifica tu internet.')
+      throw new Error(`Sin conexión al servidor (${url}). Verifica tu internet o el estado del servidor.`)
     }
     throw e
   } finally {
