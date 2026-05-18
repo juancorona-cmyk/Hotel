@@ -3,6 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 import { fmtFecha } from '../lib/utils'
 import { HOTEL_CLABE, HOTEL_TITULAR } from '../lib/registrationConstants'
 import { useRegistration, WHATSAPP_OPTIONS, HOW_FOUND_OPTIONS } from '../hooks/useRegistration'
+import { generateTicketPdfBlob } from '../lib/ticketPdf'
 import './ActivityRegModal.css'
 
 export default function ActivityRegModal({ activity, event, onClose }) {
@@ -15,22 +16,50 @@ export default function ActivityRegModal({ activity, event, onClose }) {
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  const handleShareWhatsApp = () => {
-    const dateStr = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
-    const checkinUrl = `https://hotelpuntagaleria.mx/checkin?rid=${reg.registrationId}`
+  const handleShareWhatsApp = async () => {
+    const dateStr = event?.date
+      ? new Date(event.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : ''
+    const payStr = reg.paymentMethod === 'presencial'
+      ? 'Presencial · Pagar en recepción'
+      : reg.paymentMethod === 'transferencia'
+        ? (reg.paymentPending ? 'Transferencia · Pendiente' : 'Transferencia · Pagado ✓')
+        : ''
     const msg = `🎫 *TICKET DE ACCESO — Hotel Punta Galería*\n\n`
       + `👤 *${reg.fullName.trim()}*\n`
       + `📋 *${activity.name}*${event ? ' — ' + event.name : ''}\n`
-      + `🎟️ Ticket: #${reg.ticketId}\n`
-      + `📅 ${dateStr}\n`
-      + `💵 ${event?.price > 0 ? '$' + parseFloat(event.price).toFixed(2) + ' MXN' : 'GRATIS'} | Pago: ${reg.paymentMethod === 'transferencia' ? 'Transferencia' : 'Presencial'}\n\n`
-      + `📍 Hotel Punta Galería, Morelia, Mich.\n\n`
-      + `🔗 Link de check-in: ${checkinUrl}`
+      + `🎟️ Ticket #${reg.ticketId}\n`
+      + (dateStr ? `📅 ${dateStr}\n` : '')
+      + `📍 Hotel Punta Galería, Morelia, Mich.\n`
+      + (payStr ? `💳 ${payStr}` : '')
 
-    // Normalizar número: quitar todo excepto dígitos y leading +
     const digits = reg.phone.replace(/\D/g, '')
-    // Si son 10 dígitos asumimos México (+52)
     const waPhone = digits.length === 10 ? `52${digits}` : digits
+
+    try {
+      const canvas = reg.qrSvgRef?.current
+      const qrDataUrl = canvas?.toDataURL?.('image/png') ?? null
+      const { blob, filename } = await generateTicketPdfBlob({
+        registrationId: reg.registrationId,
+        fullName: reg.fullName,
+        event,
+        qrDataUrl,
+        paymentMethod: reg.paymentMethod,
+        paymentPending: reg.paymentPending,
+      })
+      const pdfFile = new File([blob], filename, { type: 'application/pdf' })
+      // Web Share API con archivo (móvil iOS/Android)
+      if (navigator.canShare?.({ files: [pdfFile] })) {
+        await navigator.share({ files: [pdfFile], text: msg })
+        return
+      }
+      // Fallback: descargar PDF y abrir WhatsApp con el texto
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+
     window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
   }
 

@@ -162,7 +162,7 @@ body{font-family:'Montserrat',sans-serif;background:#fff;display:flex;flex-direc
 </body></html>`
 }
 
-export async function downloadTicketPdf({ registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending }) {
+export async function generateTicketPdfBlob({ registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending }) {
   const html = generateTicketPdfHtml({
     registrationId,
     fullName,
@@ -181,11 +181,15 @@ export async function downloadTicketPdf({ registrationId, fullName, event, qrDat
     body: JSON.stringify({ html, filename: `ticket-${ticketNum}.pdf`, pageWidth: PW, pageHeight: PH })
   })
   if (!res.ok) throw new Error('Error generando PDF')
-  const blob = await res.blob()
+  return { blob: await res.blob(), filename: `ticket-${ticketNum}.pdf` }
+}
+
+export async function downloadTicketPdf(params) {
+  const { blob, filename } = await generateTicketPdfBlob(params)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `ticket-${ticketNum}.pdf`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
 }
