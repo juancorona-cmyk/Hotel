@@ -25,13 +25,15 @@ export default function ActivityRegModal({ activity, event, onClose }) {
       : reg.paymentMethod === 'transferencia'
         ? (reg.paymentPending ? 'Transferencia · Pendiente' : 'Transferencia · Pagado ✓')
         : ''
-    const msg = `🎫 *TICKET DE ACCESO — Hotel Punta Galería*\n\n`
+    const msg = `📄 *Te comparto tu PDF de acceso al evento* 🎉\n\n`
+      + `Aquí tienes los datos de tu registro:\n\n`
       + `👤 *${reg.fullName.trim()}*\n`
-      + `📋 *${activity.name}*${event ? ' — ' + event.name : ''}\n`
+      + `📋 ${event?.name || activity.name}\n`
       + `🎟️ Ticket #${reg.ticketId}\n`
       + (dateStr ? `📅 ${dateStr}\n` : '')
       + `📍 Hotel Punta Galería, Morelia, Mich.\n`
-      + (payStr ? `💳 ${payStr}` : '')
+      + (payStr ? `💳 ${payStr}\n` : '')
+      + `\n_Presenta este ticket en la entrada del evento_ ✅`
 
     const digits = reg.phone.replace(/\D/g, '')
     const waPhone = digits.length === 10 ? `52${digits}` : digits
