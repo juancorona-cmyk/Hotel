@@ -2,15 +2,16 @@ const DEFAULT_CLOUD = 'dfuzfdrat'
 
 let cloudName = localStorage.getItem('cloudinary_cloud_name') || import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || DEFAULT_CLOUD
 
-const buildUrl = (path, type = 'image', ext = '') => {
+const buildUrl = (path, type = 'image', ext = '', quality = 'q_auto,f_auto') => {
   const base = `https://res.cloudinary.com/${cloudName}/${type}/upload`
-  const params = type === 'image' ? 'q_auto,f_auto' : 'q_auto'
+  const params = type === 'image' ? quality : 'q_auto'
   const fullPath = ext ? `${path}.${ext}` : path
   return `${base}/${params}/${fullPath}`
 }
 
 export const CDN = {
   FOTO_INICIO:     buildUrl('hotel/imagenes/hotel/foto-inicio', 'image', 'jpg'),
+  NOSOTROS:        buildUrl('hotel/imagenes/hotel/nosotros', 'image', 'jpg', 'w_840,h_800,c_fill,g_face,q_100,f_auto,e_sharpen:80'),
   DELUXE:          buildUrl('hotel/imagenes/habitaciones/deluxe', 'image', 'jpg'),
   DELUXE_DOUBLE:   buildUrl('hotel/imagenes/habitaciones/deluxe-double', 'image', 'jpg'),
   RESTAURANTE:     buildUrl('hotel/imagenes/restaurante/restaurante', 'image', 'png'),
@@ -32,6 +33,7 @@ export function updateCDN(newCloudName) {
   cloudName = newCloudName
   
   CDN.FOTO_INICIO = buildUrl('hotel/imagenes/hotel/foto-inicio', 'image', 'jpg')
+  CDN.NOSOTROS = buildUrl('hotel/imagenes/hotel/nosotros', 'image', 'jpg', 'w_840,h_800,c_fill,g_face,q_100,f_auto,e_sharpen:80')
   CDN.DELUXE = buildUrl('hotel/imagenes/habitaciones/deluxe', 'image', 'jpg')
   CDN.DELUXE_DOUBLE = buildUrl('hotel/imagenes/habitaciones/deluxe-double', 'image', 'jpg')
   CDN.RESTAURANTE = buildUrl('hotel/imagenes/restaurante/restaurante', 'image', 'png')

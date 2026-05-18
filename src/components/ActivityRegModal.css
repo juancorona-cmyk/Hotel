@@ -39,11 +39,12 @@
 
 /* ── Header ──────────────────────────────────────── */
 .arm-header {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 22px 22px 18px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 22px 48px 18px;
   border-bottom: 1px solid #f0f0ee;
   flex-shrink: 0;
 }
@@ -51,8 +52,9 @@
 .arm-header__info {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0;
-  min-width: 0;
+  width: 100%;
 }
 
 .arm-eyebrow {
@@ -76,22 +78,26 @@
 
 .arm-header__pills {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .arm-header__pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   background: #f5f7ee;
-  border: 1px solid #d4dfa8;
+  border: 1.5px solid #d4dfa8;
   border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 11px;
+  padding: 5px 12px;
+  font-size: 12px;
   font-weight: 700;
   color: #4a5a1e;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .arm-header__pill--price {
@@ -105,6 +111,9 @@
 }
 
 .arm-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   background: #f5f5f3;
   border: none;
   border-radius: 50%;
@@ -116,7 +125,6 @@
   justify-content: center;
   cursor: pointer;
   color: #555;
-  margin-top: 2px;
   transition: background 0.15s, color 0.15s;
 }
 .arm-close:hover { background: #e8e8e4; color: #1a1a1a; }
@@ -129,7 +137,7 @@
   gap: 20px;
   overflow-y: auto;
   flex: 1;
-  text-align: left;
+  align-items: stretch;
 }
 
 .arm-field {
@@ -143,6 +151,7 @@
   font-weight: 700;
   color: #333;
   line-height: 1.4;
+  text-align: center;
 }
 
 .arm-label span {
@@ -197,6 +206,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .arm-radio-label {
@@ -236,6 +246,7 @@
   font-size: 13px;
   font-weight: 600;
   margin: 0;
+  text-align: center;
 }
 
 /* ── Submit ──────────────────────────────────────── */
@@ -261,6 +272,80 @@
   box-shadow: 0 6px 20px rgba(74,90,30,0.38);
 }
 .arm-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.arm-submit--resume {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+}
+
+/* ── Restoring state (no flash) ─────────────────── */
+.arm-restoring {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.arm-restoring__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e8d8;
+  border-top-color: #5a6c1e;
+  border-radius: 50%;
+  animation: arm-spin 0.7s linear infinite;
+}
+
+/* ── WhatsApp member notice (informational) ──────── */
+.arm-wa-member-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+/* ── Duplicate registration notice ───────────────── */
+.arm-duplicate-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f0f4e8;
+  border: 1.5px solid #5a6c1e;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-top: 4px;
+}
+.arm-duplicate-icon {
+  width: 36px;
+  height: 36px;
+  background: #5a6c1e;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.arm-duplicate-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3a4a10;
+  margin: 0 0 2px;
+}
+.arm-duplicate-sub {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  color: #5a6c1e;
+  margin: 0;
+}
 
 /* ── Success ─────────────────────────────────────── */
 .arm-success {
@@ -344,12 +429,13 @@
 .arm-success__ticket-right {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 20px 20px;
   gap: 8px;
   flex: 1;
   min-width: 0;
+  text-align: center;
 }
 
 .arm-success__ticket-event-name {
@@ -375,6 +461,7 @@
 .arm-success__access-note {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   font-size: 12px;
   font-weight: 600;
@@ -384,7 +471,7 @@
   padding: 10px 14px;
   margin: 0;
   width: 100%;
-  text-align: left;
+  text-align: center;
 }
 
 /* Buttons stacked */
@@ -398,22 +485,23 @@
 .arm-success__btn {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 10px;
   border: none;
   border-radius: 16px;
-  padding: 14px 18px;
+  padding: 15px 22px;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
   font-family: inherit;
-  text-align: left;
   width: 100%;
+  text-decoration: none;
 }
 
 .arm-success__btn-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.22);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.18);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -424,7 +512,8 @@
 .arm-success__btn-label {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 1px;
 }
 
 .arm-success__btn-title {
@@ -432,13 +521,15 @@
   font-weight: 800;
   color: #fff;
   display: block;
+  line-height: 1.2;
 }
 
 .arm-success__btn-sub {
   font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.75);
+  font-weight: 500;
+  color: rgba(255,255,255,0.78);
   display: block;
+  line-height: 1.2;
 }
 
 .arm-success__btn--wa {
@@ -556,6 +647,7 @@
 .arm-steps {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
 }
@@ -604,6 +696,7 @@
   color: #555;
   margin: 0;
   font-weight: 500;
+  text-align: center;
 }
 
 .arm-pay-options {
@@ -839,7 +932,7 @@
     max-height: 92vh;
   }
   .arm-form { padding: 16px 16px 24px; }
-  .arm-header { padding: 20px 16px 14px; }
+  .arm-header { padding: 20px 44px 14px; }
 }
 
 /* ── Proof upload (arm-pend screen) ─────────────── */
@@ -852,34 +945,56 @@
   margin-top: 2px;
 }
 
-.arm-pend__upload-hint {
-  font-size: 11px;
-  color: #94a3b8;
+.arm-pend__dropzone {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 16px 18px;
+  background: #f8fbf0;
+  border: 2px dashed #a8bb6c;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
   text-align: center;
-  margin: 0;
+  box-sizing: border-box;
+}
+.arm-pend__dropzone:hover {
+  background: #eef6d8;
+  border-color: #7a9828;
+}
+.arm-pend__dropzone--loading {
+  cursor: not-allowed;
+  background: #f4f8ec;
+  border-color: #c8d9a0;
 }
 
-.arm-pend__upload-btn {
-  display: inline-flex;
+.arm-pend__dropzone-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #e4edcc;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  width: 100%;
-  background: linear-gradient(135deg, #4a5a1e 0%, #7a8c2e 100%);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 20px;
-  font-size: 14px;
-  font-weight: 800;
-  font-family: inherit;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(74,90,30,0.28);
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 8px rgba(90,108,30,0.10);
 }
-.arm-pend__upload-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(74,90,30,0.35); }
-.arm-pend__upload-btn--loading { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+.arm-pend__dropzone-main {
+  font-size: 13px;
+  font-weight: 800;
+  color: #3d5012;
+  display: block;
+}
+
+.arm-pend__dropzone-sub {
+  font-size: 10px;
+  color: #7a8c50;
+  font-weight: 600;
+  display: block;
+}
 
 @keyframes arm-upload-spin { to { transform: rotate(360deg); } }
 .arm-pend__upload-spin { animation: arm-upload-spin 0.9s linear infinite; }
@@ -895,14 +1010,24 @@
 .arm-pend__proof-ok {
   width: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #f0fdf4;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   border: 1.5px solid #86efac;
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 14px;
+  padding: 14px 16px;
 }
-.arm-pend__proof-ok > div {
+.arm-pend__proof-ok-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #bbf7d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.arm-pend__proof-ok-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -913,6 +1038,42 @@
   color: #15803d;
 }
 .arm-pend__proof-ok span {
-  font-size: 12px;
+  font-size: 11px;
   color: #166534;
+}
+
+/* ── Group join button (success screen) ─────────── */
+.arm-success__btn-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: #25d366;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 20px;
+  border-radius: 14px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(37,211,102,0.30);
+  transition: opacity 0.15s, transform 0.12s;
+  margin-bottom: 8px;
+}
+.arm-success__btn-group:hover { opacity: 0.92; transform: translateY(-1px); }
+
+/* ── WhatsApp member badge ───────────────────────── */
+.arm-whatsapp-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #15803d;
 }

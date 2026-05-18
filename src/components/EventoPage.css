@@ -70,7 +70,10 @@
 .ep-back:hover { color: #4a5a1e; }
 
 /* ── Hero ────────────────────────────────────────── */
-.ep-hero { margin-bottom: 24px; }
+.ep-hero {
+  margin-bottom: 24px;
+  text-align: center;
+}
 
 .ep-eyebrow {
   font-size: 10px;
@@ -95,6 +98,7 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 20px;
+  justify-content: center;
 }
 
 .ep-pill {
@@ -451,6 +455,7 @@
   color: #555;
   text-transform: uppercase;
   letter-spacing: 0.07em;
+  text-align: center;
 }
 
 .ep-label span {
@@ -512,6 +517,7 @@
   font-size: 13px;
   font-weight: 600;
   margin: 0;
+  text-align: center;
 }
 
 /* ── Radio groups ────────────────────────────────── */
@@ -519,6 +525,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .ep-radio-label {
@@ -578,6 +585,63 @@
   box-shadow: 0 6px 20px rgba(74,90,30,0.38);
 }
 .ep-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.ep-submit--resume {
+  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+}
+
+/* ── WhatsApp member notice (informational) ──────── */
+.ep-wa-member-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+/* ── Duplicate registration notice ───────────────── */
+.ep-duplicate-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f0f4e8;
+  border: 1.5px solid #5a6c1e;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-top: 4px;
+}
+.ep-duplicate-icon {
+  width: 36px;
+  height: 36px;
+  background: #5a6c1e;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.ep-duplicate-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3a4a10;
+  margin: 0 0 2px;
+}
+.ep-duplicate-sub {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  color: #5a6c1e;
+  margin: 0;
+}
 
 /* ── Back button (secondary full-width) ──────────── */
 .ep-back-btn {
@@ -605,6 +669,13 @@
 }
 
 /* ── Loading ─────────────────────────────────────── */
+.ep-restoring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+}
+
 .ep-loading {
   display: flex;
   flex-direction: column;
@@ -648,6 +719,7 @@
 .ep-steps {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0;
   margin-bottom: 20px;
 }
@@ -696,6 +768,7 @@
   color: #777;
   margin: 0 0 20px;
   line-height: 1.5;
+  text-align: center;
 }
 
 .ep-pay-options {
@@ -878,11 +951,13 @@
   .ep-pend__field-clabe { font-size: 14px; }
   .ep-pend__field-amount { font-size: 16px; }
   .ep-pend__upload { gap: 5px; }
-  .ep-pend__upload-hint { font-size: 11px; }
-  .ep-pend__upload-btn { padding: 10px 16px; font-size: 13px; border-radius: 12px; }
+  .ep-pend__dropzone { padding: 18px 12px 14px; gap: 6px; border-radius: 13px; }
+  .ep-pend__dropzone-icon { width: 40px; height: 40px; border-radius: 10px; }
+  .ep-pend__dropzone-main { font-size: 13px; }
   .ep-pend__waiting { margin-top: 8px; margin-bottom: 8px; }
   .ep-pend__wa { padding: 12px 16px; font-size: 14px; border-radius: 12px; margin-bottom: 6px; }
-  .ep-pend__proof-ok { padding: 10px 12px; }
+  .ep-pend__proof-ok { padding: 11px 14px; gap: 10px; }
+  .ep-pend__proof-ok-icon { width: 34px; height: 34px; }
 }
 
 /* ── Panel de datos bancarios (paso 2 - transferencia) ── */
@@ -1312,35 +1387,59 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.ep-pend__upload-hint {
-  font-size: 13px;
-  color: #64748b;
-  text-align: center;
-  margin: 0;
-}
-
-.ep-pend__upload-btn {
-  display: inline-flex;
+.ep-pend__dropzone {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  border: 2px solid #5a6c1e;
-  border-radius: 12px;
-  color: #4a5a1e;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
+  padding: 24px 16px 20px;
+  background: #f8fbf0;
+  border: 2px dashed #a8bb6c;
+  border-radius: 16px;
   cursor: pointer;
-  padding: 12px 24px;
-  transition: background 0.15s, transform 0.15s;
-  width: 100%;
-  justify-content: center;
+  transition: background 0.18s, border-color 0.18s;
+  text-align: center;
+  box-sizing: border-box;
 }
-.ep-pend__upload-btn:hover { background: #f2f6e0; transform: translateY(-1px); }
-.ep-pend__upload-btn--loading { opacity: 0.7; cursor: not-allowed; }
+.ep-pend__dropzone:hover {
+  background: #eef6d8;
+  border-color: #7a9828;
+}
+.ep-pend__dropzone--loading {
+  cursor: not-allowed;
+  background: #f4f8ec;
+  border-color: #c8d9a0;
+}
+
+.ep-pend__dropzone-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: #e4edcc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 8px rgba(90,108,30,0.10);
+}
+
+.ep-pend__dropzone-main {
+  font-size: 14px;
+  font-weight: 800;
+  color: #3d5012;
+  display: block;
+}
+
+.ep-pend__dropzone-sub {
+  font-size: 11px;
+  color: #7a8c50;
+  font-weight: 600;
+  display: block;
+}
 
 @keyframes ep-upload-spin { to { transform: rotate(360deg); } }
 .ep-pend__upload-spin { animation: ep-upload-spin 0.9s linear infinite; }
@@ -1356,18 +1455,27 @@
 .ep-pend__proof-ok {
   width: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #f0fdf4;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
   border: 1.5px solid #86efac;
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 4px;
+  border-radius: 14px;
+  padding: 14px 18px;
 }
-.ep-pend__proof-ok > div {
+.ep-pend__proof-ok-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #bbf7d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ep-pend__proof-ok-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .ep-pend__proof-ok strong {
   font-size: 14px;
@@ -1375,6 +1483,41 @@
   color: #15803d;
 }
 .ep-pend__proof-ok span {
-  font-size: 12px;
+  font-size: 11px;
   color: #166534;
+}
+
+/* ── Group join button (success screen) ─────────── */
+.ep-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  background: #25d366;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 20px;
+  border-radius: 14px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(37,211,102,0.30);
+  transition: opacity 0.15s, transform 0.12s;
+}
+.ep-group-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+
+/* ── WhatsApp member badge ───────────────────────── */
+.ep-whatsapp-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #15803d;
 }

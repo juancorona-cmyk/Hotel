@@ -35,7 +35,7 @@ export default function About() {
           <p>{t('nosotros.p2')}</p>
         </div>
         <div className="about__image-wrap">
-          <img src={CDN.FOTO_INICIO} alt="Hotel Punta Galería jardines" className="about__image" />
+          <img src={CDN.NOSOTROS} alt="Hotel Punta Galería nosotros" className="about__image" />
         </div>
       </div>
     </section>

@@ -4,8 +4,13 @@ import {
   getRegistrationCountByEvent,
   trackEvent,
   getRegistrationById,
+  checkWhatsappMember,
+  addWhatsappMember,
+  checkExistingRegistration,
   API_BASE,
 } from '../lib/turso'
+
+const WA_GROUP_LINK = 'https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw'
 import { isValidPhone, compressImage } from '../lib/utils'
 import {
   uploadTransferProof as doUploadProof,
@@ -14,6 +19,8 @@ import {
 
 export const WHATSAPP_OPTIONS = ['Sí', 'No', 'Ya estoy dentro']
 export const HOW_FOUND_OPTIONS = ['Instagram', 'Facebook', 'Conocido', 'Otros']
+
+function lsKey(eventId) { return `reg_event_${eventId}` }
 
 export function useRegistration({ event, activity, initialRegId, onRegistered }) {
   const [step, setStep] = useState(1)
@@ -35,20 +42,53 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
   const [proofError, setProofError] = useState('')
   const [downloadingPDF, setDownloadingPDF] = useState(false)
   const [spotsLeft, setSpotsLeft] = useState(null)
+  const [isWhatsappMember, setIsWhatsappMember] = useState(null)
+  const [duplicateReg, setDuplicateReg] = useState(null)
+  // True while restoring saved state — prevents form flash before data loads
+  const [restoring, setRestoring] = useState(() => {
+    if (initialRegId) return true
+    if (!event?.id) return false
+    try {
+      const saved = localStorage.getItem(lsKey(event.id))
+      const parsed = JSON.parse(saved || 'null')
+      return !!(parsed?.registrationId)
+    } catch { return false }
+  })
 
   const qrSvgRef = useRef(null)
+  const whatsappAutoSet = useRef(false)
 
   const capacity = event?.capacity > 0 ? Number(event.capacity) : 0
 
-  // Load spots left
+  // ── Restore saved registration from localStorage (modal, no URL param) ──
   useEffect(() => {
-    if (!event?.id || !capacity) return
-    getRegistrationCountByEvent(event.id)
-      .then(count => setSpotsLeft(Math.max(0, capacity - count)))
-      .catch(() => setSpotsLeft(null))
-  }, [event?.id, capacity])
+    if (!event?.id || initialRegId) { setRestoring(false); return }
+    const saved = localStorage.getItem(lsKey(event.id))
+    if (!saved) { setRestoring(false); return }
+    let parsed
+    try { parsed = JSON.parse(saved) } catch { setRestoring(false); return }
+    if (!parsed?.registrationId) { setRestoring(false); return }
+    ;(async () => {
+      try {
+        const reg = await getRegistrationById(parsed.registrationId)
+        if (!reg) { localStorage.removeItem(lsKey(event.id)); return }
+        setRegistrationId(reg.id)
+        setFullName(reg.full_name || '')
+        setPaymentMethod(reg.payment_method || '')
+        const isPaid = reg.paid === 1 || reg.paid === '1'
+        setSuccess(true)
+        if (!isPaid && reg.payment_method === 'transferencia') {
+          setPaymentPending(true)
+          if (reg.transfer_proof_url) setProofUploaded(true)
+        } else if (isPaid) {
+          localStorage.removeItem(lsKey(event.id))
+        }
+      } catch {}
+      finally { setRestoring(false) }
+    })()
+  }, [event?.id, initialRegId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load existing registration if coming back with ?rid=
+  // ── Restore from URL param (?rid=) ──────────────────
   useEffect(() => {
     if (!initialRegId) return
     ;(async () => {
@@ -66,29 +106,83 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
           }
         }
       } catch {}
+      finally { setRestoring(false) }
     })()
   }, [initialRegId])
 
-  // Poll payment status
+  // ── WhatsApp membership check (informational only) ──
+  useEffect(() => {
+    if (!isValidPhone(phone)) {
+      setIsWhatsappMember(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const isMember = await checkWhatsappMember(phone)
+        setIsWhatsappMember(isMember)
+        if (isMember) {
+          setWhatsapp('Ya estoy dentro')
+          whatsappAutoSet.current = true
+        } else if (whatsappAutoSet.current) {
+          setWhatsapp('')
+          whatsappAutoSet.current = false
+        }
+      } catch {
+        setIsWhatsappMember(false)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [phone]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Duplicate event registration check (blocks submit) ──
+  useEffect(() => {
+    if (!isValidPhone(phone) || !event?.id) {
+      setDuplicateReg(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const existing = await checkExistingRegistration(phone, event.id)
+        setDuplicateReg(existing ?? null)
+      } catch {
+        setDuplicateReg(null)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [phone, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Spots left ──────────────────────────────────────
+  useEffect(() => {
+    if (!event?.id || !capacity) return
+    getRegistrationCountByEvent(event.id)
+      .then(count => setSpotsLeft(Math.max(0, capacity - count)))
+      .catch(() => setSpotsLeft(null))
+  }, [event?.id, capacity])
+
+  // ── Poll payment status ─────────────────────────────
   useEffect(() => {
     if (!paymentPending || !registrationId) return
     const interval = setInterval(async () => {
       try {
         const reg = await getRegistrationById(registrationId)
-        if (reg?.paid === 1 || reg?.paid === '1') setPaymentPending(false)
+        if (reg?.paid === 1 || reg?.paid === '1') {
+          setPaymentPending(false)
+          if (event?.id) localStorage.removeItem(lsKey(event.id))
+        }
       } catch {}
     }, 5000)
     return () => clearInterval(interval)
-  }, [paymentPending, registrationId])
+  }, [paymentPending, registrationId, event?.id])
 
   const handleStep1 = useCallback((e) => {
     e.preventDefault()
     setError('')
+    if (duplicateReg) return  // blocked — already registered for this event
     if (!fullName.trim()) { setError('Por favor ingresa tu nombre completo'); return }
     if (!phone.trim()) { setError('Por favor ingresa tu número de teléfono'); return }
     if (!isValidPhone(phone)) { setError('Ingresa un número válido (ej: 667 123 4567 o +1 555 000 1234)'); return }
     if (!howFound) { setError('Por favor indica cómo te enteraste'); return }
-    if (!whatsapp) { setError('Por favor responde la pregunta de WhatsApp'); return }
+    if (!whatsapp && isWhatsappMember === false) { setError('Por favor responde la pregunta de WhatsApp'); return }
 
     trackEvent('activity_reg_intent', {
       activity_id: activity?.id || event?.activity_id,
@@ -101,7 +195,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     })
 
     setStep(2)
-  }, [fullName, phone, howFound, howFoundOther, whatsapp, activity, event])
+  }, [fullName, phone, howFound, howFoundOther, whatsapp, activity, event, duplicateReg, isWhatsappMember])
 
   const handlePayment = useCallback(async (method) => {
     setError('')
@@ -135,6 +229,15 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       if (method === 'transferencia') setPaymentPending(true)
       setSuccess(true)
       if (onRegistered) onRegistered(regId)
+
+      // Persist in localStorage so reopening the modal restores this state
+      if (event?.id && regId) {
+        localStorage.setItem(lsKey(event.id), JSON.stringify({ registrationId: regId, paymentMethod: method }))
+      }
+
+      if (whatsapp === 'Sí') {
+        addWhatsappMember(phone.trim()).catch(() => {})
+      }
     } catch {
       setError('Ocurrió un error al registrarte. Intenta nuevamente.')
       setStep(1)
@@ -158,23 +261,43 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     }
   }, [registrationId, event?.name])
 
+  const handleResumeRegistration = useCallback(async () => {
+    if (!duplicateReg) return
+    try {
+      const reg = await getRegistrationById(duplicateReg.id)
+      if (!reg) return
+      setRegistrationId(reg.id)
+      setFullName(reg.full_name || '')
+      setPaymentMethod(reg.payment_method || '')
+      const isPaid = reg.paid === 1 || reg.paid === '1'
+      setSuccess(true)
+      if (!isPaid && reg.payment_method === 'transferencia') {
+        setPaymentPending(true)
+        if (reg.transfer_proof_url) setProofUploaded(true)
+      }
+    } catch {}
+  }, [duplicateReg])
+
   const handleDownloadPDF = useCallback(async () => {
     setDownloadingPDF(true)
     try {
+      const canvas = qrSvgRef.current
+      const qrDataUrl = canvas?.toDataURL?.('image/png') ?? null
       await downloadTicketPdf({
         registrationId,
         fullName,
         event,
-        qrSvgEl: qrSvgRef.current,
+        qrDataUrl,
+        paymentMethod,
+        paymentPending,
       })
     } catch {
       alert('No se pudo generar el PDF. Intenta de nuevo.')
     } finally {
       setDownloadingPDF(false)
     }
-  }, [registrationId, fullName, event])
+  }, [registrationId, fullName, event, paymentMethod, paymentPending])
 
-  // Spots badge
   const spotsColor = spotsLeft !== null && capacity > 0
     ? spotsLeft <= 3 ? '#dc2626' : spotsLeft <= 8 ? '#d97706' : '#5a6c1e'
     : '#5a6c1e'
@@ -187,18 +310,16 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
   const ticketId = String(registrationId || '').padStart(4, '0')
 
   return {
-    // State
     step, fullName, phone, howFound, howFoundOther, whatsapp,
     error, submitting, success, registrationId, paymentMethod,
     paymentPending, showTransferInfo, copiedClabe, proofUploaded,
     uploadingProof, proofError, downloadingPDF,
     spotsLeft, capacity, isSoldOut, spotsColor,
     phoneTyped, phoneOk, phoneBad, ticketId,
+    isWhatsappMember, duplicateReg, restoring,
     qrSvgRef,
-    // Setters
     setStep, setFullName, setPhone, setHowFound, setHowFoundOther,
     setWhatsapp, setError, setShowTransferInfo, setCopiedClabe,
-    // Handlers
-    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF,
+    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration,
   }
 }

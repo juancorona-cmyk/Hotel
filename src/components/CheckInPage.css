@@ -1020,3 +1020,233 @@
   .ci-pub-name { font-size: 14px; }
 }
 
+/* ══════════════════════════════════════════
+   PUBLIC TICKET v2 — QR scan welcome view
+═══════════════════════════════════════════ */
+.ci-pub2-page {
+  min-height: 100vh;
+  background: #f4f6ed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ── Header verde ── */
+.ci-pub2-header {
+  width: 100%;
+  background: linear-gradient(160deg, #4a5a1e 0%, #3a4c10 100%);
+  padding: 36px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.ci-pub2-logo {
+  height: 28px;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.ci-pub2-check {
+  width: 64px;
+  height: 64px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.25);
+  margin-top: 4px;
+}
+
+.ci-pub2-heading {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ci-pub2-subheading {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+/* ── Body ── */
+.ci-pub2-body {
+  width: 100%;
+  max-width: 440px;
+  padding: 0 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: -20px;
+}
+
+/* ── Section label ── */
+.ci-pub2-section-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #8fa03a;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* ── Evento card ── */
+.ci-pub2-event-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e4e9d4;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-shadow: 0 2px 8px rgba(74,90,30,0.06);
+}
+
+.ci-pub2-event-name {
+  font-size: 17px;
+  font-weight: 900;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.ci-pub2-event-desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── QR ── */
+.ci-pub2-qr-wrap {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e4e9d4;
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(74,90,30,0.06);
+}
+
+.ci-pub2-qr-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef4e0;
+  border: 1px solid #c9d98a;
+  border-radius: 99px;
+  padding: 6px 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4a5a1e;
+}
+
+.ci-pub2-qr-frame {
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px;
+  border: 1.5px solid #e4e9d4;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+
+.ci-pub2-qr-frame svg {
+  display: block;
+  border-radius: 6px;
+}
+
+.ci-pub2-qr-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #8fa03a;
+  text-transform: uppercase;
+}
+
+/* ── Info card ── */
+.ci-pub2-info-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e4e9d4;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-shadow: 0 2px 8px rgba(74,90,30,0.06);
+}
+
+.ci-pub2-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4ef;
+  gap: 10px;
+}
+.ci-pub2-row:last-child { border-bottom: none; }
+
+.ci-pub2-row-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8fa03a;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.ci-pub2-row-key svg { flex-shrink: 0; color: #8fa03a; }
+
+.ci-pub2-row-val {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-align: right;
+}
+
+.ci-pub2-row-val--green { color: #4a5a1e; font-weight: 800; }
+.ci-pub2-row-val--blue  { color: #1d4ed8; font-weight: 800; }
+.ci-pub2-row-val--amber { color: #b45309; font-weight: 800; }
+
+/* ── Footer ── */
+.ci-pub2-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 6px;
+  opacity: 0.5;
+}
+
+.ci-pub2-footer-logo {
+  height: 24px;
+}
+
+.ci-pub2-footer-text {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #4a5a1e;
+  text-transform: uppercase;
+}
+
+@media (max-width: 480px) {
+  .ci-pub2-heading { font-size: 20px; }
+  .ci-pub2-check { width: 54px; height: 54px; }
+}
+

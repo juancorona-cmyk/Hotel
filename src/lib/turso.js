@@ -148,6 +148,9 @@ export async function setupDB() {
       how_found    TEXT,
       whatsapp     TEXT,
       created_at   TEXT DEFAULT (datetime('now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS whatsapp_members (
+      phone TEXT PRIMARY KEY
     )`
   ]
 
@@ -169,12 +172,66 @@ export async function setupDB() {
     `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
     `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`,
-    `ALTER TABLE activity_registrations ADD COLUMN transfer_proof_url TEXT DEFAULT NULL`
+    `ALTER TABLE activity_registrations ADD COLUMN transfer_proof_url TEXT DEFAULT NULL`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431288388')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431103910')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431276964')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431439249')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431615116')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431747144')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431889947')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4432271719')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4432250723')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4433547618')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4433575848')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4433722947')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4433834137')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4434039154')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4434445952')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4434768462')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4434838808')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4435047933')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4435350722')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4436951877')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4437234585')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4438012099')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4438668200')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4522026766')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('5547866332')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('7551019334')`,
+    `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4439379301')`
   ]
 
   for (const sql of migrations) {
     await exec(sql).catch(() => {}) // Ignore if column already exists
   }
+}
+
+// ── WhatsApp Members ──────────────────────────────────────
+export async function checkWhatsappMember(phone) {
+  const digits = phone.replace(/[\s\-().+]/g, '')
+  const normalized = digits.length > 10 ? digits.slice(-10) : digits
+  const res = await exec('SELECT 1 FROM whatsapp_members WHERE phone = ? LIMIT 1', [txt(normalized)])
+  return parseRows(res).length > 0
+}
+
+export async function addWhatsappMember(phone) {
+  const digits = phone.replace(/[\s\-().+]/g, '')
+  const normalized = digits.length > 10 ? digits.slice(-10) : digits
+  await exec('INSERT OR IGNORE INTO whatsapp_members (phone) VALUES (?)', [txt(normalized)])
+}
+
+export async function checkExistingRegistration(phone, eventId) {
+  const digits = phone.replace(/[\s\-().+]/g, '')
+  const normalized = digits.length > 10 ? digits.slice(-10) : digits
+  // Normalize stored phone in SQL to handle spaces/dashes/country codes in existing records
+  const res = await exec(
+    `SELECT id, full_name FROM activity_registrations
+     WHERE SUBSTR(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'(',''),')',''),'+',''), -10) = ?
+     AND event_id = ? LIMIT 1`,
+    [txt(normalized), int(eventId)]
+  )
+  return parseRows(res)[0] ?? null
 }
 
 // ── Activities ────────────────────────────────────────────
