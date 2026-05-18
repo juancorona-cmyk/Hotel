@@ -15,6 +15,7 @@ import { isValidPhone, compressImage } from '../lib/utils'
 import {
   uploadTransferProof as doUploadProof,
   downloadTicketPdf,
+  generateTicketPdfBlob,
 } from '../lib/ticketPdf'
 
 export const WHATSAPP_OPTIONS = ['Sí', 'No', 'Ya estoy dentro']
@@ -288,6 +289,49 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     window.open('https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw', '_blank', 'noopener')
   }, [phone])
 
+  const handleSendTicketWhatsApp = useCallback(async () => {
+    const dateStr = event?.date
+      ? new Date(event.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : ''
+    const payStr = paymentMethod === 'presencial'
+      ? 'Presencial · Pagar en recepción'
+      : paymentMethod === 'transferencia'
+        ? (paymentPending ? 'Transferencia · Pendiente' : 'Transferencia · Pagado ✓')
+        : ''
+    const ticketNum = String(registrationId || '').padStart(4, '0')
+    const msg = `📄 *Te comparto tu PDF de acceso al evento* 🎉\n\n`
+      + `Aquí tienes los datos de tu registro:\n\n`
+      + `👤 *${fullName.trim()}*\n`
+      + `📋 ${event?.name || ''}\n`
+      + `🎟️ Ticket #${ticketNum}\n`
+      + (dateStr ? `📅 ${dateStr}\n` : '')
+      + `📍 Hotel Punta Galería, Morelia, Mich.\n`
+      + (payStr ? `💳 ${payStr}\n` : '')
+      + `\n_Presenta este ticket en la entrada del evento_ ✅`
+
+    const digits = phone.replace(/\D/g, '')
+    const waPhone = digits.length === 10 ? `52${digits}` : digits
+
+    try {
+      const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
+      const { blob, filename } = await generateTicketPdfBlob({
+        registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
+      })
+      const pdfFile = new File([blob], filename, { type: 'application/pdf' })
+      if (navigator.canShare?.({ files: [pdfFile] })) {
+        await navigator.share({ files: [pdfFile], text: msg })
+        return
+      }
+      // Fallback: descargar PDF
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+  }, [registrationId, fullName, phone, event, paymentMethod, paymentPending, qrSvgRef])
+
   const handleDownloadPDF = useCallback(async () => {
     setDownloadingPDF(true)
     try {
@@ -330,6 +374,6 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     qrSvgRef,
     setStep, setFullName, setPhone, setHowFound, setHowFoundOther,
     setWhatsapp, setError, setShowTransferInfo, setCopiedClabe,
-    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration, handleJoinGroup,
+    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration, handleJoinGroup, handleSendTicketWhatsApp,
   }
 }
