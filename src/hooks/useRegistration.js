@@ -312,27 +312,24 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     const waPhone = digits.length === 10 ? `52${digits}` : digits
     const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
 
-    // Móvil: Web Share API con PDF adjunto (sin bloqueador de popups)
-    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-    if (isMobile && typeof navigator.share === 'function') {
+    // Pre-check síncrono: ¿soporta compartir archivos? (iOS, Android, Mac/Win con Web Share)
+    const dummyPdf = new File([''], 'ticket.pdf', { type: 'application/pdf' })
+    const canShareFiles = navigator.canShare?.({ files: [dummyPdf] }) ?? false
+
+    if (canShareFiles) {
+      // Genera el PDF y abre la bandeja nativa con PDF + mensaje juntos
       try {
         const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
         const { blob, filename } = await generateTicketPdfBlob({
           registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
         })
         const pdfFile = new File([blob], filename, { type: 'application/pdf' })
-        if (navigator.canShare?.({ files: [pdfFile] })) {
-          await navigator.share({ files: [pdfFile], text: msg })
-          return
-        }
+        await navigator.share({ files: [pdfFile], text: msg })
       } catch {}
-      // Fallback móvil sin Web Share API
-      window.open(waUrl, '_blank', 'noopener')
       return
     }
 
-    // PC: abrir WhatsApp síncrono (nunca se bloquea), luego descargar PDF
-    // a.click() para descargas no es bloqueado aunque sea después de await
+    // Fallback (navegador sin soporte): abrir WhatsApp síncrono + descargar PDF
     window.open(waUrl, '_blank', 'noopener')
     try {
       const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
