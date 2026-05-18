@@ -285,7 +285,7 @@ export default function ActivityRegModal({ activity, event, onClose }) {
               />
             )}
 
-            {reg.whatsapp === 'Sí' && reg.paymentMethod !== 'transferencia' && (
+            {reg.whatsapp === 'Sí' && (
               <a
                 className="arm-success__btn-group"
                 href="https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw"

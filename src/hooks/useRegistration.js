@@ -74,6 +74,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         if (!reg) { localStorage.removeItem(lsKey(event.id)); return }
         setRegistrationId(reg.id)
         setFullName(reg.full_name || '')
+        setWhatsapp(reg.whatsapp || '')
         setPaymentMethod(reg.payment_method || '')
         const isPaid = reg.paid === 1 || reg.paid === '1'
         setSuccess(true)
@@ -97,6 +98,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         if (reg) {
           setRegistrationId(reg.id)
           setFullName(reg.full_name || '')
+          setWhatsapp(reg.whatsapp || '')
           setPaymentMethod(reg.payment_method || '')
           const isPaid = reg.paid === 1 || reg.paid === '1'
           setSuccess(true)
@@ -268,6 +270,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       if (!reg) return
       setRegistrationId(reg.id)
       setFullName(reg.full_name || '')
+      setWhatsapp(reg.whatsapp || '')
       setPaymentMethod(reg.payment_method || '')
       const isPaid = reg.paid === 1 || reg.paid === '1'
       setSuccess(true)

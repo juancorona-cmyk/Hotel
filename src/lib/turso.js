@@ -658,7 +658,7 @@ export async function undoCheckInRegistration(id) {
 export async function getRegistrationById(id) {
   const res = await exec(
     `SELECT r.id, r.activity_id, r.activity_name, r.event_id, r.event_name,
-            r.full_name, r.phone, r.payment_method, r.paid, r.checked_in,
+            r.full_name, r.phone, r.whatsapp, r.payment_method, r.paid, r.checked_in,
             r.checked_in_at, r.transfer_proof_url, r.created_at,
             e.date as event_date, e.price as event_price, e.description as event_description
      FROM activity_registrations r

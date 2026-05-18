@@ -345,7 +345,7 @@ export default function EventoPage() {
                         Recibir por WhatsApp
                       </a>
                     )}
-                    {reg.whatsapp === 'Sí' && reg.paymentMethod !== 'transferencia' && (
+                    {reg.whatsapp === 'Sí' && (
                       <a
                         className="ep-group-btn"
                         href="https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw"
