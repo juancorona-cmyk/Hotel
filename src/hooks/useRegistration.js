@@ -77,12 +77,14 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         setWhatsapp(reg.whatsapp || '')
         setPaymentMethod(reg.payment_method || '')
         const isPaid = reg.paid === 1 || reg.paid === '1'
+        const isCheckedIn = reg.checked_in === 1 || reg.checked_in === '1'
         setSuccess(true)
-        if (!isPaid && reg.payment_method === 'transferencia') {
+        if (isCheckedIn) {
+          // Fully done — no need to keep localStorage
+          localStorage.removeItem(lsKey(event.id))
+        } else if (!isPaid && reg.payment_method === 'transferencia') {
           setPaymentPending(true)
           if (reg.transfer_proof_url) setProofUploaded(true)
-        } else if (isPaid) {
-          localStorage.removeItem(lsKey(event.id))
         }
       } catch {}
       finally { setRestoring(false) }
@@ -169,7 +171,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         const reg = await getRegistrationById(registrationId)
         if (reg?.paid === 1 || reg?.paid === '1') {
           setPaymentPending(false)
-          if (event?.id) localStorage.removeItem(lsKey(event.id))
+          // Keep localStorage until checked_in so the ticket is always recoverable
         }
       } catch {}
     }, 5000)
