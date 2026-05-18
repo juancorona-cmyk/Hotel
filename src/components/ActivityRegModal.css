@@ -487,8 +487,43 @@
 .arm-success__actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
+}
+
+/* Fila de los dos botones WhatsApp */
+.arm-success__wa-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.arm-success__wa-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: none;
+  border-radius: 14px;
+  padding: 13px 10px;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  transition: transform 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.arm-success__wa-btn:hover { transform: translateY(-1px); }
+
+.arm-success__wa-btn--ticket {
+  background: linear-gradient(135deg, #25d366 0%, #1aad52 100%);
+  box-shadow: 0 4px 14px rgba(37,211,102,0.32);
+}
+.arm-success__wa-btn--group {
+  background: linear-gradient(135deg, #128c7e 0%, #075e54 100%);
+  box-shadow: 0 4px 14px rgba(7,94,84,0.30);
 }
 
 .arm-success__btn {
@@ -497,8 +532,8 @@
   justify-content: center;
   gap: 10px;
   border: none;
-  border-radius: 16px;
-  padding: 15px 22px;
+  border-radius: 14px;
+  padding: 13px 18px;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
   font-family: inherit;
@@ -1051,25 +1086,6 @@
 }
 
 /* ── Group join button (success screen) ─────────── */
-.arm-success__btn-group {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  background: #25d366;
-  color: #fff;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  padding: 14px 20px;
-  border-radius: 14px;
-  text-decoration: none;
-  box-shadow: 0 4px 14px rgba(37,211,102,0.30);
-  transition: opacity 0.15s, transform 0.12s;
-  margin-bottom: 8px;
-}
-.arm-success__btn-group:hover { opacity: 0.92; transform: translateY(-1px); }
 
 /* ── WhatsApp member badge ───────────────────────── */
 .arm-whatsapp-member {
