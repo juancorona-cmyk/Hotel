@@ -299,7 +299,6 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         ? (paymentPending ? 'Transferencia - Pendiente' : 'Transferencia - Pagado')
         : ''
     const ticketNum = String(registrationId || '').padStart(4, '0')
-    // Sin emojis para compatibilidad con PC/Windows
     const msg = `*TICKET DE ACCESO - Hotel Punta Galeria*\n\n`
       + `*Nombre:* ${fullName.trim()}\n`
       + `*Evento:* ${event?.name || ''}\n`
@@ -311,33 +310,26 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
 
     const digits = phone.replace(/\D/g, '')
     const waPhone = digits.length === 10 ? `52${digits}` : digits
-
-    // Abrir ventana de forma síncrona (antes del await) para evitar bloqueo de popups
-    const popup = window.open('', '_blank')
-
-    try {
-      const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
-      const { blob, filename } = await generateTicketPdfBlob({
-        registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
-      })
-      const pdfFile = new File([blob], filename, { type: 'application/pdf' })
-      // Móvil: Web Share API con PDF adjunto
-      if (navigator.canShare?.({ files: [pdfFile] })) {
-        popup?.close()
-        await navigator.share({ files: [pdfFile], text: msg })
-        return
-      }
-      // PC/fallback: descargar el PDF
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = filename; a.click()
-      URL.revokeObjectURL(url)
-    } catch {}
-
-    // Navegar la ventana ya abierta a WhatsApp (evita bloqueo de popup)
     const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
-    if (popup && !popup.closed) popup.location.href = waUrl
-    else window.open(waUrl, '_blank')
+
+    // En móvil: intentar Web Share API con PDF adjunto (no hay bloqueador de popups)
+    const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isMobile && typeof navigator.share === 'function') {
+      try {
+        const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
+        const { blob, filename } = await generateTicketPdfBlob({
+          registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
+        })
+        const pdfFile = new File([blob], filename, { type: 'application/pdf' })
+        if (navigator.canShare?.({ files: [pdfFile] })) {
+          await navigator.share({ files: [pdfFile], text: msg })
+          return
+        }
+      } catch {}
+    }
+
+    // PC o fallback: abrir WhatsApp de forma síncrona (sin async = no se bloquea)
+    window.open(waUrl, '_blank', 'noopener')
   }, [registrationId, fullName, phone, event, paymentMethod, paymentPending, qrSvgRef])
 
   const handleDownloadPDF = useCallback(async () => {
