@@ -281,6 +281,11 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     } catch {}
   }, [duplicateReg])
 
+  const handleJoinGroup = useCallback(() => {
+    if (phone) addWhatsappMember(phone.trim()).catch(() => {})
+    window.open('https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw', '_blank', 'noopener')
+  }, [phone])
+
   const handleDownloadPDF = useCallback(async () => {
     setDownloadingPDF(true)
     try {
@@ -323,6 +328,6 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     qrSvgRef,
     setStep, setFullName, setPhone, setHowFound, setHowFoundOther,
     setWhatsapp, setError, setShowTransferInfo, setCopiedClabe,
-    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration,
+    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration, handleJoinGroup,
   }
 }
