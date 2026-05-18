@@ -461,12 +461,12 @@
   font-family: 'Montserrat', sans-serif;
   display: flex;
   flex-direction: column;
-  padding-bottom: 110px;
+  padding-bottom: 100px;
 }
 
-/* Hero header */
+/* Hero header — más compacto */
 .ci-result-hero {
-  padding: 48px 20px 28px;
+  padding: 36px 18px 18px;
   position: relative;
   background-size: cover;
   background-position: center;
@@ -476,12 +476,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .ci-result-back {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 12px;
@@ -499,7 +499,7 @@
   font-size: 12px;
   font-weight: 700;
   font-family: 'Montserrat', sans-serif;
-  padding: 7px 16px;
+  padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
   letter-spacing: 0.3px;
@@ -510,13 +510,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 1.8px;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: 999px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   border: 1px solid rgba(255,255,255,0.25);
   background: rgba(255,255,255,0.14);
   color: rgba(255,255,255,0.95);
@@ -543,25 +543,24 @@
 /* Hero body */
 .ci-result-hero-body {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
 }
 
 .ci-result-avatar {
   flex-shrink: 0;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(255,255,255,0.18);
   border: 1.5px solid rgba(255,255,255,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 900;
   color: #fff;
   letter-spacing: 1px;
-  margin-top: 2px;
 }
 
 .ci-result-hero-info {
@@ -571,12 +570,12 @@
 }
 
 .ci-result-name {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   color: #fff;
-  margin: 0 0 5px;
+  margin: 0 0 3px;
   line-height: 1.15;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   text-transform: capitalize;
 }
 
@@ -588,17 +587,17 @@
 }
 
 .ci-result-event {
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255,255,255,0.65);
   font-weight: 600;
 }
 
-/* ── Ticket strip ── */
+/* ── Ticket strip — compacto ── */
 .ci-ticket-strip {
   background: #fff;
   margin: 0 14px;
-  border-radius: 18px 18px 0 0;
-  padding: 14px 20px 11px;
+  border-radius: 16px 16px 0 0;
+  padding: 10px 16px 9px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -606,7 +605,7 @@
 }
 
 .ci-ticket-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   color: #bdb0a0;
   letter-spacing: 1.6px;
@@ -614,7 +613,7 @@
 }
 
 .ci-ticket-num {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
   color: #1a2e0d;
   letter-spacing: 0.5px;
@@ -624,7 +623,7 @@
 .ci-ticket-strip-right {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .ci-ticket-strip-right {
@@ -633,38 +632,88 @@
 }
 
 .ci-ticket-event-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: #1a2e0d;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 160px;
 }
 
-/* ── Detail rows ── */
+/* ── Comprobante de transferencia — thumbnail compacto ── */
+.ci-proof-section {
+  margin: 0 14px;
+  border-radius: 0;
+  overflow: hidden;
+  border-left: 1px solid #e8f5e9;
+  border-right: 1px solid #e8f5e9;
+  background: #f0fdf4;
+}
+
+.ci-proof-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #166534;
+  background: #dcfce7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-top: 1.5px solid #86efac;
+  border-bottom: 1px solid #bbf7d0;
+}
+
+.ci-proof-img-wrap {
+  display: block;
+  position: relative;
+}
+
+.ci-proof-img {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.ci-proof-img-hint {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* ── Detail rows — compactos ── */
 .ci-result-body {
   margin: 0 14px;
   background: #fff;
-  border-radius: 0 0 18px 18px;
-  padding: 2px 0 6px;
+  border-radius: 0 0 16px 16px;
+  padding: 2px 0 4px;
   flex: 1;
+  border-top: 1px solid #f5f1ec;
 }
 
 .ci-result-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 20px;
+  gap: 12px;
+  padding: 10px 16px;
   border-bottom: 1px solid #f5f1ec;
 }
 
 .ci-result-row:last-child { border-bottom: none; }
 
 .ci-result-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -679,11 +728,13 @@
 .ci-result-row-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
 }
 
 .ci-result-row-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #bdb0a0;
   text-transform: uppercase;
@@ -691,16 +742,19 @@
 }
 
 .ci-result-row-value {
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #1a2e0d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ci-result-row-value--tag {
   display: inline-block;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 800;
-  padding: 4px 14px;
+  padding: 3px 12px;
   border-radius: 999px;
 }
 
@@ -709,16 +763,18 @@
 
 /* Toast flotante */
 .ci-result-root .ci-toast {
-  margin: 10px 14px 0;
-  border-radius: 14px;
+  margin: 8px 14px 0;
+  border-radius: 12px;
+  font-size: 13px;
+  padding: 10px 14px;
 }
 
 /* ── Footer fijo ── */
 .ci-result-footer {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  padding: 14px 18px 30px;
-  background: rgba(240,237,232,0.95);
+  padding: 12px 16px 28px;
+  background: rgba(240,237,232,0.97);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid rgba(0,0,0,0.06);
@@ -726,8 +782,8 @@
 
 .ci-result-footer .ci-btn-action {
   border-radius: 999px;
-  padding: 18px 24px;
-  font-size: 16px;
+  padding: 16px 20px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.2px;
 }
@@ -744,92 +800,46 @@
   border: 1.5px solid rgba(74,96,16,0.2);
 }
 
-/* Aviso de comprobante para transferencias */
+/* Aviso sin comprobante */
 .ci-transfer-notice {
-  margin: 12px 16px 0;
+  margin: 8px 14px 0;
   background: #fff8e1;
   border: 1.5px solid #fbbf24;
-  border-radius: 16px;
-  padding: 14px 16px;
+  border-radius: 14px;
+  padding: 11px 14px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   color: #92400e;
 }
 
 .ci-transfer-notice svg {
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
   color: #c2660a;
 }
 
 .ci-transfer-notice__title {
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 800;
   color: #92400e;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .ci-transfer-notice__sub {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   color: #b45309;
   font-weight: 600;
   line-height: 1.4;
-}
-
-/* ── Comprobante de transferencia ── */
-.ci-proof-section {
-  margin: 0 20px 16px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 2px solid #86efac;
-  background: #f0fdf4;
-}
-
-.ci-proof-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 800;
-  color: #166534;
-  background: #dcfce7;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.ci-proof-img-wrap {
-  display: block;
-  position: relative;
-}
-
-.ci-proof-img {
-  width: 100%;
-  max-height: 220px;
-  object-fit: cover;
-  display: block;
-}
-
-.ci-proof-img-hint {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.55);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
 }
 
 /* ── Acciones transferencia (columna) ── */
 .ci-transfer-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -837,9 +847,9 @@
   background: #fff;
   color: #323f48;
   border: 2px solid #e5e0d8;
-  padding: 15px;
-  border-radius: 16px;
-  font-size: 15px;
+  padding: 13px;
+  border-radius: 14px;
+  font-size: 14px;
   font-weight: 700;
   font-family: 'Montserrat', sans-serif;
   cursor: pointer;
@@ -1223,6 +1233,73 @@
 .ci-pub2-row-val--blue  { color: #1d4ed8; font-weight: 800; }
 .ci-pub2-row-val--amber { color: #b45309; font-weight: 800; }
 
+/* ── WhatsApp CTA ── */
+.ci-pub2-wa-card {
+  background: #e7f3e8;
+  border: 1.5px solid #c8e6cb;
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.08);
+}
+
+.ci-pub2-wa-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ci-pub2-wa-info strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.ci-pub2-wa-info span {
+  font-size: 12px;
+  color: #4a5a1e;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.ci-pub2-wa-btn {
+  background: #25d366;
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(37, 211, 102, 0.25);
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.ci-pub2-wa-btn:active {
+  transform: scale(0.98);
+  background-color: #20bd5c;
+}
+
+.ci-pub2-wa-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2e7d32;
+  background: #f1f8f1;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #dceddc;
+}
+
 /* ── Footer ── */
 .ci-pub2-footer {
   display: flex;
@@ -1248,5 +1325,206 @@
 @media (max-width: 480px) {
   .ci-pub2-heading { font-size: 20px; }
   .ci-pub2-check { width: 54px; height: 54px; }
+}
+
+/* ══════════════════════════════════════════
+   SUCCESS OVERLAY — bottom sheet moderno
+   ══════════════════════════════════════════ */
+.ci-success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  animation: ci-overlay-fade 0.2s ease;
+}
+
+@keyframes ci-overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.ci-success-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 10px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: ci-sheet-rise 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ci-sheet-rise {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Handle pill */
+.ci-success-sheet::before {
+  content: '';
+  width: 40px;
+  height: 4px;
+  background: #e5e0d8;
+  border-radius: 99px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+/* Ícono animado */
+.ci-success-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  animation: ci-icon-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+@keyframes ci-icon-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.ci-success-icon--paid {
+  background: linear-gradient(135deg, #4a6e14 0%, #7aaa28 100%);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(74, 110, 20, 0.45);
+}
+
+.ci-success-icon--entry {
+  background: linear-gradient(135deg, #166534 0%, #22c55e 100%);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(22, 101, 52, 0.45);
+}
+
+/* Trazo del check animado */
+.ci-check-path {
+  stroke-dasharray: 28;
+  stroke-dashoffset: 28;
+  animation: ci-check-draw 0.45s ease 0.4s forwards;
+}
+
+@keyframes ci-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.ci-success-title {
+  font-size: 26px;
+  font-weight: 900;
+  color: #1a2e0d;
+  margin: 0;
+  text-align: center;
+  letter-spacing: -0.3px;
+}
+
+.ci-success-sub {
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 290px;
+  font-weight: 500;
+}
+
+/* Tarjeta del asistente */
+.ci-success-ticket {
+  width: 100%;
+  background: linear-gradient(135deg, #f4f8ec 0%, #edf5e0 100%);
+  border: 1.5px solid #c8e0a0;
+  border-radius: 18px;
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.ci-success-ticket-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ci-success-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a6e14, #7aaa28);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.ci-success-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ci-success-name {
+  font-size: 17px;
+  font-weight: 900;
+  color: #1a2e0d;
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ci-success-event-name {
+  font-size: 12px;
+  color: #6b8a30;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ci-success-ticket-num {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #8fa03a;
+  text-align: center;
+  text-transform: uppercase;
+  padding-top: 10px;
+  border-top: 1px dashed #c8e0a0;
+}
+
+/* Botón continuar */
+.ci-success-btn {
+  width: 100%;
+  padding: 17px;
+  background: linear-gradient(135deg, #3d5a12 0%, #5a7a1e 100%);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  margin-top: 4px;
+  box-shadow: 0 8px 24px rgba(61, 90, 18, 0.4);
+  letter-spacing: 0.3px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ci-success-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(61, 90, 18, 0.3);
 }
 

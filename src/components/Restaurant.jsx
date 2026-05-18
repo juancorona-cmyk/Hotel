@@ -4,28 +4,59 @@ import { trackEvent } from '../lib/turso'
 import { CDN } from '../lib/cdn'
 import './Restaurant.css'
 
+const SLIDES = [
+  CDN.RESTAURANTE_1,
+  CDN.RESTAURANTE_2,
+  CDN.RESTAURANTE_3,
+  CDN.RESTAURANTE_4,
+]
+
 export default function Restaurant() {
   const { t } = useTranslation()
   const [isVisible, setIsVisible] = useState(false)
+  const [current, setCurrent] = useState(0)
   const sectionRef = useRef(null)
+  const timerRef = useRef(null)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting)
-      },
+      ([entry]) => setIsVisible(entry.isIntersecting),
       { threshold: 0.1 }
     )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
+    if (sectionRef.current) observer.observe(sectionRef.current)
     return () => observer.disconnect()
   }, [])
 
+  // Avance automático cada 5.5 s
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setCurrent(c => (c + 1) % SLIDES.length)
+    }, 5500)
+    return () => clearInterval(timerRef.current)
+  }, [])
+
+  const goTo = (idx) => {
+    clearInterval(timerRef.current)
+    setCurrent(idx)
+    timerRef.current = setInterval(() => {
+      setCurrent(c => (c + 1) % SLIDES.length)
+    }, 5500)
+  }
+
   return (
     <section id="restaurante" className={`restaurant ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
+      {/* Patrón de fondo — crossfade entre imágenes */}
+      {SLIDES.map((src, i) => (
+        <div
+          key={i}
+          className="restaurant__pattern"
+          style={{
+            backgroundImage: `url(${src})`,
+            opacity: i === current ? 0.13 : 0,
+          }}
+        />
+      ))}
+
       <div className="restaurant__inner">
         <div className="restaurant__text">
           <h2 className="restaurant__title">{t('restaurante.titulo')}</h2>
@@ -45,8 +76,26 @@ export default function Restaurant() {
             {t('restaurante.btn')}
           </a>
         </div>
-        <div className="restaurant__image-wrap">
-          <img src={CDN.RESTAURANTE} alt="Restaurante" className="restaurant__image" />
+
+        {/* Carrusel */}
+        <div className="restaurant__carousel">
+          <div className="restaurant__slides" style={{ transform: `translateX(-${current * 100}%)` }}>
+            {SLIDES.map((src, i) => (
+              <img key={i} src={src} alt={`Restaurante ${i + 1}`} className="restaurant__slide" />
+            ))}
+          </div>
+
+          {/* Puntos de navegación */}
+          <div className="restaurant__dots">
+            {SLIDES.map((_, i) => (
+              <button
+                key={i}
+                className={`restaurant__dot ${i === current ? 'restaurant__dot--active' : ''}`}
+                onClick={() => goTo(i)}
+                aria-label={`Imagen ${i + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>

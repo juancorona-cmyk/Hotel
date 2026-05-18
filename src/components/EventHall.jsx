@@ -28,17 +28,29 @@ export default function EventHall() {
     <section id="eventos" className={`events ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
       <h2 className="events__title">{t('eventos.titulo')}</h2>
       <div className="events__gallery">
-        <div className="events__photo-wrap events__photo-wrap--left">
-          <img src={CDN.SALON1} alt="Salón de eventos" className="events__photo" />
+        {/* Columna izquierda — 2 fotos */}
+        <div className="events__col events__col--left">
+          <div className="events__photo-wrap">
+            <img src={CDN.SALON1} alt="Salón de eventos" className="events__photo" />
+          </div>
+          <div className="events__photo-wrap">
+            <img src={CDN.SALON4} alt="Salón de eventos" className="events__photo" />
+          </div>
         </div>
+
+        {/* Centro — foto Nosotros */}
         <div className="events__photo-wrap events__photo-wrap--center">
-          <img src={CDN.SALON_PRINCIPAL} alt="Salón principal" className="events__photo" />
+          <img src={CDN.NOSOTROS} alt="Hotel Punta Galería" className="events__photo" />
         </div>
-        <div className="events__photo-wrap events__photo-wrap--right-top">
-          <img src={CDN.SALON2} alt="Salón de eventos" className="events__photo" />
-        </div>
-        <div className="events__photo-wrap events__photo-wrap--right-bottom">
-          <img src={CDN.SALON3} alt="Salón de eventos" className="events__photo" />
+
+        {/* Columna derecha — 2 fotos */}
+        <div className="events__col events__col--right">
+          <div className="events__photo-wrap">
+            <img src={CDN.SALON2} alt="Salón de eventos" className="events__photo" />
+          </div>
+          <div className="events__photo-wrap">
+            <img src={CDN.SALON3} alt="Salón de eventos" className="events__photo" />
+          </div>
         </div>
       </div>
       <div className="events__desc">

@@ -78,6 +78,8 @@ export default function Rooms({ onBook }) {
         muted
         loop
         playsInline
+        controlsList="nodownload"
+        onContextMenu={e => e.preventDefault()}
       >
         <source src={CDN.VIDEO_HABITACION} type="video/mp4" />
       </video>

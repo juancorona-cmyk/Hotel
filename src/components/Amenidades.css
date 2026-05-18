@@ -1,10 +1,43 @@
 .amenidades {
-  background: #e5e0d8;
+  background: #e8e3db;
   padding: 88px 32px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
 
+/* Vignette — óvalo oscuro en las orillas */
+.amenidades::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center,
+    transparent 38%,
+    rgba(0, 0, 0, 0.18) 70%,
+    rgba(0, 0, 0, 0.38) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Patrón de fondo — imagen suave con blur y baja opacidad */
+.amenidades__pattern {
+  position: absolute;
+  inset: -12px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.10;
+  filter: blur(2px) saturate(0.6);
+  transform: scale(1.04);
+  pointer-events: none;
+  z-index: 0;
+}
+
+
 .amenidades__inner {
+  position: relative;
+  z-index: 1;
   max-width: 1040px;
   margin: 0 auto;
 }

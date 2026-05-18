@@ -11,13 +11,19 @@ const buildUrl = (path, type = 'image', ext = '', quality = 'q_auto,f_auto') => 
 
 export const CDN = {
   FOTO_INICIO:     buildUrl('hotel/imagenes/hotel/foto-inicio', 'image', 'jpg'),
+  FONDO:           buildUrl('hotel/imagenes/hotel/fondo', 'image', 'jpg'),
   NOSOTROS:        buildUrl('hotel/imagenes/hotel/nosotros', 'image', 'jpg', 'w_840,h_800,c_fill,g_face,q_100,f_auto,e_sharpen:80'),
   DELUXE:          buildUrl('hotel/imagenes/habitaciones/deluxe', 'image', 'jpg'),
   DELUXE_DOUBLE:   buildUrl('hotel/imagenes/habitaciones/deluxe-double', 'image', 'jpg'),
   RESTAURANTE:     buildUrl('hotel/imagenes/restaurante/restaurante', 'image', 'png'),
+  RESTAURANTE_1:   buildUrl('hotel/imagenes/restaurante/rest-1', 'image', 'jpg'),
+  RESTAURANTE_2:   buildUrl('hotel/imagenes/restaurante/rest-2', 'image', 'jpg'),
+  RESTAURANTE_3:   buildUrl('hotel/imagenes/restaurante/rest-3', 'image', 'jpg'),
+  RESTAURANTE_4:   buildUrl('hotel/imagenes/restaurante/rest-4', 'image', 'jpg'),
   SALON1:          buildUrl('hotel/imagenes/salon/salon1', 'image', 'png'),
   SALON2:          buildUrl('hotel/imagenes/salon/salon2', 'image', 'png'),
   SALON3:          buildUrl('hotel/imagenes/salon/salon3', 'image', 'png'),
+  SALON4:          buildUrl('hotel/imagenes/salon/salon4', 'image', 'jpg'),
   SALON_PRINCIPAL: buildUrl('hotel/imagenes/salon/salon-principal', 'image', 'jpg'),
   VIDEO_FONDO:      buildUrl('hotel/videos/fondo-video', 'video', 'mp4'),
   VIDEO_HABITACION: buildUrl('hotel/videos/habitacion-video', 'video', 'mp4'),
@@ -33,13 +39,19 @@ export function updateCDN(newCloudName) {
   cloudName = newCloudName
   
   CDN.FOTO_INICIO = buildUrl('hotel/imagenes/hotel/foto-inicio', 'image', 'jpg')
+  CDN.FONDO = buildUrl('hotel/imagenes/hotel/fondo', 'image', 'jpg')
   CDN.NOSOTROS = buildUrl('hotel/imagenes/hotel/nosotros', 'image', 'jpg', 'w_840,h_800,c_fill,g_face,q_100,f_auto,e_sharpen:80')
   CDN.DELUXE = buildUrl('hotel/imagenes/habitaciones/deluxe', 'image', 'jpg')
   CDN.DELUXE_DOUBLE = buildUrl('hotel/imagenes/habitaciones/deluxe-double', 'image', 'jpg')
   CDN.RESTAURANTE = buildUrl('hotel/imagenes/restaurante/restaurante', 'image', 'png')
+  CDN.RESTAURANTE_1 = buildUrl('hotel/imagenes/restaurante/rest-1', 'image', 'jpg')
+  CDN.RESTAURANTE_2 = buildUrl('hotel/imagenes/restaurante/rest-2', 'image', 'jpg')
+  CDN.RESTAURANTE_3 = buildUrl('hotel/imagenes/restaurante/rest-3', 'image', 'jpg')
+  CDN.RESTAURANTE_4 = buildUrl('hotel/imagenes/restaurante/rest-4', 'image', 'jpg')
   CDN.SALON1 = buildUrl('hotel/imagenes/salon/salon1', 'image', 'png')
   CDN.SALON2 = buildUrl('hotel/imagenes/salon/salon2', 'image', 'png')
   CDN.SALON3 = buildUrl('hotel/imagenes/salon/salon3', 'image', 'png')
+  CDN.SALON4 = buildUrl('hotel/imagenes/salon/salon4', 'image', 'jpg')
   CDN.SALON_PRINCIPAL = buildUrl('hotel/imagenes/salon/salon-principal', 'image', 'jpg')
   CDN.VIDEO_FONDO = buildUrl('hotel/videos/fondo-video', 'video', 'mp4')
   CDN.VIDEO_HABITACION = buildUrl('hotel/videos/habitacion-video', 'video', 'mp4')

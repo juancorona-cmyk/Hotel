@@ -46,6 +46,8 @@ export default function Videos() {
                   loop
                   playsInline
                   preload="metadata"
+                  controlsList="nodownload"
+                  onContextMenu={e => e.preventDefault()}
                 />
                 <div className="vambient__overlay" />
               </div>

@@ -23,6 +23,7 @@ export const WHATSAPP_OPTIONS = ['Sí', 'No', 'Ya estoy dentro']
 export const HOW_FOUND_OPTIONS = ['Instagram', 'Facebook', 'Conocido', 'Otros']
 
 function lsKey(eventId) { return `reg_event_${eventId}` }
+function waJoinedKey(eventId) { return `reg_event_wa_${eventId}` }
 
 export function useRegistration({ event, activity, initialRegId, onRegistered }) {
   const [step, setStep] = useState(1)
@@ -46,6 +47,10 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
   const [spotsLeft, setSpotsLeft] = useState(null)
   const [isWhatsappMember, setIsWhatsappMember] = useState(null)
   const [duplicateReg, setDuplicateReg] = useState(null)
+  const [joinedGroup, setJoinedGroup] = useState(() => {
+    if (!event?.id) return false
+    return localStorage.getItem(waJoinedKey(event.id)) === 'true'
+  })
   // True while restoring saved state — prevents form flash before data loads
   const [restoring, setRestoring] = useState(() => {
     if (initialRegId) return true
@@ -70,12 +75,14 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     let parsed
     try { parsed = JSON.parse(saved) } catch { setRestoring(false); return }
     if (!parsed?.registrationId) { setRestoring(false); return }
+    setRestoring(true)
     ;(async () => {
       try {
         const reg = await getRegistrationById(parsed.registrationId)
         if (!reg) { localStorage.removeItem(lsKey(event.id)); return }
         setRegistrationId(reg.id)
         setFullName(reg.full_name || '')
+        setPhone(reg.phone || '')
         setWhatsapp(reg.whatsapp || '')
         setPaymentMethod(reg.payment_method || '')
         const isPaid = reg.paid === 1 || reg.paid === '1'
@@ -102,6 +109,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         if (reg) {
           setRegistrationId(reg.id)
           setFullName(reg.full_name || '')
+          setPhone(reg.phone || '')
           setWhatsapp(reg.whatsapp || '')
           setPaymentMethod(reg.payment_method || '')
           const isPaid = reg.paid === 1 || reg.paid === '1'
@@ -173,7 +181,8 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         const reg = await getRegistrationById(registrationId)
         if (reg?.paid === 1 || reg?.paid === '1') {
           setPaymentPending(false)
-          // Keep localStorage until checked_in so the ticket is always recoverable
+          // Pago confirmado — ya no es necesario persistir; limpiar para que al recargar muestre formulario fresco
+          if (event?.id) localStorage.removeItem(lsKey(event.id))
         }
       } catch {}
     }, 5000)
@@ -188,7 +197,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     if (!phone.trim()) { setError('Por favor ingresa tu número de teléfono'); return }
     if (!isValidPhone(phone)) { setError('Ingresa un número válido (ej: 667 123 4567 o +1 555 000 1234)'); return }
     if (!howFound) { setError('Por favor indica cómo te enteraste'); return }
-    if (!whatsapp && isWhatsappMember === false) { setError('Por favor responde la pregunta de WhatsApp'); return }
+    if (!whatsapp && isWhatsappMember !== true) { setError('Por favor responde la pregunta de WhatsApp'); return }
 
     trackEvent('activity_reg_intent', {
       activity_id: activity?.id || event?.activity_id,
@@ -236,13 +245,10 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       setSuccess(true)
       if (onRegistered) onRegistered(regId)
 
-      // Persist in localStorage so reopening the modal restores this state
-      if (event?.id && regId) {
+      // Solo persistir en localStorage si el pago es por transferencia (pendiente de confirmación)
+      // Para presencial no hay nada que recuperar — el registro se confirma en el momento
+      if (event?.id && regId && method === 'transferencia') {
         localStorage.setItem(lsKey(event.id), JSON.stringify({ registrationId: regId, paymentMethod: method }))
-      }
-
-      if (whatsapp === 'Sí') {
-        addWhatsappMember(phone.trim()).catch(() => {})
       }
     } catch {
       setError('Ocurrió un error al registrarte. Intenta nuevamente.')
@@ -287,8 +293,10 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
 
   const handleJoinGroup = useCallback(() => {
     if (phone) addWhatsappMember(phone.trim()).catch(() => {})
+    setJoinedGroup(true)
+    if (event?.id) localStorage.setItem(waJoinedKey(event.id), 'true')
     window.open('https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw', '_blank', 'noopener')
-  }, [phone])
+  }, [phone, event?.id])
 
   const handleSendTicketWhatsApp = useCallback(async () => {
     const ticketNum = String(registrationId || '').padStart(4, '0')
@@ -391,6 +399,26 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     }
   }, [registrationId, fullName, event, activity, paymentMethod, paymentPending])
 
+  const handleNewRegistration = useCallback(() => {
+    if (event?.id) localStorage.removeItem(lsKey(event.id))
+    setStep(1)
+    setFullName('')
+    setPhone('')
+    setHowFound('')
+    setHowFoundOther('')
+    setWhatsapp('')
+    setError('')
+    setSuccess(false)
+    setRegistrationId(null)
+    setPaymentMethod('')
+    setPaymentPending(false)
+    setShowTransferInfo(false)
+    setProofUploaded(false)
+    setDuplicateReg(null)
+    setJoinedGroup(false)
+    whatsappAutoSet.current = false
+  }, [event?.id])
+
   const spotsColor = spotsLeft !== null && capacity > 0
     ? spotsLeft <= 3 ? '#dc2626' : spotsLeft <= 8 ? '#d97706' : '#5a6c1e'
     : '#5a6c1e'
@@ -409,10 +437,10 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     uploadingProof, proofError, downloadingPDF,
     spotsLeft, capacity, isSoldOut, spotsColor,
     phoneTyped, phoneOk, phoneBad, ticketId,
-    isWhatsappMember, duplicateReg, restoring,
+    isWhatsappMember, duplicateReg, restoring, joinedGroup,
     qrSvgRef,
     setStep, setFullName, setPhone, setHowFound, setHowFoundOther,
     setWhatsapp, setError, setShowTransferInfo, setCopiedClabe,
-    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration, handleJoinGroup, handleSendTicketWhatsApp,
+    handleStep1, handlePayment, handleProofUpload, handleDownloadPDF, handleResumeRegistration, handleJoinGroup, handleSendTicketWhatsApp, handleNewRegistration,
   }
 }

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Hotel Punta Galeria',
   webDir: 'dist',
   server: {
-    url: 'http://localhost:5173',
+    url: 'http://127.0.0.1:8888',
     cleartext: true,
     androidScheme: 'http'
   }

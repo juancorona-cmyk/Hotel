@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getActivities, getEventByActivityId, trackEvent } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import { fmtFecha, fmtHora } from '../lib/utils'
+import { CDN } from '../lib/cdn'
 import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
 
@@ -71,6 +72,7 @@ export default function Amenidades() {
 
   return (
     <section id="amenidades" className={`amenidades ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
+      <div className="amenidades__pattern" style={{ backgroundImage: `url(${CDN.FONDO})` }} />
       <div className="amenidades__inner">
         <p className="amenidades__eyebrow">{t('amenidades.eyebrow')}</p>
         <h2 className="amenidades__title">{t('amenidades.titulo')}</h2>

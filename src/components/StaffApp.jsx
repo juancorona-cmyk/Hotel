@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import './StaffApp.css'
@@ -404,25 +404,43 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }
 
   const [confirmingPaymentId, setConfirmingPaymentId] = useState(null)
+  const [confirmingPresencialId, setConfirmingPresencialId] = useState(null)
+
+  const refreshAttendees = async () => {
+    if (selectedEvent) {
+      const regs = await getActivityRegistrationsByEvent(selectedEvent.id)
+      setAttendees(regs)
+    } else {
+      const regs = await getAllActivityRegistrations()
+      setAttendees(regs)
+      setAllRegs(regs)
+    }
+  }
 
   const handleConfirmPayment = async (registrationId) => {
     setConfirmingPaymentId(registrationId)
     try {
       await updateActivityRegistrationPayment(registrationId, true)
-      // Refrescar lista de asistentes
-      if (selectedEvent) {
-        const regs = await getActivityRegistrationsByEvent(selectedEvent.id)
-        setAttendees(regs)
-      } else {
-        const regs = await getAllActivityRegistrations()
-        setAttendees(regs)
-        setAllRegs(regs)
-      }
+      await refreshAttendees()
       showToast('Pago confirmado')
     } catch {
       showToast('Error al confirmar el pago', 'error')
     } finally {
       setConfirmingPaymentId(null)
+    }
+  }
+
+  const handleConfirmPresencial = async (registrationId) => {
+    setConfirmingPresencialId(registrationId)
+    try {
+      await updateActivityRegistrationPayment(registrationId, true)
+      await checkInRegistration(registrationId)
+      await refreshAttendees()
+      showToast('Pago cobrado · Asistencia confirmada')
+    } catch {
+      showToast('Error al confirmar', 'error')
+    } finally {
+      setConfirmingPresencialId(null)
     }
   }
 
@@ -1359,27 +1377,35 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 : transfer  ? 'sa-dot--transfer'
                 :             'sa-dot--unpaid'
               return (
-                <div key={a.id} className={`sa-attendee-card${transfer && !paid && !attended ? ' sa-attendee-card--transfer-pending' : ''}`} style={{ animationDelay: `${idx * 0.03}s` }} onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}>
-                  <div className={`sa-status-dot ${dotClass}`} />
-                  <div className="sa-att-info">
-                    <span className="sa-att-name">{a.full_name}</span>
-                    <span className="sa-att-phone">{a.phone}</span>
-                  </div>
-                  <div className="sa-att-tags">
-                    {attended ? (
-                      <span className="sa-tag sa-tag--attended">Asistió</span>
-                    ) : paid ? (
-                      <span className="sa-tag sa-tag--paid">
-                        {transfer ? 'Transferencia' : 'Pagado'}
-                      </span>
-                    ) : transfer ? (
-                      <>
-                        {a.transfer_proof_url ? (
-                          <span className="sa-tag sa-tag--proof">Con comprobante</span>
+                <div
+                  key={a.id}
+                  className={`sa-attendee-card${
+                    transfer && !paid && !attended ? ' sa-attendee-card--transfer-pending' :
+                    !transfer && !paid && !attended ? ' sa-attendee-card--presencial-pending' : ''
+                  }`}
+                  style={{ animationDelay: `${idx * 0.03}s` }}
+                  onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}
+                >
+                  {(!paid && !attended) ? (
+                    <>
+                      {/* Fila superior: identidad + estado */}
+                      <div className="sa-att-top-row">
+                        <div className={`sa-status-dot ${dotClass}`} />
+                        <div className="sa-att-info">
+                          <span className="sa-att-name">{a.full_name}</span>
+                          <span className="sa-att-phone">{a.phone}</span>
+                        </div>
+                        {transfer ? (
+                          a.transfer_proof_url
+                            ? <span className="sa-tag sa-tag--proof">Con comprobante</span>
+                            : <span className="sa-tag sa-tag--transfer">Sin comprobante</span>
                         ) : (
-                          <span className="sa-tag sa-tag--transfer">Sin comprobante</span>
+                          <span className="sa-tag sa-tag--unpaid">Presencial</span>
                         )}
-                        {a.transfer_proof_url && (
+                      </div>
+                      {/* Fila de acción */}
+                      <div className="sa-transfer-action">
+                        {transfer && a.transfer_proof_url && (
                           <a
                             className="sa-proof-thumb"
                             href={a.transfer_proof_url}
@@ -1392,21 +1418,39 @@ export default function StaffApp({ onStartScan, onLogout }) {
                           </a>
                         )}
                         <button
-                          className="sa-confirm-pay-btn"
-                          disabled={confirmingPaymentId === a.id}
-                          onClick={e => { e.stopPropagation(); handleConfirmPayment(a.id) }}
+                          className={`sa-confirm-pay-btn sa-confirm-pay-btn--wide${!transfer ? ' sa-confirm-pay-btn--presencial' : ''}`}
+                          disabled={transfer ? confirmingPaymentId === a.id : confirmingPresencialId === a.id}
+                          onClick={e => {
+                            e.stopPropagation()
+                            transfer ? handleConfirmPayment(a.id) : handleConfirmPresencial(a.id)
+                          }}
                         >
-                          {confirmingPaymentId === a.id ? '…' : 'Confirmar pago'}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                          {transfer
+                            ? (confirmingPaymentId === a.id ? 'Confirmando...' : 'Confirmar pago')
+                            : (confirmingPresencialId === a.id ? 'Confirmando...' : 'Cobrar y confirmar')}
                         </button>
-                      </>
-                    ) : (
-                      <span className="sa-tag sa-tag--unpaid">Sin pago</span>
-                    )}
-                  </div>
-                  {!(transfer && !paid && !attended) && (
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
-                      <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`sa-status-dot ${dotClass}`} />
+                      <div className="sa-att-info">
+                        <span className="sa-att-name">{a.full_name}</span>
+                        <span className="sa-att-phone">{a.phone}</span>
+                      </div>
+                      <div className="sa-att-tags">
+                        {attended
+                          ? <span className="sa-tag sa-tag--attended">Asistió</span>
+                          : <span className="sa-tag sa-tag--paid">{transfer ? 'Pago Comprobado' : 'Pagado'}</span>
+                        }
+                      </div>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </>
                   )}
                 </div>
               )

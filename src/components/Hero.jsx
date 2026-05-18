@@ -20,7 +20,7 @@ export default function Hero({ onBook }) {
 
   return (
     <section id="inicio" className="hero">
-      <video className="hero__video" src={CDN.VIDEO_FONDO} autoPlay muted loop playsInline loading="lazy" />
+      <video className="hero__video" src={CDN.VIDEO_FONDO} autoPlay muted loop playsInline loading="lazy" controlsList="nodownload" onContextMenu={e => e.preventDefault()} />
       <div className="hero__overlay" />
 
       <div className="hero__content">

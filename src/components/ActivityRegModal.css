@@ -23,14 +23,22 @@
   background: #fff;
   border-radius: 20px;
   width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
+  max-width: 460px;
+  max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 64px rgba(0,0,0,0.22);
   animation: arm-up 0.26s cubic-bezier(0.34, 1.4, 0.64, 1);
   overflow-y: auto;
   overflow-x: hidden;
+  
+  /* Ocultar barra de scroll visualmente */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.arm-card::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 @keyframes arm-up {
@@ -48,7 +56,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 14px 48px 10px;
+  padding: 16px 48px 12px;
   border-bottom: 1px solid #f0f0ee;
   flex-shrink: 0;
 }
@@ -368,19 +376,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 16px 20px 18px;
+  gap: 14px;
+  padding: 18px 24px 22px;
   text-align: center;
   position: relative;
 }
 
 .arm-success__check {
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .arm-success__title {
   font-family: 'Montserrat', sans-serif;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 900;
   color: #1a1a1a;
   margin: 0;
@@ -394,6 +402,7 @@
   border: 1.5px solid #d4dfa8;
   border-radius: 18px;
   overflow: hidden;
+  margin: 4px 0;
 }
 
 .arm-success__ticket-cols {
@@ -407,7 +416,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 16px;
+  padding: 12px 18px;
   gap: 3px;
   flex-shrink: 0;
 }
@@ -444,7 +453,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 14px;
+  padding: 12px 16px;
   gap: 5px;
   flex: 1;
   min-width: 0;
@@ -452,7 +461,7 @@
 }
 
 .arm-success__ticket-event-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #1a2506;
   white-space: nowrap;
@@ -466,7 +475,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #5a6c1e;
 }
@@ -475,14 +484,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  font-size: 11.5px;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 600;
   color: #5a6c1e;
   background: #f0f4e4;
   border-radius: 10px;
-  padding: 8px 12px;
-  margin: 0;
+  padding: 10px 14px;
+  margin: 2px 0;
   width: 100%;
   text-align: center;
 }
@@ -491,14 +500,14 @@
 .arm-success__actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
 }
 
 /* Fila de los dos botones WhatsApp */
 .arm-success__wa-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -507,13 +516,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   border: none;
   border-radius: 14px;
-  padding: 11px 10px;
+  padding: 12px 10px;
   cursor: pointer;
   font-family: 'Montserrat', sans-serif;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 800;
   color: #fff;
   transition: transform 0.15s, box-shadow 0.15s;
@@ -549,7 +558,7 @@
   gap: 10px;
   border: none;
   border-radius: 14px;
-  padding: 11px 16px;
+  padding: 12px 16px;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
   font-family: inherit;
@@ -577,7 +586,7 @@
 }
 
 .arm-success__btn-title {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 800;
   color: #fff;
   display: block;
@@ -615,19 +624,49 @@
   transform: none;
 }
 
+.arm-success__footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #f0ede8;
+}
+
 .arm-success__close-btn {
   background: transparent;
-  border: none;
-  color: #aaa;
-  font-size: 12px;
-  font-weight: 600;
+  border: 2px solid #5a6c1e;
+  color: #5a6c1e;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px 16px;
-  border-radius: 8px;
+  padding: 7px 16px;
+  border-radius: 10px;
   transition: background 0.15s, color 0.15s;
   font-family: inherit;
+  letter-spacing: 0.01em;
 }
-.arm-success__close-btn:hover { background: #f0ede8; color: #333; }
+.arm-success__close-btn:hover { background: #f0f4e8; }
+
+.arm-success__new-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #5a6c1e;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.01em;
+}
+.arm-success__new-btn:hover { background: #4a5a18; }
+.arm-success__new-btn:active { transform: scale(0.97); }
 
 .arm-success small {
   font-size: 14px;
@@ -963,6 +1002,8 @@
   padding: 14px 16px; border-radius: 13px; text-decoration: none;
   box-shadow: 0 4px 12px rgba(37,211,102,0.28);
   transition: opacity 0.15s;
+  border: none !important;
+  outline: none !important;
 }
 .arm-pend__wa:hover { opacity: 0.91; }
 

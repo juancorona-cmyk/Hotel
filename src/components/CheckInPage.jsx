@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { QRCodeSVG } from 'qrcode.react'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
 import { CDN } from '../lib/cdn'
 import { fmtFecha } from '../lib/utils'
 import StaffApp from './StaffApp'
@@ -27,6 +27,7 @@ export default function CheckInPage() {
 
   const [reg, setReg] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isWhatsappMember, setIsWhatsappMember] = useState(null)
   const [updating, setUpdating] = useState(false)
   const [status, setStatus] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -36,7 +37,13 @@ export default function CheckInPage() {
     if (!isNativeApp && rid) {
       setLoading(true)
       getRegistrationById(parseInt(rid))
-        .then(r => setReg(r))
+        .then(async r => {
+          setReg(r)
+          if (r?.phone) {
+            const isMember = await checkWhatsappMember(r.phone)
+            setIsWhatsappMember(isMember)
+          }
+        })
         .catch(() => setReg(null))
         .finally(() => setLoading(false))
       return
@@ -44,7 +51,13 @@ export default function CheckInPage() {
     if (!authed || !rid) { setLoading(false); return }
     setLoading(true)
     getRegistrationById(parseInt(rid))
-      .then(r => setReg(r))
+      .then(async r => {
+        setReg(r)
+        if (r?.phone) {
+          const isMember = await checkWhatsappMember(r.phone)
+          setIsWhatsappMember(isMember)
+        }
+      })
       .catch(() => setReg(null))
       .finally(() => setLoading(false))
   }, [rid, authed])
@@ -119,6 +132,11 @@ export default function CheckInPage() {
     navigate('/checkin')
   }
 
+  const handleJoinGroup = async () => {
+    if (reg?.phone) await addWhatsappMember(reg.phone).catch(() => {})
+    window.open('https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw', '_blank', 'noopener')
+  }
+
   const handleMarkPaid = async () => {
     if (updating) return
     setUpdating(true)
@@ -126,9 +144,9 @@ export default function CheckInPage() {
       await updateActivityRegistrationPayment(reg.id, true)
       setReg(r => ({ ...r, paid: 1 }))
       setStatus('paid')
-      setTimeout(() => setStatus(''), 3000)
     } catch {
       setStatus('error')
+      setTimeout(() => setStatus(''), 3000)
     } finally {
       setUpdating(false)
     }
@@ -142,12 +160,11 @@ export default function CheckInPage() {
       await checkInRegistration(reg.id)
       setReg(r => ({ ...r, paid: 1, checked_in: 1, checked_in_at: new Date().toISOString() }))
       setStatus('paid_confirmed')
-      setTimeout(() => setStatus(''), 4000)
     } catch {
       setStatus('error')
+      setTimeout(() => setStatus(''), 3000)
     } finally {
       setUpdating(false)
-      setConfirmingUnpaid(false)
     }
   }
 
@@ -158,9 +175,9 @@ export default function CheckInPage() {
       await checkInRegistration(reg.id)
       setReg(r => ({ ...r, checked_in: 1, checked_in_at: new Date().toISOString() }))
       setStatus('confirmed')
-      setTimeout(() => setStatus(''), 3000)
     } catch {
       setStatus('error')
+      setTimeout(() => setStatus(''), 3000)
     } finally {
       setUpdating(false)
     }
@@ -371,6 +388,27 @@ export default function CheckInPage() {
             )}
           </div>
 
+          {/* ── WhatsApp Group CTA ── */}
+          {isWhatsappMember === false && (
+            <div className="ci-pub2-wa-card">
+              <div className="ci-pub2-wa-info">
+                <strong>¿Quieres unirte al grupo de WhatsApp?</strong>
+                <span>Entérate de cambios de horario, avisos y próximos eventos.</span>
+              </div>
+              <button className="ci-pub2-wa-btn" onClick={handleJoinGroup}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                Unirme al grupo
+              </button>
+            </div>
+          )}
+
+          {isWhatsappMember === true && (
+            <div className="ci-pub2-wa-member">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              Ya eres miembro del grupo de WhatsApp ✓
+            </div>
+          )}
+
           {/* ── Footer ── */}
           <div className="ci-pub2-footer">
             <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-pub2-footer-logo" />
@@ -567,13 +605,13 @@ export default function CheckInPage() {
             {scanState === 'duplicate' && (
               <div className="ci-result-status-pill ci-result-status-pill--duplicate">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Ya ingresó
+                Asistió
               </div>
             )}
             {scanState === 'ready' && (
               <div className="ci-result-status-pill ci-result-status-pill--ok">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                Listo para entrar
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Pago Comprobado
               </div>
             )}
             {scanState === 'unpaid_transfer' && (
@@ -700,12 +738,53 @@ export default function CheckInPage() {
         </div>
       </div>
 
-      {/* Toasts */}
-      {status === 'paid_confirmed' && <div className="ci-toast ci-toast--ok">✓ Pago registrado · Entrada confirmada</div>}
-      {status === 'confirmed' && <div className="ci-toast ci-toast--ok">✓ Entrada confirmada</div>}
-      {status === 'undone' && <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>}
+      {/* Toasts menores */}
+      {status === 'undone'         && <div className="ci-toast ci-toast--warn">Confirmación deshecha</div>}
       {status === 'proof_uploaded' && <div className="ci-toast ci-toast--ok">✓ Comprobante subido · Pago marcado</div>}
-      {status === 'error' && <div className="ci-toast ci-toast--warn">Error al procesar. Intenta de nuevo.</div>}
+      {status === 'error'          && <div className="ci-toast ci-toast--warn">Error al procesar. Intenta de nuevo.</div>}
+
+      {/* Overlay de éxito — transfer verificada o entrada confirmada */}
+      {(status === 'paid' || status === 'confirmed' || status === 'paid_confirmed') && (
+        <div className="ci-success-overlay" onClick={() => setStatus('')}>
+          <div className="ci-success-sheet" onClick={e => e.stopPropagation()}>
+
+            {/* Icono animado */}
+            <div className={`ci-success-icon ${status === 'confirmed' || status === 'paid_confirmed' ? 'ci-success-icon--entry' : 'ci-success-icon--paid'}`}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" className="ci-check-path" />
+              </svg>
+            </div>
+
+            {/* Título y subtítulo */}
+            <h2 className="ci-success-title">
+              {status === 'paid' ? 'Pago verificado' : 'Entrada confirmada'}
+            </h2>
+            <p className="ci-success-sub">
+              {status === 'paid'
+                ? 'Transferencia comprobada. Podrá ingresar el día del evento.'
+                : status === 'paid_confirmed'
+                  ? 'Pago cobrado y asistencia registrada.'
+                  : '¡Asistencia registrada exitosamente!'}
+            </p>
+
+            {/* Tarjeta del asistente */}
+            <div className="ci-success-ticket">
+              <div className="ci-success-ticket-top">
+                <div className="ci-success-avatar">{initials}</div>
+                <div className="ci-success-info">
+                  <span className="ci-success-name">{reg.full_name}</span>
+                  <span className="ci-success-event-name">{reg.event_name || reg.activity_name || '—'}</span>
+                </div>
+              </div>
+              <div className="ci-success-ticket-num">
+                TICKET · #{String(reg.id).padStart(4, '0')}
+              </div>
+            </div>
+
+            <button className="ci-success-btn" onClick={() => setStatus('')}>Continuar</button>
+          </div>
+        </div>
+      )}
 
       {/* Footer de acciones */}
       <div className="ci-result-footer">
@@ -755,13 +834,13 @@ export default function CheckInPage() {
                 )}
               </button>
             )}
-            <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaidAndCheckIn} disabled={updating || uploading}>
+            <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaid} disabled={updating || uploading}>
               {updating ? <span className="ci-login-btn-spinner" /> : (
                 <>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                     <polyline points="20 6 9 17 4 12"/>
                   </svg>
-                  {reg.transfer_proof_url ? 'Comprobante verificado · Confirmar entrada' : 'Verificar y confirmar entrada'}
+                  {reg.transfer_proof_url ? 'Comprobante verificado · Marcar como pagado' : 'Marcar transferencia como verificada'}
                 </>
               )}
             </button>
