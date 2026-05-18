@@ -1132,6 +1132,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  text-align: left;
 }
 .arm-pend__proof-ok strong {
   font-size: 13px;
