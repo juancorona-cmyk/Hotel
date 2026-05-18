@@ -27,7 +27,11 @@ export default function ActivityRegModal({ activity, event, onClose }) {
       + `📍 Hotel Punta Galería, Morelia, Mich.\n\n`
       + `🔗 Link de check-in: ${checkinUrl}`
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+    // Normalizar número: quitar todo excepto dígitos y leading +
+    const digits = reg.phone.replace(/\D/g, '')
+    // Si son 10 dígitos asumimos México (+52)
+    const waPhone = digits.length === 10 ? `52${digits}` : digits
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
   }
 
   return (
