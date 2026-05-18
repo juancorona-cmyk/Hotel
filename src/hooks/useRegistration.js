@@ -312,7 +312,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     const waPhone = digits.length === 10 ? `52${digits}` : digits
     const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
 
-    // En móvil: intentar Web Share API con PDF adjunto (no hay bloqueador de popups)
+    // Móvil: Web Share API con PDF adjunto (sin bloqueador de popups)
     const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0
     if (isMobile && typeof navigator.share === 'function') {
       try {
@@ -326,10 +326,24 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
           return
         }
       } catch {}
+      // Fallback móvil sin Web Share API
+      window.open(waUrl, '_blank', 'noopener')
+      return
     }
 
-    // PC o fallback: abrir WhatsApp de forma síncrona (sin async = no se bloquea)
+    // PC: abrir WhatsApp síncrono (nunca se bloquea), luego descargar PDF
+    // a.click() para descargas no es bloqueado aunque sea después de await
     window.open(waUrl, '_blank', 'noopener')
+    try {
+      const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
+      const { blob, filename } = await generateTicketPdfBlob({
+        registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = filename; a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
   }, [registrationId, fullName, phone, event, paymentMethod, paymentPending, qrSvgRef])
 
   const handleDownloadPDF = useCallback(async () => {
