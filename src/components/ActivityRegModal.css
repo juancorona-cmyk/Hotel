@@ -525,6 +525,13 @@
   background: linear-gradient(135deg, #25d366 0%, #1aad52 100%);
   box-shadow: 0 4px 14px rgba(37,211,102,0.32);
 }
+.arm-success__wa-btn--disabled {
+  background: #ccc !important;
+  box-shadow: none !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
 .arm-success__wa-btn--group {
   background: linear-gradient(135deg, #128c7e 0%, #075e54 100%);
   box-shadow: 0 4px 14px rgba(7,94,84,0.30);

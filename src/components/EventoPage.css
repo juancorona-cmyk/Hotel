@@ -199,6 +199,14 @@
 
 .ep-share__wa { text-decoration: none; }
 
+.ep-share__wa--disabled {
+  background: #ccc !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .ep-share__pdf {
   display: inline-flex;
   align-items: center;
