@@ -39,6 +39,9 @@ export default function ActivityRegModal({ activity, event, onClose }) {
           <div className="arm-header__info">
             <span className="arm-eyebrow">Inscripción</span>
             <h2 className="arm-title">{activity.name}</h2>
+            {event?.description && (
+              <p className="arm-header__desc">{event.description}</p>
+            )}
             {event && (
               <div className="arm-header__pills">
                 {event.date && (
