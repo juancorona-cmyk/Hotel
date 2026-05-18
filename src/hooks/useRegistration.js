@@ -16,6 +16,7 @@ import {
   uploadTransferProof as doUploadProof,
   downloadTicketPdf,
   generateTicketPdfBlob,
+  uploadTicketPdf,
 } from '../lib/ticketPdf'
 
 export const WHATSAPP_OPTIONS = ['Sí', 'No', 'Ya estoy dentro']
@@ -290,58 +291,84 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
   }, [phone])
 
   const handleSendTicketWhatsApp = useCallback(async () => {
+    const ticketNum = String(registrationId || '').padStart(4, '0')
+    const eventName = activity?.name || event?.name || 'Evento'
     const dateStr = event?.date
       ? new Date(event.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       : ''
     const payStr = paymentMethod === 'presencial'
-      ? 'Presencial - Pagar en recepcion'
+      ? 'Presencial - Pagar en recepción'
       : paymentMethod === 'transferencia'
         ? (paymentPending ? 'Transferencia - Pendiente' : 'Transferencia - Pagado')
         : ''
-    const ticketNum = String(registrationId || '').padStart(4, '0')
-    const msg = `*TICKET DE ACCESO - Hotel Punta Galeria*\n\n`
+
+    const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
+    const baseMsg = `*TICKET DE ACCESO - Hotel Punta Galeria*\n\n`
       + `*Nombre:* ${fullName.trim()}\n`
-      + `*Evento:* ${event?.name || ''}\n`
+      + `*Evento:* ${eventName}\n`
       + `*Ticket:* #${ticketNum}\n`
       + (dateStr ? `*Fecha:* ${dateStr}\n` : '')
       + `*Lugar:* Hotel Punta Galeria, Morelia, Mich.\n`
       + (payStr ? `*Pago:* ${payStr}\n` : '')
-      + `\n_Presenta este ticket en la entrada del evento_`
 
-    const digits = phone.replace(/\D/g, '')
-    const waPhone = digits.length === 10 ? `52${digits}` : digits
-    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
+    let blob = null
+    let filename = `ticket-${ticketNum}.pdf`
 
-    // Pre-check síncrono: ¿soporta compartir archivos? (iOS, Android, Mac/Win con Web Share)
-    const dummyPdf = new File([''], 'ticket.pdf', { type: 'application/pdf' })
-    const canShareFiles = navigator.canShare?.({ files: [dummyPdf] }) ?? false
-
-    if (canShareFiles) {
-      // Genera el PDF y abre la bandeja nativa con PDF + mensaje juntos
-      try {
-        const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
-        const { blob, filename } = await generateTicketPdfBlob({
-          registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
-        })
-        const pdfFile = new File([blob], filename, { type: 'application/pdf' })
-        await navigator.share({ files: [pdfFile], text: msg })
-      } catch {}
-      return
+    try {
+      const res = await generateTicketPdfBlob({
+        registrationId, fullName, event, activity, qrDataUrl, paymentMethod, paymentPending,
+      })
+      blob = res.blob
+      if (res.filename) filename = res.filename
+    } catch (e) {
+      console.error('Error al generar PDF para compartir', e)
     }
 
-    // Fallback (navegador sin soporte): abrir WhatsApp síncrono + descargar PDF
-    window.open(waUrl, '_blank', 'noopener')
+    // 1. Intentar compartir nativamente (permite adjuntar el archivo real en móviles)
+    if (blob && navigator.share) {
+      try {
+        const file = new File([blob], filename, { type: 'application/pdf' })
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `Ticket ${ticketNum} - ${eventName}`,
+            text: baseMsg + `\n_Presenta este ticket en la entrada del evento_`,
+            files: [file]
+          })
+          return // Éxito compartiendo nativamente
+        }
+      } catch (e) {
+        console.warn('Native share failed or cancelled', e)
+      }
+    }
+
+    // 2. Fallback: WhatsApp wa.me (abre chat con info + link)
+    const digits = phone.replace(/\D/g, '')
+    const waPhone = digits.length === 10 ? `52${digits}` : digits
+
+    // Abrir ventana en blanco SÍNCRONAMENTE para evitar bloqueadores de popups
+    const popup = window.open('about:blank', '_blank')
+
     try {
-      const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
-      const { blob, filename } = await generateTicketPdfBlob({
-        registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url; a.download = filename; a.click()
-      URL.revokeObjectURL(url)
-    } catch {}
-  }, [registrationId, fullName, phone, event, paymentMethod, paymentPending, qrSvgRef])
+      if (!blob) throw new Error('No se generó el PDF')
+
+      // Subir PDF a Cloudinary y obtener URL pública
+      const pdfUrl = await uploadTicketPdf({ blob, registrationId, eventName })
+
+      const msg = baseMsg
+        + `\n*Tu PDF de acceso:*\n${pdfUrl}\n`
+        + `\n_Presenta este ticket en la entrada del evento_`
+
+      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
+      if (popup && !popup.closed) popup.location.href = waUrl
+      else window.open(waUrl, '_blank', 'noopener')
+    } catch {
+      // Si falla el upload o el blob, mandar solo el texto sin PDF
+      const msg = baseMsg + `\n_Presenta este ticket en la entrada del evento_`
+      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
+      if (popup && !popup.closed) popup.location.href = waUrl
+      else window.open(waUrl, '_blank', 'noopener')
+    }
+  }, [registrationId, fullName, phone, event, activity, paymentMethod, paymentPending, qrSvgRef])
 
   const handleDownloadPDF = useCallback(async () => {
     setDownloadingPDF(true)
@@ -352,6 +379,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         registrationId,
         fullName,
         event,
+        activity,
         qrDataUrl,
         paymentMethod,
         paymentPending,
@@ -361,7 +389,7 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
     } finally {
       setDownloadingPDF(false)
     }
-  }, [registrationId, fullName, event, paymentMethod, paymentPending])
+  }, [registrationId, fullName, event, activity, paymentMethod, paymentPending])
 
   const spotsColor = spotsLeft !== null && capacity > 0
     ? spotsLeft <= 3 ? '#dc2626' : spotsLeft <= 8 ? '#d97706' : '#5a6c1e'

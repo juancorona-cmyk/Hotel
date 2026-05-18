@@ -162,11 +162,11 @@ body{font-family:'Montserrat',sans-serif;background:#fff;display:flex;flex-direc
 </body></html>`
 }
 
-export async function generateTicketPdfBlob({ registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending }) {
+export async function generateTicketPdfBlob({ registrationId, fullName, event, activity, qrDataUrl, paymentMethod, paymentPending }) {
   const html = generateTicketPdfHtml({
     registrationId,
     fullName,
-    eventName: event?.name || '',
+    eventName: event?.name || activity?.name || '',
     eventDescription: event?.description || '',
     eventDate: event?.date || '',
     eventPrice: event?.price || 0,
@@ -192,6 +192,23 @@ export async function downloadTicketPdf(params) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+export async function uploadTicketPdf({ blob, registrationId, eventName }) {
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+  const res = await fetch(`${API_BASE}/.netlify/functions/upload-ticket-pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pdfBase64: base64, registrationId, eventName }),
+  })
+  const data = await res.json()
+  if (!res.ok || !data.url) throw new Error(data.error || 'Error al subir PDF')
+  return data.url
 }
 
 export async function uploadTransferProof({ file, registrationId, eventName }) {
