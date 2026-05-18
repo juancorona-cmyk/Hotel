@@ -294,23 +294,26 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       ? new Date(event.date + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       : ''
     const payStr = paymentMethod === 'presencial'
-      ? 'Presencial · Pagar en recepción'
+      ? 'Presencial - Pagar en recepcion'
       : paymentMethod === 'transferencia'
-        ? (paymentPending ? 'Transferencia · Pendiente' : 'Transferencia · Pagado ✓')
+        ? (paymentPending ? 'Transferencia - Pendiente' : 'Transferencia - Pagado')
         : ''
     const ticketNum = String(registrationId || '').padStart(4, '0')
-    const msg = `📄 *Te comparto tu PDF de acceso al evento* 🎉\n\n`
-      + `Aquí tienes los datos de tu registro:\n\n`
-      + `👤 *${fullName.trim()}*\n`
-      + `📋 ${event?.name || ''}\n`
-      + `🎟️ Ticket #${ticketNum}\n`
-      + (dateStr ? `📅 ${dateStr}\n` : '')
-      + `📍 Hotel Punta Galería, Morelia, Mich.\n`
-      + (payStr ? `💳 ${payStr}\n` : '')
-      + `\n_Presenta este ticket en la entrada del evento_ ✅`
+    // Sin emojis para compatibilidad con PC/Windows
+    const msg = `*TICKET DE ACCESO - Hotel Punta Galeria*\n\n`
+      + `*Nombre:* ${fullName.trim()}\n`
+      + `*Evento:* ${event?.name || ''}\n`
+      + `*Ticket:* #${ticketNum}\n`
+      + (dateStr ? `*Fecha:* ${dateStr}\n` : '')
+      + `*Lugar:* Hotel Punta Galeria, Morelia, Mich.\n`
+      + (payStr ? `*Pago:* ${payStr}\n` : '')
+      + `\n_Presenta este ticket en la entrada del evento_`
 
     const digits = phone.replace(/\D/g, '')
     const waPhone = digits.length === 10 ? `52${digits}` : digits
+
+    // Abrir ventana de forma síncrona (antes del await) para evitar bloqueo de popups
+    const popup = window.open('', '_blank')
 
     try {
       const qrDataUrl = qrSvgRef.current?.toDataURL?.('image/png') ?? null
@@ -318,18 +321,23 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         registrationId, fullName, event, qrDataUrl, paymentMethod, paymentPending,
       })
       const pdfFile = new File([blob], filename, { type: 'application/pdf' })
+      // Móvil: Web Share API con PDF adjunto
       if (navigator.canShare?.({ files: [pdfFile] })) {
+        popup?.close()
         await navigator.share({ files: [pdfFile], text: msg })
         return
       }
-      // Fallback: descargar PDF
+      // PC/fallback: descargar el PDF
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url; a.download = filename; a.click()
       URL.revokeObjectURL(url)
     } catch {}
 
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener')
+    // Navegar la ventana ya abierta a WhatsApp (evita bloqueo de popup)
+    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
+    if (popup && !popup.closed) popup.location.href = waUrl
+    else window.open(waUrl, '_blank')
   }, [registrationId, fullName, phone, event, paymentMethod, paymentPending, qrSvgRef])
 
   const handleDownloadPDF = useCallback(async () => {
