@@ -526,15 +526,20 @@
   box-shadow: 0 4px 14px rgba(37,211,102,0.32);
 }
 .arm-success__wa-btn--disabled {
-  background: #ccc !important;
+  background: #bbbbbb !important;
+  color: #888888 !important;
   box-shadow: none !important;
-  opacity: 0.6;
-  cursor: not-allowed;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
   transform: none !important;
+  pointer-events: none !important;
+  border: none !important;
 }
 .arm-success__wa-btn--group {
   background: linear-gradient(135deg, #128c7e 0%, #075e54 100%);
   box-shadow: 0 4px 14px rgba(7,94,84,0.30);
+  border: none !important;
+  outline: none !important;
 }
 
 .arm-success__btn {

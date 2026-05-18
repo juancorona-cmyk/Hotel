@@ -200,11 +200,14 @@
 .ep-share__wa { text-decoration: none; }
 
 .ep-share__wa--disabled {
-  background: #ccc !important;
-  opacity: 0.6;
-  cursor: not-allowed;
+  background: #bbbbbb !important;
+  color: #888888 !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
   transform: none !important;
   box-shadow: none !important;
+  pointer-events: none !important;
+  border: none !important;
 }
 
 .ep-share__pdf {
@@ -1512,6 +1515,8 @@
   text-decoration: none;
   box-shadow: 0 4px 14px rgba(37,211,102,0.30);
   transition: opacity 0.15s, transform 0.12s;
+  border: none !important;
+  outline: none !important;
 }
 .ep-group-btn:hover { opacity: 0.92; transform: translateY(-1px); }
 
