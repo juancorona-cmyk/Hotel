@@ -26,6 +26,11 @@ export default function CheckInPage() {
   const [loginBusy, setLoginBusy] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
 
+  // Suscribir a push cada vez que el staff está autenticado
+  useEffect(() => {
+    if (authed && isNativeApp) subscribeToPush().catch(() => {})
+  }, [authed])
+
   const [reg, setReg] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isWhatsappMember, setIsWhatsappMember] = useState(null)

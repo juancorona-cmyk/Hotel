@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
+import { subscribeToPush } from '../lib/pushNotifications'
 import './StaffApp.css'
 
 const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
@@ -392,7 +393,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }, [])
 
   useEffect(() => {
-    // Pide permiso para notificaciones del sistema al montar
+    // Registrar para push notifications (FCM nativo o Web Push)
+    subscribeToPush().catch(() => {})
+
+    // Pide permiso para notificaciones del sistema al montar (browser fallback)
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {})
     }

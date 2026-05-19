@@ -10,48 +10,67 @@ function urlBase64ToUint8Array(base64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
 }
 
+async function saveFCMToken(token) {
+  const res = await fetch(`${API_BASE}/.netlify/functions/push-subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fcmToken: token }),
+  })
+  if (!res.ok) throw new Error(`push-subscribe returned ${res.status}`)
+  return res.json()
+}
+
 // ── Native Android (FCM) ──────────────────────────────────
 async function subscribeNativeFCM() {
   const { PushNotifications } = await import('@capacitor/push-notifications')
 
+  // Limpiar listeners previos para evitar duplicados en re-mounts
+  await PushNotifications.removeAllListeners()
+
   const permStatus = await PushNotifications.requestPermissions()
-  if (permStatus.receive !== 'granted') return null
+  if (permStatus.receive !== 'granted') {
+    console.warn('[push] FCM permission denied')
+    return null
+  }
+
+  // Escuchar push en primer plano → emitir evento para que StaffApp muestre alerta
+  PushNotifications.addListener('pushNotificationReceived', (notif) => {
+    window.dispatchEvent(new CustomEvent('hotel:push', { detail: notif }))
+  })
+
+  // Tap en la notificación → navegar al ticket
+  PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    const url = action.notification.data?.url
+    if (url) {
+      try {
+        const { pathname, search } = new URL(url)
+        window.location.href = pathname + search
+      } catch { window.location.href = url }
+    }
+  })
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve(null), 10000)
+    const timeout = setTimeout(() => {
+      console.warn('[push] FCM registration timeout')
+      resolve(null)
+    }, 12000)
 
     PushNotifications.addListener('registration', async ({ value: token }) => {
       clearTimeout(timeout)
+      console.log('[push] FCM token:', token.slice(0, 20) + '…')
       try {
-        await fetch(`${API_BASE}/.netlify/functions/push-subscribe`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fcmToken: token }),
-        })
-      } catch {}
+        await saveFCMToken(token)
+        console.log('[push] FCM token guardado en DB ✓')
+      } catch (err) {
+        console.error('[push] Error guardando token:', err.message)
+      }
       resolve(token)
     })
 
-    PushNotifications.addListener('registrationError', () => {
+    PushNotifications.addListener('registrationError', (err) => {
       clearTimeout(timeout)
+      console.error('[push] FCM registrationError:', err)
       resolve(null)
-    })
-
-    // Foreground notification — trigger in-app alert
-    PushNotifications.addListener('pushNotificationReceived', (notif) => {
-      const event = new CustomEvent('hotel:push', { detail: notif })
-      window.dispatchEvent(event)
-    })
-
-    // Notification tap — navigate to URL
-    PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      const url = action.notification.data?.url
-      if (url) {
-        try {
-          const path = new URL(url).pathname + new URL(url).search
-          window.location.href = path
-        } catch { window.location.href = url }
-      }
     })
 
     PushNotifications.register()
@@ -90,18 +109,20 @@ export async function subscribeToPush() {
     }
     return await subscribeWebPush()
   } catch (err) {
-    console.warn('[push] subscribeToPush failed:', err)
+    console.warn('[push] subscribeToPush error:', err)
     return null
   }
 }
 
 export async function sendPushNotification(payload) {
   try {
-    await fetch(`${API_BASE}/.netlify/functions/push-notify`, {
+    const res = await fetch(`${API_BASE}/.netlify/functions/push-notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
+    const data = await res.json()
+    console.log('[push] notify result:', data)
   } catch (err) {
     console.warn('[push] notify failed:', err)
   }
