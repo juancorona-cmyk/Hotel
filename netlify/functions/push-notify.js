@@ -99,7 +99,7 @@ async function sendFCM(fcmToken, title, body, data, projectId) {
             notification: {
               channelId: 'hpg_notif',
               notificationPriority: 'PRIORITY_HIGH',
-              visibility: 'VISIBILITY_PUBLIC',
+              visibility: 'PUBLIC',
               icon: 'ic_notification',
               defaultVibrateTimings: true,
             },
