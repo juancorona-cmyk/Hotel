@@ -50,6 +50,16 @@
 
         </activity>
 
+        <!-- Servicio FCM propio: muestra notificaciones del sistema incluso con la app cerrada.
+             priority="1" lo pone por encima del servicio de Capacitor (priority=0 por defecto). -->
+        <service
+            android:name=".HotelMessagingService"
+            android:exported="false">
+            <intent-filter android:priority="1">
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -68,4 +78,5 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>
