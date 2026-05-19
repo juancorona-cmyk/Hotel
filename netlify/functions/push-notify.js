@@ -97,22 +97,23 @@ async function sendFCM(fcmToken, title, body, data, projectId) {
             priority: 'high',
             ttl: '86400s',
             notification: {
-              channel_id: 'hpg_notif',
-              notification_priority: 'PRIORITY_HIGH',
+              channelId: 'hpg_notif',
+              notificationPriority: 'PRIORITY_HIGH',
               visibility: 'VISIBILITY_PUBLIC',
               icon: 'ic_notification',
-              default_vibrate_timings: true,
+              defaultVibrateTimings: true,
             },
           },
         },
       }),
     }
   )
+  const cloned = res.clone()
   if (!res.ok) {
     const err = await res.text()
     console.error(`[FCM] token error ${res.status}:`, err.slice(0, 300))
   }
-  return res
+  return cloned
 }
 
 // ── Main handler ──────────────────────────────────────────
