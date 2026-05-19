@@ -115,6 +115,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [notifCount, setNotifCount] = useState(0)
   const [notifications, setNotifications] = useState([])
   const [showNotifPanel, setShowNotifPanel] = useState(false)
+  const [pushDiag, setPushDiag] = useState(null)
   // Cada ítem: { type:'reg'|'payment', id, full_name?, phone?, payment_method?, count? }
 
   const showToast = useCallback((message, type = 'success') => {
@@ -193,6 +194,36 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const handleNotifClick = () => {
     setShowNotifPanel(p => !p)
     if (notifCount > 0) setNotifCount(0)
+  }
+
+  const handleTestPush = async () => {
+    setPushDiag('verificando…')
+    try {
+      const base = API_BASE || ''
+      // 1) Diagnóstico del servidor
+      const diagRes = await fetch(`${base}/.netlify/functions/push-notify`)
+      const diag = await diagRes.json()
+      const saOk = diag?.env?.FIREBASE_SERVICE_ACCOUNT
+      const pidOk = diag?.env?.FIREBASE_PROJECT_ID
+      const tokens = diag?.db?.fcmTokens ?? 0
+      const authOk = diag?.fcmAuth === 'OK'
+      if (!saOk || !pidOk) {
+        setPushDiag(`❌ Falta en Netlify: ${!saOk ? 'FIREBASE_SERVICE_ACCOUNT ' : ''}${!pidOk ? 'FIREBASE_PROJECT_ID' : ''}`)
+        return
+      }
+      if (!authOk) { setPushDiag(`❌ Auth FCM: ${diag.fcmAuth}`); return }
+      if (tokens === 0) { setPushDiag('❌ No hay tokens FCM en la BD — abre la app y espera 10 s'); return }
+      // 2) Enviar push de prueba
+      const sendRes = await fetch(`${base}/.netlify/functions/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Prueba Hotel', body: 'Si ves esto fuera de la app, FCM funciona ✓', tag: 'test' }),
+      })
+      const send = await sendRes.json()
+      setPushDiag(`✅ Enviado — tokens: ${tokens}, FCM ok: ${send.fcm}, errores: ${send.fcmErrors}`)
+    } catch (e) {
+      setPushDiag(`❌ Error: ${e.message}`)
+    }
   }
 
   const handleCreateView = () => {
@@ -742,6 +773,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
             </div>
             <div className="sa-top-actions">
+              {lowerRole === 'admin' && (
+                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                  <button onClick={handleTestPush} style={{fontSize:11,padding:'3px 8px',borderRadius:6,background:'#5a6c1e',color:'#fff',border:'none',cursor:'pointer',fontFamily:'Montserrat,sans-serif'}}>
+                    Test Push
+                  </button>
+                  {pushDiag && <span style={{fontSize:10,color:'#5a6c1e',maxWidth:200,textAlign:'right',fontFamily:'Montserrat,sans-serif'}}>{pushDiag}</span>}
+                </div>
+              )}
               <button className="sa-notif-btn" aria-label="Notificaciones" onClick={handleNotifClick}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
