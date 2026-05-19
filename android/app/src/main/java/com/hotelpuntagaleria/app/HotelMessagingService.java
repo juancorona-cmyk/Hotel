@@ -42,9 +42,9 @@ public class HotelMessagingService extends FirebaseMessagingService {
 
         // Crear canal si no existe (idempotente)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (nm.getNotificationChannel("hotel_push") == null) {
+            if (nm.getNotificationChannel("hpg_notif") == null) {
                 NotificationChannel ch = new NotificationChannel(
-                    "hotel_push", "Hotel Punta Galería", NotificationManager.IMPORTANCE_HIGH
+                    "hpg_notif", "Hotel Punta Galería", NotificationManager.IMPORTANCE_HIGH
                 );
                 ch.enableVibration(true);
                 ch.enableLights(true);
@@ -61,7 +61,7 @@ public class HotelMessagingService extends FirebaseMessagingService {
 
         PendingIntent tap = PendingIntent.getActivity(this, 0, intent, flags);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "hotel_push")
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "hpg_notif")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)

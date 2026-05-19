@@ -82,16 +82,21 @@ async function sendFCM(fcmToken, title, body, data, projectId) {
       body: JSON.stringify({
         message: {
           token: fcmToken,
-          // Data-only: FCM siempre llama a onMessageReceived sin importar el estado de la app.
-          // HotelMessagingService.java construye y muestra la notificación del sistema.
-          data: {
-            title,
-            body,
-            ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
-          },
+          // notification: Google Play Services muestra esto directamente aunque
+          // la app esté cerrada o la batería optimizada (nivel OS, no proceso).
+          notification: { title, body },
+          // data: disponible cuando la app abre (deep link al ticket).
+          data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
           android: {
             priority: 'high',
             ttl: '86400s',
+            notification: {
+              channel_id: 'hpg_notif',
+              notification_priority: 'PRIORITY_HIGH',
+              visibility: 'VISIBILITY_PUBLIC',
+              icon: 'ic_notification',
+              default_vibrate_timings: true,
+            },
           },
         },
       }),

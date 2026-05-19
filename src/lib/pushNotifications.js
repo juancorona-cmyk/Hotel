@@ -35,7 +35,7 @@ async function subscribeNativeFCM() {
 
   // Crear canal (idempotente — Android ignora si ya existe)
   await PushNotifications.createChannel({
-    id: 'hotel_push',
+    id: 'hpg_notif',
     name: 'Hotel Punta Galería',
     description: 'Nuevos registros y pagos',
     importance: 5,

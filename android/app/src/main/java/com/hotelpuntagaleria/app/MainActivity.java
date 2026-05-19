@@ -20,7 +20,7 @@ public class MainActivity extends BridgeActivity {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm == null) return;
             NotificationChannel ch = new NotificationChannel(
-                "hotel_push", "Hotel Punta Galería", NotificationManager.IMPORTANCE_HIGH
+                "hpg_notif", "Hotel Punta Galería", NotificationManager.IMPORTANCE_HIGH
             );
             ch.setDescription("Nuevos registros y pagos");
             ch.enableVibration(true);

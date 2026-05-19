@@ -13,7 +13,7 @@
         <!-- FCM: canal por defecto para notificaciones cuando la app está cerrada -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="hotel_push" />
+            android:value="hpg_notif" />
         <!-- FCM: ícono de notificación del sistema (blanco monocromo) -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
