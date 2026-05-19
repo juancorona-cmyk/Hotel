@@ -46,9 +46,6 @@ async function tursoDelete(table, col, value) {
 }
 
 // ── FCM v1 via google-auth-library ────────────────────────
-// Soporta dos formatos para mantenerse bajo el límite de 4KB de env vars en Lambda:
-// 1. FIREBASE_PRIVATE_KEY + FIREBASE_CLIENT_EMAIL (recomendado — más compacto)
-// 2. FIREBASE_SERVICE_ACCOUNT como JSON completo (legacy)
 let _authClient = null
 async function getFCMToken() {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY
@@ -94,10 +91,7 @@ async function sendFCM(fcmToken, title, body, data, projectId) {
       body: JSON.stringify({
         message: {
           token: fcmToken,
-          // notification: Google Play Services muestra esto directamente aunque
-          // la app esté cerrada o la batería optimizada (nivel OS, no proceso).
           notification: { title, body },
-          // data: disponible cuando la app abre (deep link al ticket).
           data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
           android: {
             priority: 'high',
@@ -157,6 +151,7 @@ export default async (req) => {
     const regId = body.regId || ''
 
     let fcmSent = 0, fcmErrors = 0, webSent = 0
+    const fcmErrorsDetail = []
     const projectId = process.env.FIREBASE_PROJECT_ID
 
     // ── FCM ───────────────────────────────────────────────
@@ -169,9 +164,16 @@ export default async (req) => {
           const r = await sendFCM(tok, title, msgBody, { url, tag, regId: String(regId) }, projectId)
           if (r.status === 404 || r.status === 410) stale.push(tok)
           else if (r.ok) fcmSent++
-          else fcmErrors++
+          else {
+            const errText = await r.text().catch(() => '')
+            const detail = `FCM ${r.status}: ${errText.slice(0, 200)}`
+            console.error('[push-notify]', detail)
+            fcmErrorsDetail.push(detail)
+            fcmErrors++
+          }
         } catch (e) {
           console.error('[push-notify] FCM send error:', e.message)
+          fcmErrorsDetail.push(`exception: ${e.message}`)
           fcmErrors++
         }
       }))
@@ -198,7 +200,13 @@ export default async (req) => {
     }
 
     console.log(`[push-notify] fcm=${fcmSent} errors=${fcmErrors} web=${webSent}`)
-    return new Response(JSON.stringify({ ok: true, fcm: fcmSent, fcmErrors, web: webSent }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      fcm: fcmSent,
+      fcmErrors,
+      fcmErrorsDetail: fcmErrorsDetail.slice(0, 5),
+      web: webSent,
+    }), {
       status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (err) {
