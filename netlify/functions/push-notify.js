@@ -46,24 +46,36 @@ async function tursoDelete(table, col, value) {
 }
 
 // ── FCM v1 via google-auth-library ────────────────────────
-function parseSA(raw) {
-  // Manejar tanto JSON de una línea como multi-línea
-  try { return JSON.parse(raw) } catch {}
-  // Fallback: escapar newlines literales dentro de valores de string
-  const fixed = raw.replace(/("(?:[^"\\]|\\.)*")/g, m =>
-    m.replace(/\n/g, '\\n').replace(/\r/g, '\\r')
-  )
-  return JSON.parse(fixed)
-}
-
+// Soporta dos formatos para mantenerse bajo el límite de 4KB de env vars en Lambda:
+// 1. FIREBASE_PRIVATE_KEY + FIREBASE_CLIENT_EMAIL (recomendado — más compacto)
+// 2. FIREBASE_SERVICE_ACCOUNT como JSON completo (legacy)
 let _authClient = null
 async function getFCMToken() {
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT
-  if (!saRaw) throw new Error('FIREBASE_SERVICE_ACCOUNT no configurado en Netlify')
-  const sa = parseSA(saRaw)
+
   if (!_authClient) {
+    let credentials
+    if (privateKey && clientEmail) {
+      credentials = {
+        type: 'service_account',
+        client_email: clientEmail,
+        private_key: privateKey.replace(/\\n/g, '\n'),
+        token_uri: 'https://oauth2.googleapis.com/token',
+      }
+    } else if (saRaw) {
+      try { credentials = JSON.parse(saRaw) } catch {
+        const fixed = saRaw.replace(/("(?:[^"\\]|\\.)*")/g, m =>
+          m.replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+        )
+        credentials = JSON.parse(fixed)
+      }
+    } else {
+      throw new Error('Firebase: configura FIREBASE_PRIVATE_KEY + FIREBASE_CLIENT_EMAIL en Netlify')
+    }
     const auth = new GoogleAuth({
-      credentials: sa,
+      credentials,
       scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
     })
     _authClient = await auth.getClient()
@@ -115,7 +127,7 @@ export default async (req) => {
 
   // GET — diagnóstico: verifica config y cuenta tokens
   if (req.method === 'GET') {
-    const saSet = !!process.env.FIREBASE_SERVICE_ACCOUNT
+    const saSet = !!(process.env.FIREBASE_SERVICE_ACCOUNT || (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL))
     const pidSet = !!process.env.FIREBASE_PROJECT_ID
     const vapidSet = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
     const fcmTokens = await tursoQuery('SELECT COUNT(*) FROM fcm_tokens').then(r => Number(r?.[0]?.[0] ?? 0)).catch(() => 0)
