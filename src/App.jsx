@@ -372,6 +372,22 @@ export default function App() {
     setupDB().catch(err => console.error('Initial DB Setup failed:', err.message))
   }, [])
 
+  // Crear canal de notificación Android al arrancar — debe existir ANTES de que llegue cualquier push
+  useEffect(() => {
+    if (!isNativeApp) return
+    import('@capacitor/push-notifications').then(({ PushNotifications }) => {
+      PushNotifications.createChannel({
+        id: 'hotel_push',
+        name: 'Hotel Punta Galería',
+        description: 'Nuevos registros y pagos',
+        importance: 5,
+        visibility: 1,
+        vibration: true,
+        lights: true,
+      }).catch(e => console.warn('[push] createChannel:', e?.message))
+    }).catch(() => {})
+  }, [])
+
   useEffect(() => {
     const handleKey = (e) => {
       if (e.ctrlKey && e.key?.toLowerCase() === 'k') {

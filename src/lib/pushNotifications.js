@@ -33,17 +33,16 @@ async function subscribeNativeFCM() {
     return null
   }
 
-  // Crear canal de notificación (Android 8+ requiere canal registrado en el dispositivo)
+  // Crear canal (idempotente — Android ignora si ya existe)
   await PushNotifications.createChannel({
     id: 'hotel_push',
     name: 'Hotel Punta Galería',
     description: 'Nuevos registros y pagos',
-    importance: 5,        // IMPORTANCE_HIGH — aparece como banner emergente
-    visibility: 1,        // VISIBILITY_PUBLIC — visible en pantalla de bloqueo
+    importance: 5,
+    visibility: 1,
     vibration: true,
-    sound: 'default',
     lights: true,
-  }).catch(() => {})      // Ignorar si el canal ya existe
+  }).catch(e => console.warn('[push] createChannel:', e?.message))
 
   // Escuchar push en primer plano → emitir evento para que StaffApp muestre alerta
   PushNotifications.addListener('pushNotificationReceived', (notif) => {
