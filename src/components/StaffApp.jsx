@@ -111,6 +111,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
 
+  // Refs para que el intervalo de polling acceda al estado actual sin stale closure
+  const selectedEventRef = useRef(null)
+  const viewRef = useRef('dashboard')
+
   // ── Notifications ──
   const [notifCount, setNotifCount] = useState(0)
   const [notifications, setNotifications] = useState([])
@@ -413,6 +417,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
     showToast('Enlace copiado al portapapeles')
   }
 
+  // Mantener refs en sincronía con el estado para que el polling no tenga stale closure
+  useEffect(() => { selectedEventRef.current = selectedEvent }, [selectedEvent])
+  useEffect(() => { viewRef.current = view }, [view])
+
   useEffect(() => {
     // Bloquea el scroll del body — el scroll ocurre dentro de .sa-root
     document.body.style.overflow = 'hidden'
@@ -492,7 +500,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
       .catch(err => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
 
-    // Re-check every 30 s mientras la app esté abierta
+    // Re-check every 5 s para actualizaciones en tiempo real
     const intervalId = setInterval(async () => {
       try {
         const [evs, regsNow] = await Promise.all([getEvents(), getAllActivityRegistrations()])
@@ -508,6 +516,17 @@ export default function StaffApp({ onStartScan, onLogout }) {
         }
         setAllRegs(regsNow)
         applyNotifications(regsNow)
+
+        // Actualizar la lista visible de asistentes si el usuario la está viendo
+        if (viewRef.current === 'attendees') {
+          const ev = selectedEventRef.current
+          if (ev) {
+            const evRegs = await getActivityRegistrationsByEvent(ev.id)
+            setAttendees(evRegs)
+          } else {
+            setAttendees(regsNow)
+          }
+        }
       } catch (err) {
         console.error('Polling error:', err)
       }
