@@ -4,6 +4,7 @@ import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { QRCodeSVG } from 'qrcode.react'
 import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
+import { subscribeToPush } from '../lib/pushNotifications'
 import { CDN } from '../lib/cdn'
 import { fmtFecha } from '../lib/utils'
 import StaffApp from './StaffApp'
@@ -109,6 +110,7 @@ export default function CheckInPage() {
         localStorage.setItem('ci_role', result.role)
         localStorage.setItem('ci_perms', JSON.stringify(result.permissions ?? null))
         setAuthed(true)
+        subscribeToPush().catch(() => {})
       } else {
         setLoginErr(
           result.reason === 'setup'
@@ -535,7 +537,6 @@ export default function CheckInPage() {
           <div className="ci-actions">
             <button className="ci-btn ci-btn--undo" onClick={() => navigate('/checkin')}>Volver al Panel</button>
           </div>
-          <button className="ci-logout-link" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </div>
     )
@@ -560,10 +561,10 @@ export default function CheckInPage() {
       : ''
 
   const heroOverlay = scanState === 'duplicate'
-    ? 'linear-gradient(170deg, rgba(8,18,32,0.90) 0%, rgba(15,30,55,0.80) 100%)'
+    ? 'linear-gradient(180deg, rgba(15,23,42,0.7) 0%, rgba(15,23,42,0.95) 100%)'
     : (scanState === 'unpaid_transfer' || scanState === 'unpaid_cash')
-    ? 'linear-gradient(170deg, rgba(28,10,0,0.90) 0%, rgba(70,28,0,0.80) 100%)'
-    : 'linear-gradient(170deg, rgba(8,18,5,0.88) 0%, rgba(18,38,8,0.76) 100%)'
+    ? 'linear-gradient(180deg, rgba(69,26,3,0.7) 0%, rgba(69,26,3,0.95) 100%)'
+    : 'linear-gradient(180deg, rgba(20,40,10,0.6) 0%, rgba(20,40,10,0.95) 100%)'
 
   const heroStyle = {
     backgroundImage: `${heroOverlay}, url(${CDN.FOTO_INICIO})`,
@@ -588,12 +589,11 @@ export default function CheckInPage() {
     <div className="ci-result-root">
       <div className={`ci-result-hero ${heroClass}`} style={heroStyle}>
         <div className="ci-result-topbar">
-          <button className="ci-result-back" onClick={goBackToApp}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <button className="ci-result-back" onClick={goBackToApp} aria-label="Volver">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
-          <button className="ci-result-exit" onClick={handleLogout}>Salir</button>
         </div>
 
         <div className="ci-result-hero-body">
@@ -604,32 +604,32 @@ export default function CheckInPage() {
             {/* Badge de estado */}
             {scanState === 'duplicate' && (
               <div className="ci-result-status-pill ci-result-status-pill--duplicate">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Asistió
               </div>
             )}
             {scanState === 'ready' && (
               <div className="ci-result-status-pill ci-result-status-pill--ok">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Pago Comprobado
               </div>
             )}
             {scanState === 'unpaid_transfer' && (
               <div className="ci-result-status-pill ci-result-status-pill--warn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
                 Verifica transferencia
               </div>
             )}
             {scanState === 'unpaid_cash' && (
               <div className="ci-result-status-pill ci-result-status-pill--warn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 Cobro pendiente
               </div>
             )}
 
             <h1 className="ci-result-name">{reg.full_name}</h1>
             <div className="ci-result-event-row">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".7">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".8">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
               <span className="ci-result-event">{reg.event_name || reg.activity_name || '—'}</span>
@@ -652,30 +652,68 @@ export default function CheckInPage() {
 
       {/* Comprobante de transferencia */}
       {scanState === 'unpaid_transfer' && (
-        reg.transfer_proof_url ? (
-          <div className="ci-proof-section">
-            <div className="ci-proof-label">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Comprobante adjunto
-            </div>
-            <a href={reg.transfer_proof_url} target="_blank" rel="noopener noreferrer" className="ci-proof-img-wrap">
-              <img src={reg.transfer_proof_url} alt="Comprobante de transferencia" className="ci-proof-img" />
-              <span className="ci-proof-img-hint">Toca para ampliar</span>
-            </a>
-          </div>
-        ) : (
-          <div className="ci-transfer-notice">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <div>
-              <span className="ci-transfer-notice__title">Sin comprobante adjunto</span>
-              <span className="ci-transfer-notice__sub">Sube la foto del comprobante o verifica manualmente</span>
-            </div>
-          </div>
-        )
+        <div className="ci-proof-card">
+          {reg.transfer_proof_url ? (
+            <>
+              <div className="ci-proof-card__icon ci-proof-card__icon--ok">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div className="ci-proof-card__info">
+                <span className="ci-proof-card__title">Comprobante adjunto</span>
+                <span className="ci-proof-card__sub">Transferencia registrada</span>
+              </div>
+              <a
+                href={reg.transfer_proof_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ci-proof-card__btn"
+                onClick={e => e.stopPropagation()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                Ver comprobante
+              </a>
+            </>
+          ) : (
+            <>
+              <div className="ci-proof-card__icon ci-proof-card__icon--warn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </div>
+              <div className="ci-proof-card__info">
+                <span className="ci-proof-card__title">Sin comprobante</span>
+                <span className="ci-proof-card__sub">Sube la foto de la transferencia</span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileRef}
+                onChange={handleUploadProof}
+                style={{ display: 'none' }}
+              />
+              <button
+                className="ci-proof-card__btn ci-proof-card__btn--upload"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <span className="ci-login-btn-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Subir comprobante
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {/* Detalles */}
@@ -808,43 +846,16 @@ export default function CheckInPage() {
         )}
 
         {scanState === 'unpaid_transfer' && (
-          <div className="ci-transfer-actions">
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileRef}
-              onChange={handleUploadProof}
-              style={{ display: 'none' }}
-            />
-            {!reg.transfer_proof_url && (
-              <button
-                className="ci-btn-action ci-btn-action--upload"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading || updating}
-              >
-                {uploading ? <span className="ci-login-btn-spinner" /> : (
-                  <>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    Subir comprobante
-                  </>
-                )}
-              </button>
+          <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaid} disabled={updating || uploading}>
+            {updating ? <span className="ci-login-btn-spinner" /> : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Confirmar pago
+              </>
             )}
-            <button className="ci-btn-action ci-btn-action--confirm" onClick={handleMarkPaid} disabled={updating || uploading}>
-              {updating ? <span className="ci-login-btn-spinner" /> : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  {reg.transfer_proof_url ? 'Comprobante verificado · Marcar como pagado' : 'Marcar transferencia como verificada'}
-                </>
-              )}
-            </button>
-          </div>
+          </button>
         )}
 
         {scanState === 'unpaid_cash' && (

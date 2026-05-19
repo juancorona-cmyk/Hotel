@@ -9,6 +9,7 @@ import {
   checkExistingRegistration,
   API_BASE,
 } from '../lib/turso'
+import { sendPushNotification } from '../lib/pushNotifications'
 
 const WA_GROUP_LINK = 'https://chat.whatsapp.com/GVefjT90VZRJZ9X18Vizaw'
 import { isValidPhone, compressImage } from '../lib/utils'
@@ -244,6 +245,14 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       if (method === 'transferencia') setPaymentPending(true)
       setSuccess(true)
       if (onRegistered) onRegistered(regId)
+
+      sendPushNotification({
+        title: 'Nuevo registro',
+        body: `${fullName.trim()} · ${actName} · ${method}`,
+        url: `https://hotelpuntagaleria.mx/checkin?rid=${regId}`,
+        tag: `reg-${regId}`,
+        regId,
+      }).catch(() => {})
 
       // Solo persistir en localStorage si el pago es por transferencia (pendiente de confirmación)
       // Para presencial no hay nada que recuperar — el registro se confirma en el momento

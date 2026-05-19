@@ -26,43 +26,45 @@ export default function EventHall() {
 
   return (
     <section id="eventos" className={`events ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
-      <h2 className="events__title">{t('eventos.titulo')}</h2>
-      <div className="events__gallery">
-        {/* Columna izquierda — 2 fotos */}
-        <div className="events__col events__col--left">
-          <div className="events__photo-wrap">
-            <img src={CDN.SALON1} alt="Salón de eventos" className="events__photo" />
+      <div className="events__inner">
+        <h2 className="events__title">{t('eventos.titulo')}</h2>
+        <div className="events__gallery">
+          {/* Columna izquierda — 2 fotos */}
+          <div className="events__col events__col--left">
+            <div className="events__photo-wrap">
+              <img src={CDN.SALON1} alt="Salón de eventos" className="events__photo" />
+            </div>
+            <div className="events__photo-wrap">
+              <img src={CDN.SALON4} alt="Salón de eventos" className="events__photo" />
+            </div>
           </div>
-          <div className="events__photo-wrap">
-            <img src={CDN.SALON4} alt="Salón de eventos" className="events__photo" />
-          </div>
-        </div>
 
-        {/* Centro — foto Nosotros */}
-        <div className="events__photo-wrap events__photo-wrap--center">
-          <img src={CDN.NOSOTROS} alt="Hotel Punta Galería" className="events__photo" />
-        </div>
+          {/* Centro — foto Nosotros */}
+          <div className="events__photo-wrap events__photo-wrap--center">
+            <img src={CDN.NOSOTROS} alt="Hotel Punta Galería" className="events__photo" />
+          </div>
 
-        {/* Columna derecha — 2 fotos */}
-        <div className="events__col events__col--right">
-          <div className="events__photo-wrap">
-            <img src={CDN.SALON2} alt="Salón de eventos" className="events__photo" />
-          </div>
-          <div className="events__photo-wrap">
-            <img src={CDN.SALON3} alt="Salón de eventos" className="events__photo" />
+          {/* Columna derecha — 2 fotos */}
+          <div className="events__col events__col--right">
+            <div className="events__photo-wrap">
+              <img src={CDN.SALON2} alt="Salón de eventos" className="events__photo" />
+            </div>
+            <div className="events__photo-wrap">
+              <img src={CDN.SALON3} alt="Salón de eventos" className="events__photo" />
+            </div>
           </div>
         </div>
-      </div>
-      <div className="events__desc">
-        <p>{t('eventos.desc')}</p>
-        <a
-          href="https://wa.me/5214433972720?text=Hola,%20me%20gustaría%20reservar%20el%20salón%20de%20eventos"
-          target="_blank" rel="noopener noreferrer"
-          className="events__btn"
-          onClick={() => trackEvent('whatsapp_click', { source: 'salon' })}
-        >
-          {t('eventos.btn')}
-        </a>
+        <div className="events__desc">
+          <p>{t('eventos.desc')}</p>
+          <a
+            href="https://wa.me/5214433972720?text=Hola,%20me%20gustaría%20reservar%20el%20salón%20de%20eventos"
+            target="_blank" rel="noopener noreferrer"
+            className="events__btn"
+            onClick={() => trackEvent('whatsapp_click', { source: 'salon' })}
+          >
+            {t('eventos.btn')}
+          </a>
+        </div>
       </div>
     </section>
   )

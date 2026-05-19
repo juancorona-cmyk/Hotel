@@ -46,7 +46,7 @@
 
 .hero__title-main {
   font-family: 'Montserrat', sans-serif;
-  font-size: clamp(52px, 10vw, 100px);
+  font-size: clamp(50px, 9.5vw, 96px);
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -55,7 +55,7 @@
 }
 
 .hero__title-dynamic {
-  height: clamp(40px, 8vw, 70px);
+  height: clamp(38px, 7.5vw, 68px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,9 +65,9 @@
 
 .hero__dynamic-text {
   font-family: 'Montserrat', sans-serif;
-  font-size: clamp(32px, 6vw, 60px);
+  font-size: clamp(28px, 5.5vw, 58px);
   font-weight: 800;
-  color: #b5c840; /* Color verde del hotel */
+  color: #b5c840;
   font-style: italic;
   text-transform: uppercase;
   letter-spacing: 0.15em;

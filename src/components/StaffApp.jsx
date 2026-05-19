@@ -8,6 +8,83 @@ import './StaffApp.css'
 const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
 const DESC_MAX = 200
 
+// ── Alert utilities (fuera del componente para estabilidad) ──
+function playAlertSound(type = 'reg') {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const beep = (freq, start, dur, vol = 0.35) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.connect(g); g.connect(ctx.destination)
+      o.type = 'sine'; o.frequency.value = freq
+      g.gain.setValueAtTime(vol, start)
+      g.gain.exponentialRampToValueAtTime(0.001, start + dur)
+      o.start(start); o.stop(start + dur)
+    }
+    if (type === 'payment') {
+      beep(523, ctx.currentTime, 0.12)
+      beep(659, ctx.currentTime + 0.13, 0.12)
+      beep(880, ctx.currentTime + 0.27, 0.20)
+    } else {
+      beep(880, ctx.currentTime, 0.14)
+      beep(1100, ctx.currentTime + 0.19, 0.14)
+    }
+  } catch {}
+}
+
+function vibrateDevice(pattern) {
+  try { navigator.vibrate?.(pattern) } catch {}
+}
+
+function triggerAlert(type = 'reg') {
+  vibrateDevice(type === 'payment' ? [100, 60, 100, 60, 200] : [180, 80, 180])
+  playAlertSound(type)
+}
+
+function showSystemNotification(title, body) {
+  if (!('Notification' in window)) return
+  if (Notification.permission !== 'granted') return
+  try {
+    new Notification(title, {
+      body,
+      icon: '/logo/logNegro.svg',
+      tag: 'hotel-staff',
+      renotify: true,
+    })
+  } catch {}
+}
+
+function syncPaidWatermark(regs) {
+  if (!regs || regs.length === 0) return
+  const paidCount = regs.filter(r => r.paid === 1 || r.paid === '1').length
+  localStorage.setItem('notif_paid_count', String(paidCount))
+}
+
+function checkStateChanges(regs) {
+  if (!regs || regs.length === 0) return { newRegs: [], newPayments: 0 }
+  const maxId = regs.reduce((max, r) => Math.max(max, Number(r.id) || 0), 0)
+  const paidCount = regs.filter(r => r.paid === 1 || r.paid === '1').length
+  const lastId = parseInt(localStorage.getItem('notif_last_id') || '0', 10)
+  const lastPaid = parseInt(localStorage.getItem('notif_paid_count') || '-1', 10)
+
+  // Primera vez — solo establece marcadores, sin notificaciones
+  if (lastId === 0 || lastPaid === -1) {
+    localStorage.setItem('notif_last_id', String(maxId))
+    localStorage.setItem('notif_paid_count', String(paidCount))
+    return { newRegs: [], newPayments: 0 }
+  }
+
+  const newRegs = maxId > lastId ? regs.filter(r => Number(r.id) > lastId) : []
+  const newPayments = paidCount > lastPaid ? paidCount - lastPaid : 0
+
+  if (newRegs.length > 0) localStorage.setItem('notif_last_id', String(maxId))
+  if (newPayments > 0) localStorage.setItem('notif_paid_count', String(paidCount))
+
+  return { newRegs, newPayments }
+}
+
 export default function StaffApp({ onStartScan, onLogout }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -32,6 +109,12 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [modal, setModal] = useState(null)
   const [toast, setToast] = useState(null)
   const toastTimer = useRef(null)
+
+  // ── Notifications ──
+  const [notifCount, setNotifCount] = useState(0)
+  const [notifications, setNotifications] = useState([])
+  const [showNotifPanel, setShowNotifPanel] = useState(false)
+  // Cada ítem: { type:'reg'|'payment', id, full_name?, phone?, payment_method?, count? }
 
   const showToast = useCallback((message, type = 'success') => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -104,6 +187,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
     } else {
       handleShareWhatsApp(ev, e)
     }
+  }
+
+  const handleNotifClick = () => {
+    setShowNotifPanel(p => !p)
+    if (notifCount > 0) setNotifCount(0)
   }
 
   const handleCreateView = () => {
@@ -304,6 +392,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }, [])
 
   useEffect(() => {
+    // Pide permiso para notificaciones del sistema al montar
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+
     const autoCloseExpired = async (evs) => {
       const now = new Date()
       const expired = evs.filter(ev => {
@@ -317,6 +410,34 @@ export default function StaffApp({ onStartScan, onLogout }) {
       return { evs: fresh, freshArchived, changed: true, names: expired.map(e => e.name) }
     }
 
+    const applyNotifications = (regs) => {
+      const { newRegs, newPayments } = checkStateChanges(regs)
+      const items = []
+      if (newRegs.length > 0) items.push(...newRegs.map(r => ({ type: 'reg', ...r })))
+      if (newPayments > 0) items.push({ type: 'payment', count: newPayments, id: `pay_${Date.now()}` })
+      if (items.length === 0) return
+
+      setNotifCount(prev => prev + items.length)
+      setNotifications(prev => [...items, ...prev])
+
+      // Alerta con vibración + sonido + notificación del sistema
+      const alertType = newPayments > 0 && newRegs.length === 0 ? 'payment' : 'reg'
+      triggerAlert(alertType)
+
+      if (newRegs.length > 0) {
+        const msg = newRegs.length === 1
+          ? `Nuevo registro: ${newRegs[0].full_name}`
+          : `${newRegs.length} nuevos registros`
+        showToast(msg, 'info')
+        showSystemNotification('Nuevo registro', msg)
+      }
+      if (newPayments > 0) {
+        const msg = `${newPayments} pago${newPayments > 1 ? 's' : ''} confirmado${newPayments > 1 ? 's' : ''}`
+        showToast(msg, 'info')
+        showSystemNotification('Pago confirmado', msg)
+      }
+    }
+
     setLoading(true)
     Promise.all([getEvents(), getArchivedEvents(), getAllActivityRegistrations()])
       .then(async ([evs, archived, regs]) => {
@@ -324,7 +445,9 @@ export default function StaffApp({ onStartScan, onLogout }) {
         setEvents(finalEvs)
         setArchivedEvents(changed ? freshArchived : archived)
         setAllRegs(regs)
+        setShowSplash(false)
         if (changed) showToast(`${names.length === 1 ? `"${names[0]}"` : `${names.length} eventos`} cerrado${names.length > 1 ? 's' : ''} automáticamente`)
+        applyNotifications(regs)
         const eid = searchParams.get('eid')
         if (eid && finalEvs.length > 0) {
           const ev = finalEvs.find(e => String(e.id) === String(eid))
@@ -334,22 +457,28 @@ export default function StaffApp({ onStartScan, onLogout }) {
       .catch(err => console.error('Error loading data:', err))
       .finally(() => setLoading(false))
 
-    // Re-check every 60 s while the app is open
+    // Re-check every 30 s mientras la app esté abierta
     const intervalId = setInterval(async () => {
-      const evs = await getEvents().catch(() => [])
-      if (evs.length === 0) return
-      const { changed, names, evs: fresh, freshArchived } = await autoCloseExpired(evs)
-      if (changed) {
-        setEvents(fresh)
-        setArchivedEvents(freshArchived)
-        showToast(`"${names.join(', ')}" cerrado automáticamente`)
+      try {
+        const [evs, regsNow] = await Promise.all([getEvents(), getAllActivityRegistrations()])
+        if (evs.length > 0) {
+          const { changed, names, evs: fresh, freshArchived } = await autoCloseExpired(evs)
+          if (changed) {
+            setEvents(fresh)
+            setArchivedEvents(freshArchived)
+            showToast(`"${names.join(', ')}" cerrado automáticamente`)
+          } else {
+            setEvents(evs)
+          }
+        }
+        setAllRegs(regsNow)
+        applyNotifications(regsNow)
+      } catch (err) {
+        console.error('Polling error:', err)
       }
-    }, 60_000)
+    }, 30_000)
     return () => clearInterval(intervalId)
-
-    const timer = setTimeout(() => setShowSplash(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const viewAllAttendees = (initialFilter = 'all') => {
     setSelectedEvent(null)
@@ -407,13 +536,17 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [confirmingPresencialId, setConfirmingPresencialId] = useState(null)
 
   const refreshAttendees = async () => {
+    // Siempre actualiza allRegs para mantener el conteo de pagados actualizado
+    const all = await getAllActivityRegistrations()
+    setAllRegs(all)
+    // Sincroniza el watermark de pagos para que las confirmaciones del staff
+    // no disparen una falsa notificación en el siguiente ciclo de polling
+    syncPaidWatermark(all)
     if (selectedEvent) {
-      const regs = await getActivityRegistrationsByEvent(selectedEvent.id)
-      setAttendees(regs)
+      const evRegs = await getActivityRegistrationsByEvent(selectedEvent.id)
+      setAttendees(evRegs)
     } else {
-      const regs = await getAllActivityRegistrations()
-      setAttendees(regs)
-      setAllRegs(regs)
+      setAttendees(all)
     }
   }
 
@@ -605,12 +738,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
             </div>
             <div className="sa-top-actions">
-              <button className="sa-notif-btn" aria-label="Notificaciones">
+              <button className="sa-notif-btn" aria-label="Notificaciones" onClick={handleNotifClick}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                   <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
-                <span className="sa-notif-dot" />
+                {notifCount > 0 && (
+                  <span className="sa-notif-count">{notifCount > 9 ? '9+' : notifCount}</span>
+                )}
               </button>
               <button className="sa-logout-btn" onClick={onLogout} aria-label="Salir">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4757" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -856,6 +991,74 @@ export default function StaffApp({ onStartScan, onLogout }) {
             </div>
           </div>
         )}
+        {showNotifPanel && (
+          <div className="sa-picker-overlay" onClick={() => setShowNotifPanel(false)}>
+            <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+              <div className="sa-picker-header">
+                <span className="sa-picker-title">Notificaciones</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {notifications.length > 0 && (
+                    <button
+                      style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 700, color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit' }}
+                      onClick={() => { setNotifications([]); setNotifCount(0) }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
+                  <button className="sa-picker-close" onClick={() => setShowNotifPanel(false)}>✕</button>
+                </div>
+              </div>
+              {notifications.length === 0 ? (
+                <div className="sa-notif-empty">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  <p>Sin notificaciones nuevas</p>
+                  <p>Se revisa cada 30 segundos</p>
+                </div>
+              ) : (
+                <div className="sa-picker-list">
+                  {notifications.map(item => item.type === 'payment' ? (
+                    <div key={item.id} className="sa-notif-item sa-notif-item--payment">
+                      <div className="sa-notif-avatar sa-notif-avatar--payment">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                          <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                        </svg>
+                      </div>
+                      <div className="sa-notif-body">
+                        <span className="sa-notif-name">
+                          {item.count === 1 ? 'Pago confirmado' : `${item.count} pagos confirmados`}
+                        </span>
+                        <span className="sa-notif-detail">Transferencia recibida</span>
+                      </div>
+                      <span className="sa-notif-badge sa-notif-badge--payment">Pago</span>
+                    </div>
+                  ) : (
+                    <div key={item.id} className="sa-notif-item" onClick={() => {
+                      setShowNotifPanel(false)
+                      navigate(`/checkin?rid=${item.id}`)
+                    }}>
+                      <div className="sa-notif-avatar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                      </div>
+                      <div className="sa-notif-body">
+                        <span className="sa-notif-name">{item.full_name}</span>
+                        <span className="sa-notif-detail">
+                          {item.payment_method || 'Pago presencial'}{item.phone ? ` · ${item.phone}` : ''}
+                        </span>
+                      </div>
+                      <span className="sa-notif-badge">Registro</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <BottomNav />
         {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
         {toast && <StaffToast message={toast.message} type={toast.type} />}
@@ -1254,7 +1457,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </div>
 
           <div className="sa-attendees-stats-row">
-            <div className="sa-stat-card">
+            <div className="sa-stat-card sa-stat-card--total">
               <span className="sa-stat-num">{loading ? '…' : attendees.length}</span>
               <span className="sa-stat-label">Total</span>
             </div>
@@ -1262,7 +1465,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
               <span className="sa-stat-num">{loading ? '…' : paidCount}</span>
               <span className="sa-stat-label">Pagados</span>
             </div>
-            <div className="sa-stat-card">
+            <div className="sa-stat-card sa-stat-card--pending">
               <span className="sa-stat-num">{loading ? '…' : pendingCount}</span>
               <span className="sa-stat-label">Pendientes</span>
             </div>
@@ -1379,78 +1582,79 @@ export default function StaffApp({ onStartScan, onLogout }) {
               return (
                 <div
                   key={a.id}
-                  className={`sa-attendee-card${
-                    transfer && !paid && !attended ? ' sa-attendee-card--transfer-pending' :
-                    !transfer && !paid && !attended ? ' sa-attendee-card--presencial-pending' : ''
-                  }`}
+                  className="sa-attendee-card"
                   style={{ animationDelay: `${idx * 0.03}s` }}
                   onClick={() => navigate(`/checkin?rid=${a.id}&eid=${selectedEvent?.id}`)}
                 >
-                  {(!paid && !attended) ? (
-                    <>
-                      {/* Fila superior: identidad + estado */}
-                      <div className="sa-att-top-row">
-                        <div className={`sa-status-dot ${dotClass}`} />
-                        <div className="sa-att-info">
-                          <span className="sa-att-name">{a.full_name}</span>
-                          <span className="sa-att-phone">{a.phone}</span>
-                        </div>
-                        {transfer ? (
-                          a.transfer_proof_url
-                            ? <span className="sa-tag sa-tag--proof">Con comprobante</span>
-                            : <span className="sa-tag sa-tag--transfer">Sin comprobante</span>
+                  {/* Fila principal: siempre presente */}
+                  <div className="sa-att-main">
+                    <div className={`sa-att-icon-box ${
+                      attended ? 'sa-att-icon-box--attended' :
+                      paid     ? 'sa-att-icon-box--paid' :
+                      transfer ? 'sa-att-icon-box--transfer' : 'sa-att-icon-box--unpaid'
+                    }`}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+
+                    <div className="sa-att-info">
+                      <span className="sa-att-name">{a.full_name}</span>
+                      <span className="sa-att-phone">{a.phone}</span>
+                    </div>
+
+                    <div className="sa-att-status-side">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {attended ? (
+                          <span className="sa-tag sa-tag--attended">Asistió</span>
+                        ) : paid ? (
+                          <span className="sa-tag sa-tag--paid">{transfer ? 'Pago OK' : 'Pagado'}</span>
+                        ) : transfer ? (
+                          <span className={`sa-tag ${a.transfer_proof_url ? 'sa-tag--paid' : 'sa-tag--transfer'}`}>
+                            {a.transfer_proof_url ? 'Con comprobante' : 'Transferencia'}
+                          </span>
                         ) : (
                           <span className="sa-tag sa-tag--unpaid">Presencial</span>
                         )}
+                        
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
                       </div>
-                      {/* Fila de acción */}
-                      <div className="sa-transfer-action">
-                        {transfer && a.transfer_proof_url && (
-                          <a
-                            className="sa-proof-thumb"
-                            href={a.transfer_proof_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            title="Ver comprobante"
-                          >
-                            <img src={a.transfer_proof_url} alt="comprobante" />
-                          </a>
-                        )}
-                        <button
-                          className={`sa-confirm-pay-btn sa-confirm-pay-btn--wide${!transfer ? ' sa-confirm-pay-btn--presencial' : ''}`}
-                          disabled={transfer ? confirmingPaymentId === a.id : confirmingPresencialId === a.id}
-                          onClick={e => {
-                            e.stopPropagation()
-                            transfer ? handleConfirmPayment(a.id) : handleConfirmPresencial(a.id)
-                          }}
+                    </div>
+                  </div>
+
+                  {/* Fila de acción: solo si no ha pagado y no ha asistido */}
+                  {!paid && !attended && (
+                    <div className="sa-att-action-row">
+                      {transfer && a.transfer_proof_url && (
+                        <a
+                          className="sa-proof-thumb"
+                          href={a.transfer_proof_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          title="Ver comprobante"
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
-                          {transfer
-                            ? (confirmingPaymentId === a.id ? 'Confirmando...' : 'Confirmar pago')
-                            : (confirmingPresencialId === a.id ? 'Confirmando...' : 'Cobrar y confirmar')}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className={`sa-status-dot ${dotClass}`} />
-                      <div className="sa-att-info">
-                        <span className="sa-att-name">{a.full_name}</span>
-                        <span className="sa-att-phone">{a.phone}</span>
-                      </div>
-                      <div className="sa-att-tags">
-                        {attended
-                          ? <span className="sa-tag sa-tag--attended">Asistió</span>
-                          : <span className="sa-tag sa-tag--paid">{transfer ? 'Pago Comprobado' : 'Pagado'}</span>
-                        }
-                      </div>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#bdc3c7" strokeWidth="3">
-                        <polyline points="9 18 15 12 9 6"/>
-                      </svg>
-                    </>
+                          <img src={a.transfer_proof_url} alt="comprobante" />
+                        </a>
+                      )}
+                      <button
+                        className={`sa-confirm-pay-btn${!transfer ? ' sa-confirm-pay-btn--presencial' : ''}`}
+                        disabled={transfer ? confirmingPaymentId === a.id : confirmingPresencialId === a.id}
+                        onClick={e => {
+                          e.stopPropagation()
+                          transfer ? handleConfirmPayment(a.id) : handleConfirmPresencial(a.id)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        {transfer
+                          ? (confirmingPaymentId === a.id ? 'Confirmando...' : 'Confirmar pago')
+                          : (confirmingPresencialId === a.id ? 'Confirmando...' : 'Cobrar y confirmar')}
+                      </button>
+                    </div>
                   )}
                 </div>
               )
@@ -1565,6 +1769,8 @@ function StaffModal({ icon, title, message, confirmLabel = 'Confirmar', danger =
 function StaffToast({ message, type }) {
   const icon = type === 'error'
     ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    : type === 'info'
+    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
   return (
     <div className={`sa-toast sa-toast--${type ?? 'success'}`}>

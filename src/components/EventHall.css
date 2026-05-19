@@ -1,17 +1,25 @@
 .events {
   background: #fff;
-  padding: 80px 32px;
+  color: #1a1a1a;
+  padding: 80px 24px;
   text-align: center;
 }
 
+.events__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .events__title {
-  font-size: 30px;
-  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 900;
   letter-spacing: 0.2em;
-  margin-bottom: 44px;
+  text-transform: uppercase;
+  margin-bottom: 52px;
   color: #1a1a1a;
   opacity: 0;
-  transform: translateY(16px);
+  transform: translateY(20px);
 }
 
 .events.is-visible .events__title {
@@ -99,7 +107,7 @@
 }
 
 .events__desc p {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.8;
   color: #555;
 }

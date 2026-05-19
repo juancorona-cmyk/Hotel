@@ -86,6 +86,15 @@ if [ ! -f "HotelPuntaGaleria-live.apk" ] || [ "$CONFIG_HASH" != "$STORED_HASH" ]
   cd android && ./gradlew assembleDebug --quiet && cd ..
   cp android/app/build/outputs/apk/debug/app-debug.apk HotelPuntaGaleria-live.apk
   echo "$CONFIG_HASH" > .live-apk-hash
+  APK_REBUILT=true
+fi
+
+# ── Instalar APK si se reconstruyó o si no está instalado ───────────────────
+APP_INSTALLED=$(adb -s "$DEVICE" shell pm list packages com.hotelpuntagaleria.app 2>/dev/null)
+if [ "$APK_REBUILT" = "true" ] || [ -z "$APP_INSTALLED" ]; then
+  echo "📲 Instalando APK en el dispositivo..."
+  adb -s "$DEVICE" install -r HotelPuntaGaleria-live.apk
+  echo "   ✓ APK instalado"
 fi
 
 # ── Tunnel USB: puertos 5173 (Vite HMR) y 8888 (Netlify) ──────────────────────

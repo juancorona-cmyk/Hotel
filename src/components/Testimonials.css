@@ -25,9 +25,11 @@
 
 .testimonials__title {
   font-family: 'Montserrat', sans-serif;
-  font-size: 36px;
-  font-weight: 800;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 900;
   color: #1a1a1a;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   margin-bottom: 52px;
   opacity: 0;
   transform: translateY(16px);

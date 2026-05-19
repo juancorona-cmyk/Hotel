@@ -40,7 +40,7 @@
 
 .stats__value {
   font-family: 'Montserrat', sans-serif;
-  font-size: 44px;
+  font-size: 36px;
   font-weight: 800;
   color: #b5c840;
   line-height: 1;
@@ -67,7 +67,7 @@
   }
 
   .stats__value {
-    font-size: 36px;
+    font-size: 28px;
   }
 
   .stats__label {

@@ -83,12 +83,12 @@ export default function EventoPage() {
         </header>
         <div className="ep-page">
           <div className="ep-container">
-            <button className="ep-back" onClick={() => navigate('/')}>← Volver al inicio</button>
+            <button className="ep-back" onClick={() => navigate('/#eventos')}>← Volver al inicio</button>
             <div className="ep-not-found">
               <div className="ep-not-found__icon">🌴</div>
               <h2>Evento no disponible</h2>
               <p>El evento que buscas no existe o ya no está activo.</p>
-              <button className="ep-back-btn" onClick={() => navigate('/')}>Ir al inicio</button>
+              <button className="ep-back-btn" onClick={() => navigate('/#eventos')}>Ir al inicio</button>
             </div>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function EventoPage() {
       <div className={`ep-page${reg.success || reg.isSoldOut ? ' ep-page--done' : ''}`}>
         <div className="ep-container">
 
-          <button className="ep-back" onClick={() => navigate('/')}>← Volver al inicio</button>
+          <button className="ep-back" onClick={() => navigate('/#eventos')}>← Volver al inicio</button>
 
           <div className="ep-grid">
 
@@ -270,7 +270,7 @@ export default function EventoPage() {
                     Avisarme cuando confirmen mi pago
                   </a>
 
-                  <button className="ep-back-btn" onClick={() => navigate('/')}>
+                  <button className="ep-back-btn" onClick={() => navigate('/#eventos')}>
                     Volver al inicio
                   </button>
                 </div>
@@ -364,7 +364,7 @@ export default function EventoPage() {
                         </button>
                       )}
                     </div>
-                    <button className="ep-back-btn" onClick={() => navigate('/')} style={{ marginTop: '8px' }}>Volver al inicio</button>
+                    <button className="ep-back-btn" onClick={() => navigate('/#eventos')} style={{ marginTop: '8px' }}>Volver al inicio</button>
                   </div>
                 </div>
               ) : reg.restoring ? (
