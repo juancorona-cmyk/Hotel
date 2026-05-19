@@ -17,21 +17,7 @@ echo "📱 Dispositivo: $DEVICE"
 NETLIFY_PID=""
 
 restore_prod_config() {
-  cat > capacitor.config.ts << 'PRODEOF'
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'com.hotelpuntagaleria.app',
-  appName: 'Hotel Punta Galeria',
-  webDir: 'dist',
-  server: {
-    url: 'https://hotelpuntagaleria.mx',
-    androidScheme: 'https'
-  }
-};
-
-export default config;
-PRODEOF
+  node scripts/set-cap-prod.js 2>/dev/null || true
   echo "🔁 capacitor.config.ts → producción restaurado"
 }
 
