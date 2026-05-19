@@ -12,6 +12,9 @@
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_OMIT_KEYS = "ADMIN_USERNAME, GOOGLE_SITE_URL, VITE_CLOUDINARY_CLOUD_NAME, CLOUDINARY_CLOUD_NAME"
+  VITE_VAPID_PUBLIC_KEY = "BEKjygiNAzdd734YUZfsLmXFsmAM5gn2hkZCz6Zp2iQjBBF2YOZBHaQRoGydDl4LdK-DlDGPlEBrOghemi_o3-g"
+  VITE_CLOUDINARY_CLOUD_NAME = "dfuzfdrat"
+  GOOGLE_SITE_URL = "https://hotelpuntagaleria.mx"
 
 [functions]
   directory = "netlify/functions"

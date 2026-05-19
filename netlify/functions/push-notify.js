@@ -160,7 +160,7 @@ export default async (req) => {
     const projectId = process.env.FIREBASE_PROJECT_ID
 
     // ── FCM ───────────────────────────────────────────────
-    if (projectId && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    if (projectId && (process.env.FIREBASE_SERVICE_ACCOUNT || (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL))) {
       const tokens = await tursoQuery('SELECT token FROM fcm_tokens')
       console.log(`[push-notify] FCM tokens en DB: ${tokens.length}`)
       const stale = []
@@ -177,7 +177,7 @@ export default async (req) => {
       }))
       await Promise.allSettled(stale.map(tok => tursoDelete('fcm_tokens', 'token', tok)))
     } else {
-      console.warn('[push-notify] FIREBASE_SERVICE_ACCOUNT o FIREBASE_PROJECT_ID no configurados')
+      console.warn('[push-notify] Firebase no configurado: necesita FIREBASE_PROJECT_ID y (FIREBASE_SERVICE_ACCOUNT o FIREBASE_PRIVATE_KEY + FIREBASE_CLIENT_EMAIL)')
     }
 
     // ── Web Push ──────────────────────────────────────────
