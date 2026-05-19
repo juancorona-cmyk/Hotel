@@ -21,6 +21,12 @@
   node_bundler = "nft"
   timeout = 26
 
+[functions."push-notify"]
+  node_bundler = "nft"
+
+[functions."push-subscribe"]
+  node_bundler = "nft"
+
 # CORS para Netlify Functions — necesario cuando el APK nativo usa origen https://localhost
 [[headers]]
   for = "/.netlify/functions/*"
