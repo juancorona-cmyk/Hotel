@@ -86,7 +86,7 @@ async function sendFCM(fcmToken, title, body, data, projectId) {
           data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
           android: {
             priority: 'high',
-            ttl: '60s',
+            ttl: '86400s',
             notification: {
               channel_id: 'hotel_push',
               notification_priority: 'PRIORITY_HIGH',
