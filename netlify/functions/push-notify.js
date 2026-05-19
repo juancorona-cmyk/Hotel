@@ -82,7 +82,16 @@ async function sendFCM(token, title, body, data, accessToken, projectId) {
           data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
           android: {
             priority: 'high',
-            notification: { sound: 'default', default_vibrate_timings: true, channel_id: 'hotel_push' },
+            ttl: '60s',
+            notification: {
+              channel_id: 'hotel_push',
+              notification_priority: 'PRIORITY_HIGH',
+              visibility: 'VISIBILITY_PUBLIC',
+              sound: 'default',
+              default_vibrate_timings: true,
+              default_sound: true,
+              default_light_settings: true,
+            },
           },
         },
       }),
