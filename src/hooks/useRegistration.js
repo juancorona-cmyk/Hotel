@@ -246,9 +246,10 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
       setSuccess(true)
       if (onRegistered) onRegistered(regId)
 
+      const payLabel = method === 'transferencia' ? 'transferencia bancaria' : method === 'efectivo' ? 'efectivo' : method
       sendPushNotification({
-        title: 'Nuevo registro',
-        body: `${fullName.trim()} · ${actName} · ${method}`,
+        title: actName ? `Nuevo registro — ${actName}` : 'Nuevo registro',
+        body: `${fullName.trim()} se registró · Pago: ${payLabel}`,
         url: `https://hotelpuntagaleria.mx/checkin?rid=${regId}`,
         tag: `reg-${regId}`,
         regId,

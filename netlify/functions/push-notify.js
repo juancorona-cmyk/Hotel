@@ -1,9 +1,9 @@
 import webpush from 'web-push'
-import { createSign } from 'crypto'
+import { GoogleAuth } from 'google-auth-library'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
@@ -27,7 +27,10 @@ async function tursoQuery(sql) {
     const data = await res.json()
     const rows = data?.results?.[0]?.response?.result?.rows ?? []
     return rows.map(row => row.map(cell => cell?.value ?? cell))
-  } catch { return [] }
+  } catch (e) {
+    console.error('[turso]', e.message)
+    return []
+  }
 }
 
 async function tursoDelete(table, col, value) {
@@ -42,34 +45,35 @@ async function tursoDelete(table, col, value) {
   }).catch(() => {})
 }
 
-// ── FCM v1 API (JWT auth, no external packages) ───────────
-async function getFCMAccessToken(sa) {
-  const now = Math.floor(Date.now() / 1000)
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url')
-  const claim = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  })).toString('base64url')
-  const unsigned = `${header}.${claim}`
-  const sign = createSign('RSA-SHA256')
-  sign.update(unsigned)
-  const sig = sign.sign(sa.private_key, 'base64url')
-  const jwt = `${unsigned}.${sig}`
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
-  })
-  const data = await res.json()
-  if (!data.access_token) throw new Error(`FCM auth failed: ${JSON.stringify(data)}`)
-  return data.access_token
+// ── FCM v1 via google-auth-library ────────────────────────
+function parseSA(raw) {
+  // Manejar tanto JSON de una línea como multi-línea
+  try { return JSON.parse(raw) } catch {}
+  // Fallback: escapar newlines literales dentro de valores de string
+  const fixed = raw.replace(/("(?:[^"\\]|\\.)*")/g, m =>
+    m.replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+  )
+  return JSON.parse(fixed)
 }
 
-async function sendFCM(token, title, body, data, accessToken, projectId) {
+let _authClient = null
+async function getFCMToken() {
+  const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT
+  if (!saRaw) throw new Error('FIREBASE_SERVICE_ACCOUNT no configurado en Netlify')
+  const sa = parseSA(saRaw)
+  if (!_authClient) {
+    const auth = new GoogleAuth({
+      credentials: sa,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    })
+    _authClient = await auth.getClient()
+  }
+  const { token } = await _authClient.getAccessToken()
+  return token
+}
+
+async function sendFCM(fcmToken, title, body, data, projectId) {
+  const accessToken = await getFCMToken()
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
     {
@@ -77,7 +81,7 @@ async function sendFCM(token, title, body, data, accessToken, projectId) {
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: {
-          token,
+          token: fcmToken,
           notification: { title, body },
           data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
           android: {
@@ -87,6 +91,7 @@ async function sendFCM(token, title, body, data, accessToken, projectId) {
               channel_id: 'hotel_push',
               notification_priority: 'PRIORITY_HIGH',
               visibility: 'VISIBILITY_PUBLIC',
+              icon: 'ic_notification',
               default_vibrate_timings: true,
               default_light_settings: true,
             },
@@ -95,12 +100,38 @@ async function sendFCM(token, title, body, data, accessToken, projectId) {
       }),
     }
   )
+  if (!res.ok) {
+    const err = await res.text()
+    console.error(`[FCM] token error ${res.status}:`, err.slice(0, 300))
+  }
   return res
 }
 
 // ── Main handler ──────────────────────────────────────────
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
+
+  // GET — diagnóstico: verifica config y cuenta tokens
+  if (req.method === 'GET') {
+    const saSet = !!process.env.FIREBASE_SERVICE_ACCOUNT
+    const pidSet = !!process.env.FIREBASE_PROJECT_ID
+    const vapidSet = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
+    const fcmTokens = await tursoQuery('SELECT COUNT(*) FROM fcm_tokens').then(r => Number(r?.[0]?.[0] ?? 0)).catch(() => 0)
+    const webSubs = await tursoQuery('SELECT COUNT(*) FROM push_subscriptions').then(r => Number(r?.[0]?.[0] ?? 0)).catch(() => 0)
+
+    let fcmAuthOk = false
+    let fcmAuthErr = null
+    if (saSet && pidSet) {
+      try { await getFCMToken(); fcmAuthOk = true } catch (e) { fcmAuthErr = e.message }
+    }
+
+    return new Response(JSON.stringify({
+      env: { FIREBASE_SERVICE_ACCOUNT: saSet, FIREBASE_PROJECT_ID: pidSet, VAPID: vapidSet },
+      db: { fcmTokens, webSubs },
+      fcmAuth: fcmAuthOk ? 'OK' : (fcmAuthErr || 'not tested'),
+    }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  }
+
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
 
   try {
@@ -111,33 +142,33 @@ export default async (req) => {
     const tag = body.tag || 'hotel-notif'
     const regId = body.regId || ''
 
-    let fcmSent = 0, webSent = 0
-
-    // ── FCM: native Android push ──────────────────────────
-    const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT
+    let fcmSent = 0, fcmErrors = 0, webSent = 0
     const projectId = process.env.FIREBASE_PROJECT_ID
-    if (saRaw && projectId) {
-      try {
-        const sa = JSON.parse(saRaw)
-        const accessToken = await getFCMAccessToken(sa)
-        const tokens = await tursoQuery('SELECT token FROM fcm_tokens')
-        const stale = []
-        await Promise.allSettled(tokens.map(async ([tok]) => {
-          const r = await sendFCM(tok, title, msgBody, { url, tag, regId: String(regId) }, accessToken, projectId)
+
+    // ── FCM ───────────────────────────────────────────────
+    if (projectId && process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const tokens = await tursoQuery('SELECT token FROM fcm_tokens')
+      console.log(`[push-notify] FCM tokens en DB: ${tokens.length}`)
+      const stale = []
+      await Promise.allSettled(tokens.map(async ([tok]) => {
+        try {
+          const r = await sendFCM(tok, title, msgBody, { url, tag, regId: String(regId) }, projectId)
           if (r.status === 404 || r.status === 410) stale.push(tok)
           else if (r.ok) fcmSent++
-        }))
-        await Promise.allSettled(stale.map(tok => tursoDelete('fcm_tokens', 'token', tok)))
-      } catch (e) {
-        console.warn('[push-notify] FCM error:', e.message)
-      }
+          else fcmErrors++
+        } catch (e) {
+          console.error('[push-notify] FCM send error:', e.message)
+          fcmErrors++
+        }
+      }))
+      await Promise.allSettled(stale.map(tok => tursoDelete('fcm_tokens', 'token', tok)))
+    } else {
+      console.warn('[push-notify] FIREBASE_SERVICE_ACCOUNT o FIREBASE_PROJECT_ID no configurados')
     }
 
-    // ── Web Push: browser push ─────────────────────────────
-    const vapidPublic = process.env.VAPID_PUBLIC_KEY
-    const vapidPrivate = process.env.VAPID_PRIVATE_KEY
-    if (vapidPublic && vapidPrivate) {
-      webpush.setVapidDetails('mailto:info@hotelpuntagaleria.mx', vapidPublic, vapidPrivate)
+    // ── Web Push ──────────────────────────────────────────
+    if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails('mailto:info@hotelpuntagaleria.mx', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY)
       const payload = JSON.stringify({ title, body: msgBody, url, tag, regId })
       const subs = await tursoQuery('SELECT endpoint, p256dh, auth FROM push_subscriptions')
       const stale = []
@@ -152,11 +183,12 @@ export default async (req) => {
       await Promise.allSettled(stale.map(ep => tursoDelete('push_subscriptions', 'endpoint', ep)))
     }
 
-    return new Response(JSON.stringify({ ok: true, fcm: fcmSent, web: webSent }), {
+    console.log(`[push-notify] fcm=${fcmSent} errors=${fcmErrors} web=${webSent}`)
+    return new Response(JSON.stringify({ ok: true, fcm: fcmSent, fcmErrors, web: webSent }), {
       status: 200, headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    console.error('[push-notify]', err)
+    console.error('[push-notify] fatal:', err)
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
   }
 }
