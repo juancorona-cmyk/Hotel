@@ -1,9 +1,54 @@
-import { pbkdf2 } from 'crypto'
+import { pbkdf2, createHmac, timingSafeEqual } from 'crypto'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+// Rate limiter: max 10 login attempts per IP per 15 minutes
+const limiter = new Map()
+function checkLimit(ip) {
+  const now = Date.now()
+  const WINDOW = 15 * 60 * 1000
+  const MAX = 10
+  const key = ip || 'unknown'
+  const entry = limiter.get(key)
+  if (!entry || now > entry.reset) {
+    limiter.set(key, { count: 1, reset: now + WINDOW })
+    return false
+  }
+  if (entry.count >= MAX) return true
+  entry.count++
+  return false
+}
+
+// JWT (HMAC-SHA256) — no external dependencies
+function b64url(data) {
+  return Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)).toString('base64url')
+}
+
+function signJWT(payload, secret) {
+  const h = b64url({ alg: 'HS256', typ: 'JWT' })
+  const p = b64url(payload)
+  const sig = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url')
+  return `${h}.${p}.${sig}`
+}
+
+function verifyJWT(token, secret) {
+  const parts = token?.split('.')
+  if (parts?.length !== 3) return null
+  const [h, p, sig] = parts
+  const expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url')
+  const a = Buffer.from(sig, 'base64url')
+  const b = Buffer.from(expected, 'base64url')
+  if (a.length !== b.length) return null
+  try { if (!timingSafeEqual(a, b)) return null } catch { return null }
+  try {
+    const payload = JSON.parse(Buffer.from(p, 'base64url').toString())
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null
+    return payload
+  } catch { return null }
 }
 
 function getDB() {
@@ -47,17 +92,47 @@ export default async (req) => {
   const json = (data, status = 200) =>
     new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
+  const secret = process.env.ADMIN_JWT_SECRET
+  if (!secret) return json({ ok: false, error: 'Configuración del servidor incompleta (ADMIN_JWT_SECRET)' }, 500)
+
   try {
-    const { username, password, setupKey } = await req.json()
+    const body = await req.json()
+    const { action, username, password, token: clientToken } = body
+
+    // ── Verify token ──────────────────────────────────────────────────────────
+    if (action === 'verify') {
+      if (!clientToken) return json({ ok: false, error: 'Token requerido' }, 400)
+      const payload = verifyJWT(clientToken, secret)
+      if (!payload) return json({ ok: false, reason: 'invalid' }, 401)
+      return json({
+        ok: true,
+        username: payload.sub,
+        role: payload.role,
+        permissions: payload.permissions ?? null,
+        setup: payload.setup ?? false,
+      })
+    }
+
+    // ── Login ─────────────────────────────────────────────────────────────────
     if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || req.headers.get('x-nf-client-connection-ip')
+      || null
+    if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
 
     const [countRow] = await dbQuery('SELECT COUNT(*) as cnt FROM admin_users')
     const userCount = Number(countRow?.cnt ?? 0)
 
     if (userCount === 0) {
-      const sk = process.env.VITE_ADMIN_SETUP_KEY || process.env.ADMIN_SETUP_KEY
-      if ((sk && password === sk) || (setupKey && password === setupKey)) {
-        return json({ ok: true, role: 'admin', permissions: null })
+      const sk = process.env.ADMIN_SETUP_KEY
+      if (sk && password === sk) {
+        const now = Math.floor(Date.now() / 1000)
+        const token = signJWT({
+          sub: username.trim(), role: 'admin', permissions: null, setup: true,
+          iat: now, exp: now + 8 * 3600,
+        }, secret)
+        return json({ ok: true, token, setup: true })
       }
       return json({ ok: false, reason: 'setup' })
     }
@@ -74,7 +149,14 @@ export default async (req) => {
 
     let permissions = null
     try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}
-    return json({ ok: true, role: row.role ?? 'admin', permissions })
+
+    const now = Math.floor(Date.now() / 1000)
+    const token = signJWT({
+      sub: username.trim(), role: row.role ?? 'admin', permissions,
+      iat: now, exp: now + 8 * 3600,
+    }, secret)
+
+    return json({ ok: true, token })
   } catch (err) {
     return json({ ok: false, error: err.message }, 500)
   }

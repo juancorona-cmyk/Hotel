@@ -541,8 +541,8 @@ export async function adminLogin(username, password) {
   return { ok: true, role: row.role ?? 'editor', permissions }
 }
 
-// Login via servidor — funciona en HTTP y HTTPS (sin crypto.subtle)
-export async function adminLoginSingle(username, password, setupKey = null) {
+// Login via servidor — PBKDF2 ocurre en el servidor; el hash nunca llega al browser
+export async function adminLoginSingle(username, password) {
   const url = `${API_BASE}/.netlify/functions/auth`
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 15000)
@@ -550,13 +550,13 @@ export async function adminLoginSingle(username, password, setupKey = null) {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ username, password, setupKey }),
+      body: JSON.stringify({ username, password }),
       signal: controller.signal,
     })
     const text = await res.text()
     let data
     try { data = JSON.parse(text) } catch { throw new Error(`Respuesta inválida del servidor en ${url}`) }
-    if (!res.ok) throw new Error(data.error || `Error ${res.status} en ${url}`)
+    if (!res.ok && res.status !== 401 && res.status !== 429) throw new Error(data.error || `Error ${res.status} en ${url}`)
     return data
   } catch (e) {
     if (e.name === 'AbortError') throw new Error(`Tiempo de espera agotado (15s) al conectar con: ${url}`)
@@ -567,6 +567,19 @@ export async function adminLoginSingle(username, password, setupKey = null) {
   } finally {
     clearTimeout(timer)
   }
+}
+
+// Verifica un JWT de sesión con el servidor
+export async function adminVerifyToken(token) {
+  const url = `${API_BASE}/.netlify/functions/auth`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify', token }),
+    })
+    return res.json()
+  } catch { return { ok: false } }
 }
 
 export async function adminCreateUser(username, password, role = 'editor') {

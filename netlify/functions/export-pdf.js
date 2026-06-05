@@ -82,7 +82,7 @@ export default async (req) => {
 
   let browser = null
   try {
-    const { html, filename = 'reporte.pdf', pageWidth, pageHeight } = await req.json()
+    const { html, filename = 'reporte.pdf', pageWidth, pageHeight, landscape = false, preferCSSPageSize = false } = await req.json()
     const { executablePath, args } = await getBrowserConfig()
 
     browser = await puppeteer.launch({
@@ -95,8 +95,8 @@ export default async (req) => {
 
     await page.setRequestInterception(false)
 
-    const vpW = pageWidth || 1200
-    await page.setViewport({ width: vpW, height: 2000, deviceScaleFactor: 2 })
+    const vpW = pageWidth || (landscape ? 1440 : 1200)
+    await page.setViewport({ width: vpW, height: landscape ? 900 : 2000, deviceScaleFactor: 2 })
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 })
 
     let pdfOptions
@@ -110,7 +110,13 @@ export default async (req) => {
         pageRanges: '1',
       }
     } else {
-      pdfOptions = { format: 'A4', printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } }
+      pdfOptions = {
+        format: 'A4',
+        landscape: !!landscape,
+        preferCSSPageSize: !!preferCSSPageSize,
+        printBackground: true,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      }
     }
 
     const pdf = await page.pdf(pdfOptions)

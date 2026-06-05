@@ -10,7 +10,12 @@ import { fmtFecha } from '../lib/utils'
 import StaffApp from './StaffApp'
 import './CheckInPage.css'
 
-const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
+function decodeJWT(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(b64))
+  } catch { return null }
+}
 const isNativeApp = Capacitor.isNativePlatform()
 
 export default function CheckInPage() {
@@ -109,11 +114,13 @@ export default function CheckInPage() {
     setLoginBusy(true)
     setLoginErr('')
     try {
-      const result = await adminLoginSingle(loginUser.trim(), loginPwd, SETUP_KEY)
-      if (result.ok) {
+      const result = await adminLoginSingle(loginUser.trim(), loginPwd)
+      if (result.ok && result.token) {
+        const payload = decodeJWT(result.token)
         localStorage.setItem('ci_authed', 'true')
-        localStorage.setItem('ci_role', result.role)
-        localStorage.setItem('ci_perms', JSON.stringify(result.permissions ?? null))
+        localStorage.setItem('ci_token', result.token)
+        localStorage.setItem('ci_role', payload?.role ?? 'staff')
+        localStorage.setItem('ci_perms', JSON.stringify(payload?.permissions ?? null))
         setAuthed(true)
         subscribeToPush().catch(() => {})
       } else {
@@ -132,6 +139,7 @@ export default function CheckInPage() {
 
   const handleLogout = () => {
     localStorage.removeItem('ci_authed')
+    localStorage.removeItem('ci_token')
     localStorage.removeItem('ci_role')
     localStorage.removeItem('ci_perms')
     setAuthed(false)

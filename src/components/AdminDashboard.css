@@ -2736,3 +2736,97 @@
 }
 .adm-checkin__action--undo:hover:not(:disabled) { background: #e8e8e4; }
 .adm-checkin__action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Reportes ──────────────────────────────────────────── */
+.adm-btn-sm--primary {
+  background: #5a6c1e;
+  border-color: #5a6c1e;
+  color: #fff;
+}
+.adm-btn-sm--primary:hover:not(:disabled) { background: #6b8024; }
+
+.adm-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e0e4cc;
+  background: #fafaf8;
+  color: #444;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+
+.adm-rep-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.adm-rep-kpi {
+  border: 1px solid #e7ead9;
+  border-radius: 13px;
+  padding: 15px 16px;
+  background: #fafbf5;
+}
+.adm-rep-kpi__val { font-size: 28px; font-weight: 800; color: #5a6c1e; line-height: 1; }
+.adm-rep-kpi__lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #6b7350; margin-top: 8px; font-weight: 600; }
+.adm-rep-kpi__sub { font-size: 11px; color: #9aa07e; margin-top: 3px; }
+
+.adm-rep-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-bottom: 8px;
+}
+.adm-rep-block { margin-top: 14px; }
+.adm-rep-h4 {
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5a6c1e;
+  margin: 6px 0 9px;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .adm-rep-kpis { grid-template-columns: repeat(2, 1fr); }
+  .adm-rep-cols { grid-template-columns: 1fr; }
+}
+
+.adm-rep-panel {
+  border: 1px solid #e7ead9;
+  border-radius: 13px;
+  padding: 16px 18px;
+  background: #fff;
+}
+.adm-select--on {
+  border-color: #5a6c1e;
+  background: #f3f6e6;
+  color: #5a6c1e;
+}
+
+.adm-dash__hc {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: #f6f7f0;
+  border: 1px solid #eceee0;
+  border-radius: 10px;
+  padding: 3px;
+}
+@media (max-width: 900px) {
+  .adm-dash__header { flex-wrap: wrap; }
+  .adm-dash__hc {
+    position: static;
+    transform: none;
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+  }
+}

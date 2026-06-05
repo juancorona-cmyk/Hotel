@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   getStats, clearEvents,
-  adminLogin, adminHasUsers, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword, adminSetPermissions,
+  adminLoginSingle, adminVerifyToken, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword, adminSetPermissions,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
   getAllActivityRegistrations, getEventByActivityId, upsertActivityEvent,
@@ -21,9 +21,25 @@ function fmtFecha(s) {
   return _fmtFecha(s, false)
 }
 
-// One-time setup key for first admin user creation.
-// Must be set via Netlify env var. If unset, initial setup is disabled.
-const SETUP_KEY = import.meta.env.VITE_ADMIN_SETUP_KEY || null
+// Decodes the payload of a JWT without verifying the signature (client-side read-only).
+// Verification happens server-side in auth.js.
+function decodeJWT(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(b64))
+  } catch { return null }
+}
+
+function tokenFromStorage() {
+  const token = sessionStorage.getItem('adm_token')
+  if (!token) return null
+  const p = decodeJWT(token)
+  if (!p || p.exp < Math.floor(Date.now() / 1000)) {
+    sessionStorage.removeItem('adm_token')
+    return null
+  }
+  return { token, payload: p }
+}
 
 const PERIODS = [
   { label: '24H', days: 1 },
@@ -40,6 +56,7 @@ const PERMS_CONFIG = [
   { key: 'eventos',       label: 'Eventos'        },
   { key: 'reservas',      label: 'Reservas Hotel' },
   { key: 'inscripciones', label: 'Inscripciones Actividades'  },
+  { key: 'reportes',      label: 'Reportes'       },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -59,6 +76,295 @@ const RESERVA_LABELS = {
   hero:         'Hero (portada)',
   rooms:        'Habitaciones',
   booking_modal: 'Modal de reserva',
+}
+
+// ── Reportes: rangos por mes / semana ────────────────────
+function ymdLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+function monthOptions(n = 12) {
+  const now = new Date(), out = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    out.push({ value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) })
+  }
+  return out
+}
+function monthRange(value) {
+  const [y, m] = value.split('-').map(Number)
+  const from = new Date(y, m - 1, 1), to = new Date(y, m, 0)
+  return { from: ymdLocal(from), to: ymdLocal(to), label: from.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) }
+}
+function weekOptions(n = 12) {
+  const now = new Date(), out = []
+  const offMon = (now.getDay() + 6) % 7
+  const monday = new Date(now); monday.setDate(now.getDate() - offMon)
+  for (let i = 0; i < n; i++) {
+    const start = new Date(monday); start.setDate(monday.getDate() - i * 7)
+    const end = new Date(start); end.setDate(start.getDate() + 6)
+    out.push({ value: ymdLocal(start), label: `${start.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}` })
+  }
+  return out
+}
+function weekRange(value) {
+  const start = new Date(value + 'T00:00:00'), end = new Date(value + 'T00:00:00')
+  end.setDate(end.getDate() + 6)
+  return { from: ymdLocal(start), to: ymdLocal(end), label: `${start.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} al ${end.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}` }
+}
+function presetRange(type) {
+  const now = new Date()
+  const to = ymdLocal(now)
+  const f = new Date(now)
+  if (type === '7d') f.setDate(f.getDate() - 6)
+  else if (type === '1m') f.setMonth(f.getMonth() - 1)
+  else if (type === '3m') f.setMonth(f.getMonth() - 3)
+  const label = type === '7d' ? 'Últimos 7 días' : type === '1m' ? 'Último mes' : 'Últimos 3 meses'
+  return { from: ymdLocal(f), to, label }
+}
+function inDateRange(created_at, from, to) {
+  const d = (created_at || '').slice(0, 10)
+  return d >= from && d <= to
+}
+function aggregateReservas(rows, from, to) {
+  const conf = rows.filter(r => r.event_type === 'reserva_confirmada' && inDateRange(r.created_at, from, to))
+  const clk  = rows.filter(r => r.event_type === 'reserva_click'      && inDateRange(r.created_at, from, to))
+  const byRoom = {}, bySource = {}, byDay = {}
+  let nights = 0
+  conf.forEach(r => {
+    const room = (r.room || 'Sin especificar')
+    byRoom[room] = (byRoom[room] || 0) + 1
+    const src = RESERVA_LABELS[r.source] || r.source || 'Directo'
+    bySource[src] = (bySource[src] || 0) + 1
+    const day = (r.created_at || '').slice(0, 10)
+    byDay[day] = (byDay[day] || 0) + 1
+    nights += Number(r.nights || 0)
+  })
+  const sortDesc = o => Object.entries(o).sort((a, b) => b[1] - a[1])
+  const byRoomArr = sortDesc(byRoom)
+  return {
+    confirmed: conf.length, intents: clk.length,
+    conversion: clk.length ? Math.round((conf.length / clk.length) * 100) : 0,
+    nights, avgNights: conf.length ? (nights / conf.length).toFixed(1) : '0',
+    byRoom: byRoomArr, bySource: sortDesc(bySource),
+    byDay: Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])),
+    topRoom: byRoomArr[0]?.[0] || '—',
+  }
+}
+function aggregateInscripciones(regs, from, to) {
+  const list = regs.filter(r => inDateRange(r.created_at, from, to))
+  const paid = list.filter(r => Number(r.paid) === 1).length
+  const byEvent = {}
+  list.forEach(r => { const e = r.event_name || r.activity_name || 'General'; byEvent[e] = (byEvent[e] || 0) + 1 })
+  return { total: list.length, paid, pending: list.length - paid, byEvent: Object.entries(byEvent).sort((a, b) => b[1] - a[1]) }
+}
+
+// ── Reportes: HTML para PDF (blanco, identidad Hotel Punta Galería) ───────────
+const HOTEL_OLIVE = '#5a6c1e'
+const REP_PALETTE = ['#5a6c1e', '#8fa030', '#b5c840', '#cdd98a', '#7a8c2e', '#a4b65a', '#dfe3c0']
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+}
+function dateList(from, to) {
+  const out = [], d = new Date(from + 'T00:00:00'), end = new Date(to + 'T00:00:00')
+  let guard = 0
+  while (d <= end && guard < 800) { out.push(ymdLocal(d)); d.setDate(d.getDate() + 1); guard++ }
+  return out
+}
+// Agrupa el rango en <=14 cubetas (diario en rangos cortos, semanal/mensual en largos).
+function bucketReservas(rows, from, to) {
+  const days = dateList(from, to)
+  const confByDay = {}, intByDay = {}
+  rows.forEach(r => {
+    const day = (r.created_at || '').slice(0, 10)
+    if (day < from || day > to) return
+    if (r.event_type === 'reserva_confirmada') confByDay[day] = (confByDay[day] || 0) + 1
+    else if (r.event_type === 'reserva_click') intByDay[day] = (intByDay[day] || 0) + 1
+  })
+  const size = Math.ceil(days.length / 14) || 1
+  const labels = [], conf = [], inten = []
+  for (let i = 0; i < days.length; i += size) {
+    const chunk = days.slice(i, i + size)
+    conf.push(chunk.reduce((s, d) => s + (confByDay[d] || 0), 0))
+    inten.push(chunk.reduce((s, d) => s + (intByDay[d] || 0), 0))
+    const a = chunk[0], b = chunk[chunk.length - 1]
+    labels.push(size === 1 ? `${a.slice(8, 10)}/${a.slice(5, 7)}` : `${a.slice(8, 10)}-${b.slice(8, 10)}/${b.slice(5, 7)}`)
+  }
+  return { labels, conf, inten }
+}
+function svgGroupedBars({ labels, conf, inten }) {
+  const W = 640, H = 220, PL = 34, PR = 14, PT = 16, PB = 34
+  const cW = W - PL - PR, cH = H - PT - PB
+  const max = Math.max(1, ...conf, ...inten)
+  const n = Math.max(1, labels.length)
+  const slot = cW / n
+  const bw = Math.max(4, Math.min(15, slot / 2 - 3))
+  const yBase = PT + cH
+  let grid = ''
+  for (let g = 0; g <= 4; g++) {
+    const y = PT + (cH * g) / 4
+    const val = Math.round(max * (1 - g / 4))
+    grid += `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#eef0e2" stroke-width="1"/>`
+    grid += `<text x="${PL - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#aab089">${val}</text>`
+  }
+  const step = Math.ceil(n / 12)
+  let bars = '', xl = ''
+  labels.forEach((lb, i) => {
+    const cx = PL + slot * i + slot / 2
+    const h1 = (conf[i] / max) * cH, h2 = (inten[i] / max) * cH
+    bars += `<rect x="${cx - bw - 1}" y="${yBase - h1}" width="${bw}" height="${h1}" rx="2" fill="#5a6c1e"/>`
+    bars += `<rect x="${cx + 1}" y="${yBase - h2}" width="${bw}" height="${h2}" rx="2" fill="#b5c840"/>`
+    if (i % step === 0) xl += `<text x="${cx}" y="${H - 12}" text-anchor="middle" font-size="9" fill="#8a9170">${escHtml(lb)}</text>`
+  })
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="height:auto;display:block;" preserveAspectRatio="xMidYMid meet">${grid}<line x1="${PL}" y1="${yBase}" x2="${W - PR}" y2="${yBase}" stroke="#dfe3d0" stroke-width="1"/>${bars}${xl}</svg>`
+}
+function donutSvg(entries, size = 150) {
+  const total = entries.reduce((s, [, v]) => s + v, 0) || 1
+  const cx = size / 2, cy = size / 2, r = size * 0.413, ri = size * 0.253
+  let a0 = -Math.PI / 2, paths = ''
+  entries.forEach(([, v], i) => {
+    const frac = v / total
+    if (frac <= 0) return
+    let a1 = a0 + frac * 2 * Math.PI
+    if (frac >= 0.9999) a1 = a0 + 2 * Math.PI - 0.0001
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0)
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1)
+    const xi0 = cx + ri * Math.cos(a0), yi0 = cy + ri * Math.sin(a0)
+    const xi1 = cx + ri * Math.cos(a1), yi1 = cy + ri * Math.sin(a1)
+    const large = (a1 - a0) > Math.PI ? 1 : 0
+    paths += `<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${ri} ${ri} 0 ${large} 0 ${xi0} ${yi0} Z" fill="${REP_PALETTE[i % REP_PALETTE.length]}"/>`
+    a0 = a1
+  })
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="flex:none;">${paths}<text x="${cx}" y="${cy + size * 0.055}" text-anchor="middle" font-size="${(size * 0.16).toFixed(1)}" font-weight="800" fill="#5a6c1e">${total}</text></svg>`
+}
+function pieBlockHtml(entries, size = 150) {
+  const total = entries.reduce((s, [, v]) => s + v, 0)
+  const compact = size < 120
+  const fs = compact ? 10 : 12
+  if (!total) return `<p style="color:#aab089;font-style:italic;font-size:${fs}px;padding:6px 0;">Sin datos en el período</p>`
+  const legend = entries.map(([k, v], i) =>
+    `<div style="display:flex;align-items:center;gap:6px;font-size:${fs}px;margin-bottom:${compact ? 4 : 6}px;"><span style="width:9px;height:9px;border-radius:3px;background:${REP_PALETTE[i % REP_PALETTE.length]};display:inline-block;flex:none;"></span><span style="flex:1;text-transform:capitalize;color:#3a4220;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(k)}</span><strong style="color:#5a6c1e;">${v}</strong><span style="color:#9aa07e;">${Math.round((v / total) * 100)}%</span></div>`
+  ).join('')
+  return `<div style="display:flex;align-items:center;gap:${compact ? 12 : 16}px;">${donutSvg(entries, size)}<div style="flex:1;min-width:0;">${legend}</div></div>`
+}
+function barsLegendHtml() {
+  return `<div style="display:flex;gap:18px;justify-content:center;margin-top:6px;font-size:11px;color:#6b7350;font-weight:600;">
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#5a6c1e;"></span>Confirmadas</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:11px;height:11px;border-radius:3px;background:#b5c840;"></span>Intentos</span>
+  </div>`
+}
+
+function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk }) {
+  const esc = escHtml
+  const genDate = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+  const topN = (arr, n = 6) => {
+    if (arr.length <= n) return arr
+    const rest = arr.slice(n - 1).reduce((s, [, v]) => s + v, 0)
+    return [...arr.slice(0, n - 1), ['Otros', rest]]
+  }
+  const kpi = (val, label, sub) => `
+    <div class="kpi">
+      <div class="kpi-val">${esc(val)}</div>
+      <div class="kpi-lbl">${esc(label)}</div>
+      ${sub ? `<div class="kpi-sub">${esc(sub)}</div>` : ''}
+    </div>`
+  const rows = (arr, total) => arr.length
+    ? arr.slice(0, 5).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v}</td><td class="num">${total ? Math.round((v / total) * 100) : 0}%</td></tr>`).join('')
+    : `<tr><td colspan="3" class="empty">Sin datos</td></tr>`
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; }
+  body { font-family:'Montserrat',sans-serif; background:#fff; color:#1d2410; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page { size:A4 landscape; margin:0; }
+  .sheet { width:297mm; height:210mm; padding:9mm 12mm; display:flex; flex-direction:column; overflow:hidden; }
+  .head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid ${HOTEL_OLIVE}; padding-bottom:7px; margin-bottom:9px; }
+  .brand { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:${HOTEL_OLIVE}; font-weight:700; }
+  .title { font-size:22px; font-weight:800; margin-top:2px; }
+  .period { font-size:12px; color:#5b6347; margin-top:2px; font-weight:600; text-transform:capitalize; }
+  .meta { text-align:right; font-size:10px; color:#8a9170; line-height:1.6; }
+  .meta strong { color:${HOTEL_OLIVE}; font-size:12px; }
+  h2 { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:${HOTEL_OLIVE}; margin:0 0 6px; font-weight:700; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:9px; }
+  .kpi { border:1px solid #e7ead9; border-radius:10px; padding:8px 10px; background:#fafbf5; }
+  .kpi-val { font-size:22px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
+  .kpi-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#6b7350; margin-top:5px; font-weight:600; }
+  .kpi-sub { font-size:8.5px; color:#9aa07e; margin-top:2px; }
+  .main { flex:1; display:grid; grid-template-columns:1.45fr 1fr; gap:10px; min-height:0; }
+  .col { display:flex; flex-direction:column; gap:9px; min-height:0; }
+  .panel { border:1px solid #e7ead9; border-radius:11px; padding:9px 11px; background:#fff; }
+  .panel.grow { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .panel.grow svg { flex:1; min-height:0; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th { text-align:left; font-size:9px; letter-spacing:.4px; text-transform:uppercase; color:#8a9170; border-bottom:1.5px solid #e7ead9; padding:5px 6px; }
+  td { padding:5px 6px; border-bottom:1px solid #f0f2e6; }
+  td.num, th.num { text-align:right; }
+  .empty { color:#aab089; font-style:italic; padding:8px 6px; font-size:11px; }
+  .barleg { display:flex; gap:16px; justify-content:center; margin-top:5px; font-size:10px; color:#6b7350; font-weight:600; }
+  .barleg span span { width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:5px; }
+  .foot { margin-top:9px; border-top:1px solid #e7ead9; padding-top:7px; font-size:9px; color:#aab089; text-align:center; letter-spacing:.5px; }
+</style></head><body>
+  <div class="sheet">
+    <div class="head">
+      <div>
+        <div class="brand">Hotel Punta Galería</div>
+        <div class="title">Reporte de Reservas</div>
+        <div class="period">${esc(modeLabel)}: ${esc(periodLabel)}</div>
+      </div>
+      <div class="meta">Generado<br><strong>${esc(genDate)}</strong></div>
+    </div>
+
+    <div class="kpis">
+      ${kpi(agg.confirmed, 'Confirmadas')}
+      ${kpi(agg.intents, 'Intentos')}
+      ${kpi(agg.conversion + '%', 'Conversión')}
+      ${kpi(agg.nights, 'Noches', 'prom. ' + agg.avgNights)}
+      ${kpi(ins.total, 'Inscripciones', ins.paid + ' pagadas')}
+    </div>
+
+    <div class="main">
+      <div class="col">
+        <div class="panel grow">
+          <h2>Reservas por período</h2>
+          ${svgGroupedBars(bk)}
+          <div class="barleg"><span><span style="background:#5a6c1e;"></span>Confirmadas</span><span><span style="background:#b5c840;"></span>Intentos</span></div>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <h2>Detalle habitación</h2>
+            <table><thead><tr><th>Habitación</th><th class="num">Res.</th><th class="num">%</th></tr></thead>
+              <tbody>${rows(agg.byRoom, agg.confirmed)}</tbody></table>
+          </div>
+          <div class="panel">
+            <h2>Detalle origen</h2>
+            <table><thead><tr><th>Origen</th><th class="num">Res.</th><th class="num">%</th></tr></thead>
+              <tbody>${rows(agg.bySource, agg.confirmed)}</tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel">
+          <h2>Distribución por habitación</h2>
+          ${pieBlockHtml(topN(agg.byRoom), 86)}
+        </div>
+        <div class="panel">
+          <h2>Origen de la reserva</h2>
+          ${pieBlockHtml(topN(agg.bySource), 86)}
+        </div>
+        <div class="panel">
+          <h2>Inscripciones por evento</h2>
+          ${pieBlockHtml(topN(ins.byEvent), 86)}
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">Hotel Punta Galería · Reporte interno de reservas · ${esc(periodLabel)}</div>
+  </div>
+</body></html>`
 }
 
 // ── Helpers ──────────────────────────────────────────────
@@ -873,7 +1179,7 @@ function ActivitiesSection() {
 }
 
 // ── Hotel Reservations view ──────────────────────────────
-function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
+function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false }) {
   const [data, setData]               = useState([])
   const [loading, setLoading]         = useState(false)
   const [view, setView]               = useState('confirmed')
@@ -911,6 +1217,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
   const toggleAll     = () => selected.size === sorted.length ? setSelected(new Set()) : setSelected(new Set(sorted.map(r => r.id)))
 
   const handleDelete = (id) => {
+    if (!isAdmin) return
     setConfirmModal({
       title: 'Eliminar reserva',
       message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
@@ -925,6 +1232,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
   }
 
   const handleDeleteSelected = () => {
+    if (!isAdmin) return
     if (selected.size === 0) return
     const ids = [...selected]
     setConfirmModal({
@@ -941,6 +1249,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
   }
 
   const handleClearAll = () => {
+    if (!isAdmin) return
     if (sorted.length === 0) return
     setConfirmModal({
       title: 'Vaciar reservas',
@@ -966,12 +1275,12 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-          {selected.size > 0 && (
+          {isAdmin && selected.size > 0 && (
             <button className="adm-btn-sm adm-btn-sm--red" onClick={handleDeleteSelected} disabled={deleting}>
               Eliminar {selected.size} sel.
             </button>
           )}
-          {sorted.length > 0 && (
+          {isAdmin && sorted.length > 0 && (
             <button className="adm-btn-sm adm-btn-sm--red-outline" onClick={handleClearAll} disabled={deleting}>
               Vaciar todo
             </button>
@@ -1016,9 +1325,11 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '' }) {
                     {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
                     <td className="adm-table__date">{fmtDBDate(r.created_at)}</td>
                     <td>
-                      <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id)} title="Eliminar">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                      </button>
+                      {isAdmin && (
+                        <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id)} title="Eliminar">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1074,7 +1385,170 @@ function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Eli
 }
 
 // ── Activity Registrations view ──────────────────────────
-function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
+function ReportesSection() {
+  const [mode, setMode]         = useState('1m')   // '7d' | '1m' | '3m' | 'mes' | 'semana'
+  const [monthSel, setMonthSel] = useState(() => monthOptions(1)[0].value)
+  const [weekSel, setWeekSel]   = useState(() => weekOptions(1)[0].value)
+  const [rows, setRows]         = useState([])
+  const [regs, setRegs]         = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [err, setErr]           = useState('')
+
+  const months = monthOptions(12)
+  const weeks  = weekOptions(12)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [res, reg] = await Promise.all([getHotelReservationEvents(), getAllActivityRegistrations()])
+      setRows(res || []); setRegs(reg || [])
+    } catch { setRows([]); setRegs([]) }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const range =
+      mode === 'mes'    ? monthRange(monthSel)
+    : mode === 'semana' ? weekRange(weekSel)
+    : presetRange(mode)
+  const modeLabel = mode === 'mes' ? 'Mes' : mode === 'semana' ? 'Semana' : 'Período'
+  const agg = aggregateReservas(rows, range.from, range.to)
+  const ins = aggregateInscripciones(regs, range.from, range.to)
+  const bk  = bucketReservas(rows, range.from, range.to)
+
+  const handleExport = async () => {
+    setExporting(true); setErr('')
+    try {
+      const html = buildHotelReportHTML({ periodLabel: range.label, modeLabel, agg, ins, bk })
+      const fname = `reporte-reservas-${range.from}_${range.to}.pdf`
+      const res = await fetch(`${API_BASE}/.netlify/functions/export-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html, filename: fname, landscape: true, preferCSSPageSize: true }),
+      })
+      if (!res.ok) throw new Error('Error generando PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = fname; a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { setErr(e.message || 'No se pudo exportar') }
+    finally { setExporting(false) }
+  }
+
+  const kpiCard = (val, label, sub) => (
+    <div className="adm-rep-kpi">
+      <div className="adm-rep-kpi__val">{val}</div>
+      <div className="adm-rep-kpi__lbl">{label}</div>
+      {sub && <div className="adm-rep-kpi__sub">{sub}</div>}
+    </div>
+  )
+
+  const presetBtn = (key, label) => (
+    <button className={mode === key ? 'active' : ''} onClick={() => setMode(key)}>{label}</button>
+  )
+
+  return (
+    <div className="adm-activities">
+      <div className="adm-users__header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span>Reportes de Reservas</span>
+          <div className="adm-ins-toggle">
+            {presetBtn('7d', '7 días')}
+            {presetBtn('1m', '1 mes')}
+            {presetBtn('3m', '3 meses')}
+          </div>
+          <select className={`adm-select${mode === 'mes' ? ' adm-select--on' : ''}`} value={mode === 'mes' ? monthSel : ''}
+            onChange={e => { setMonthSel(e.target.value); setMode('mes') }}>
+            <option value="" disabled>Mes…</option>
+            {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+          <select className={`adm-select${mode === 'semana' ? ' adm-select--on' : ''}`} value={mode === 'semana' ? weekSel : ''}
+            onChange={e => { setWeekSel(e.target.value); setMode('semana') }}>
+            <option value="" disabled>Semana…</option>
+            {weeks.map(w => <option key={w.value} value={w.value}>{w.label}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <button className="adm-btn-sm adm-btn-sm--primary" onClick={handleExport} disabled={exporting || loading}>
+            {exporting ? 'Generando…' : 'Exportar PDF'}
+          </button>
+        </div>
+      </div>
+
+      {err && <p style={{ color: '#c0392b', padding: '8px 4px', fontSize: 13 }}>{err}</p>}
+
+      {loading ? <p className="adm-users__loading">Cargando…</p> : (
+        <div style={{ padding: '4px 2px 18px' }}>
+          <p style={{ fontSize: 13, color: '#6b7350', margin: '4px 0 14px', fontWeight: 600, textTransform: 'capitalize' }}>
+            {modeLabel}: {range.label}
+          </p>
+
+          <div className="adm-rep-kpis">
+            {kpiCard(agg.confirmed, 'Reservas confirmadas')}
+            {kpiCard(agg.intents, 'Intentos de reserva')}
+            {kpiCard(`${agg.conversion}%`, 'Conversión', 'conf. / intentos')}
+            {kpiCard(agg.nights, 'Noches reservadas', `prom. ${agg.avgNights} / reserva`)}
+          </div>
+
+          <h4 className="adm-rep-h4">Reservas por período</h4>
+          <div className="adm-rep-panel">
+            <div dangerouslySetInnerHTML={{ __html: svgGroupedBars(bk) }} />
+            <div dangerouslySetInnerHTML={{ __html: barsLegendHtml() }} />
+          </div>
+
+          <div className="adm-rep-cols" style={{ marginTop: 16 }}>
+            <div>
+              <h4 className="adm-rep-h4">Distribución por habitación</h4>
+              <div className="adm-rep-panel" dangerouslySetInnerHTML={{ __html: pieBlockHtml(agg.byRoom) }} />
+            </div>
+            <div>
+              <h4 className="adm-rep-h4">Origen de la reserva</h4>
+              <div className="adm-rep-panel" dangerouslySetInnerHTML={{ __html: pieBlockHtml(agg.bySource) }} />
+            </div>
+          </div>
+
+          <div className="adm-rep-cols" style={{ marginTop: 14 }}>
+            <div>
+              <h4 className="adm-rep-h4">Detalle habitación</h4>
+              <table className="adm-table">
+                <thead><tr><th>Habitación</th><th style={{ textAlign: 'right' }}>Reservas</th><th style={{ textAlign: 'right' }}>%</th></tr></thead>
+                <tbody>
+                  {agg.byRoom.length ? agg.byRoom.map(([k, v]) => (
+                    <tr key={k}><td style={{ textTransform: 'capitalize' }}>{k}</td><td style={{ textAlign: 'right' }}>{v}</td><td style={{ textAlign: 'right' }}>{agg.confirmed ? Math.round((v / agg.confirmed) * 100) : 0}%</td></tr>
+                  )) : <tr><td colSpan={3} style={{ color: '#9aa07e', fontStyle: 'italic' }}>Sin datos</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h4 className="adm-rep-h4">Detalle origen</h4>
+              <table className="adm-table">
+                <thead><tr><th>Origen</th><th style={{ textAlign: 'right' }}>Reservas</th><th style={{ textAlign: 'right' }}>%</th></tr></thead>
+                <tbody>
+                  {agg.bySource.length ? agg.bySource.map(([k, v]) => (
+                    <tr key={k}><td>{k}</td><td style={{ textAlign: 'right' }}>{v}</td><td style={{ textAlign: 'right' }}>{agg.confirmed ? Math.round((v / agg.confirmed) * 100) : 0}%</td></tr>
+                  )) : <tr><td colSpan={3} style={{ color: '#9aa07e', fontStyle: 'italic' }}>Sin datos</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <h4 className="adm-rep-h4" style={{ marginTop: 16 }}>Inscripciones a eventos / actividades</h4>
+          <div className="adm-rep-kpis" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+            {kpiCard(ins.total, 'Inscripciones')}
+            {kpiCard(ins.paid, 'Pagadas')}
+            {kpiCard(ins.pending, 'Pendientes')}
+          </div>
+          {ins.byEvent.length > 0 && (
+            <div className="adm-rep-panel" style={{ marginTop: 12 }} dangerouslySetInnerHTML={{ __html: pieBlockHtml(ins.byEvent) }} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ActivityRegistrationsSection({ dateFrom = '', dateTo = '', isAdmin = false }) {
   const [regs, setRegs]           = useState([])
   const [intents, setIntents]     = useState([])
   const [loading, setLoading]     = useState(false)
@@ -1115,6 +1589,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   }, [loadData])
 
   const handleDelete = (id, name) => {
+    if (!isAdmin) return
     setConfirmModal({
       title: 'Eliminar registro',
       message: `¿Eliminar el registro de ${name}? Esta acción no se puede deshacer.`,
@@ -1137,6 +1612,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   })
 
   const handleDeleteSelected = () => {
+    if (!isAdmin) return
     if (selected.size === 0) return
     const ids = [...selected]
     setConfirmModal({
@@ -1159,6 +1635,7 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
   }
 
   const handleClearAll = () => {
+    if (!isAdmin) return
     const target = sorted
     if (target.length === 0) return
     setConfirmModal({
@@ -1249,12 +1726,12 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-          {selected.size > 0 && (
+          {isAdmin && selected.size > 0 && (
             <button className="adm-btn-sm adm-btn-sm--red" onClick={handleDeleteSelected} disabled={deleting}>
               Eliminar {selected.size} sel.
             </button>
           )}
-          {sorted.length > 0 && (
+          {isAdmin && sorted.length > 0 && (
             <button className="adm-btn-sm adm-btn-sm--red-outline" onClick={handleClearAll} disabled={deleting}>
               Vaciar todo
             </button>
@@ -1373,9 +1850,11 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '' }) {
                     </td>
                     {view === 'confirmed' && (
                       <td>
-                        <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id, r.full_name)} title="Eliminar">
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                        </button>
+                        {isAdmin && (
+                          <button className="adm-user-row__btn adm-user-row__btn--del" onClick={() => handleDelete(r.id, r.full_name)} title="Eliminar">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -1463,26 +1942,22 @@ function LoginScreen({ onLogin }) {
     if (!user.trim() || !pwd) return
     setBusy(true); setErr('')
     try {
-      const hasUsers = await adminHasUsers()
-      if (!hasUsers) {
-        if (!SETUP_KEY) { 
-          setErr('Configuración inicial no disponible (DB vacía y sin SETUP_KEY)')
-          setBusy(false)
-          return 
-        }
-        const ok = pwd === SETUP_KEY
-        if (ok) onLogin(user.trim(), true, 'admin', null)
-        else { setErr('Clave de configuración incorrecta'); setPwd('') }
+      const result = await adminLoginSingle(user.trim(), pwd)
+      if (result.ok && result.token) {
+        onLogin(result.token, result.setup ?? false)
+      } else if (result.reason === 'setup') {
+        setErr('Modo de configuración: DB vacía pero sin clave de setup válida en el servidor')
+        setPwd('')
+      } else if (result.error === 'Demasiados intentos. Espera 15 minutos.') {
+        setErr(result.error)
       } else {
-        const result = await adminLogin(user.trim(), pwd)
-        if (result.ok) onLogin(user.trim(), false, result.role, result.permissions)
-        else { setErr('Usuario o contraseña incorrectos'); setPwd('') }
+        setErr('Usuario o contraseña incorrectos')
+        setPwd('')
       }
-    } catch (err) { 
+    } catch (err) {
       console.error('Login error:', err)
-      setErr(`Error de base de datos: ${err.message}`) 
-    }
-    finally { setBusy(false) }
+      setErr(`Error de conexión: ${err.message}`)
+    } finally { setBusy(false) }
   }
 
   return (
@@ -1973,9 +2448,9 @@ function CheckInSection() {
 }
 
 export default function AdminDashboard({ onClose }) {
-  const [currentUser, setCurrentUser] = useState(() => sessionStorage.getItem('adm_user') || null)
-  const [userRole, setUserRole]       = useState(() => sessionStorage.getItem('adm_role') || 'admin')
-  const [userPerms, setUserPerms]     = useState(() => { try { return JSON.parse(sessionStorage.getItem('adm_perms') || 'null') } catch { return null } })
+  const [currentUser, setCurrentUser] = useState(() => tokenFromStorage()?.payload?.sub ?? null)
+  const [userRole, setUserRole]       = useState(() => tokenFromStorage()?.payload?.role ?? 'admin')
+  const [userPerms, setUserPerms]     = useState(() => tokenFromStorage()?.payload?.permissions ?? null)
   const [fallback, setFallback]       = useState(false)
   const authed = !!currentUser
   const isAdmin = userRole === 'admin'
@@ -2000,6 +2475,20 @@ export default function AdminDashboard({ onClose }) {
     setLoading(false)
   }, [])
 
+  // Verify stored token with the server on mount (catches tampered or expired tokens)
+  useEffect(() => {
+    const stored = tokenFromStorage()
+    if (!stored) return
+    adminVerifyToken(stored.token).then(result => {
+      if (!result.ok) {
+        sessionStorage.removeItem('adm_token')
+        setCurrentUser(null)
+        setUserRole('admin')
+        setUserPerms(null)
+      }
+    }).catch(() => { /* network error — keep session, server will re-check on next operation */ })
+  }, [])
+
   useEffect(() => { if (authed) load(period.days) }, [authed, period, load])
   useEffect(() => { const t = setInterval(() => setTime(clock()), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
@@ -2013,23 +2502,21 @@ export default function AdminDashboard({ onClose }) {
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  const login = (username, isFallback, role = 'admin', permissions = null) => {
-    sessionStorage.setItem('adm_user', username)
-    sessionStorage.setItem('adm_role', role)
-    sessionStorage.setItem('adm_perms', JSON.stringify(permissions))
-    setCurrentUser(username)
+  const login = (token, isFallback = false) => {
+    const payload = decodeJWT(token)
+    if (!payload) return
+    sessionStorage.setItem('adm_token', token)
+    setCurrentUser(payload.sub)
     setFallback(isFallback)
-    setUserRole(role)
-    setUserPerms(permissions)
-    if (role !== 'admin' && permissions) {
-      const first = PERMS_CONFIG.find(p => permissions[p.key])
+    setUserRole(payload.role ?? 'admin')
+    setUserPerms(payload.permissions ?? null)
+    if (payload.role !== 'admin' && payload.permissions) {
+      const first = PERMS_CONFIG.find(p => payload.permissions[p.key])
       setTab(first?.key ?? 'stats')
     }
   }
   const logout = () => {
-    sessionStorage.removeItem('adm_user')
-    sessionStorage.removeItem('adm_role')
-    sessionStorage.removeItem('adm_perms')
+    sessionStorage.removeItem('adm_token')
     setCurrentUser(null)
     setUserRole('admin')
     setUserPerms(null)
@@ -2093,6 +2580,15 @@ export default function AdminDashboard({ onClose }) {
                 </div>
               </div>
             </div>
+            {tab === 'stats' && (
+              <div className="adm-dash__hc">
+                {PERIODS.map(p => (
+                  <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="adm-dash__hr">
               <button className="adm-hbtn" onClick={() => load(period.days)} disabled={loading} title="Actualizar">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -2114,13 +2610,8 @@ export default function AdminDashboard({ onClose }) {
             {canSee('eventos') && <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>Eventos</button>}
             {canSee('reservas') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</button>}
             {canSee('inscripciones') && <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>Inscripciones</button>}
+            {canSee('reportes') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reportes' ? 'active' : ''}`} onClick={() => setTab('reportes')}>Reportes</button>}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
-            <span className="adm-period-sep"/>
-            {tab === 'stats' && PERIODS.map(p => (
-              <button key={p.label} className={`adm-period-btn ${period.label === p.label ? 'active' : ''}`} onClick={() => setPeriod(p)}>
-                {p.label}
-              </button>
-            ))}
             {(tab === 'inscripciones' || tab === 'reservas') && (
               <div className="adm-bar-daterange">
                 <span className="adm-bar-daterange__label">Período</span>
@@ -2147,9 +2638,11 @@ export default function AdminDashboard({ onClose }) {
             ) : tab === 'eventos' ? (
               <EventosSection />
             ) : tab === 'reservas' ? (
-              <HotelReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
+              <HotelReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
             ) : tab === 'inscripciones' ? (
-              <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
+              <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
+            ) : tab === 'reportes' ? (
+              <ReportesSection />
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (

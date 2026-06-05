@@ -11,20 +11,27 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@capacitor-mlkit/barcode-scanning@^7.1.0",
         "npm:@capacitor/android@^8.3.2",
+        "npm:@capacitor/app@^8.1.0",
         "npm:@capacitor/cli@^8.3.2",
         "npm:@capacitor/core@^8.3.2",
+        "npm:@capacitor/push-notifications@^8.1.1",
         "npm:@sparticuz/chromium@^123.0.1",
         "npm:@vitejs/plugin-react@^4.2.1",
         "npm:cloudinary@^2.10.0",
+        "npm:concurrently@^9.2.1",
+        "npm:google-auth-library@^10.6.2",
         "npm:i18next@^26.0.8",
         "npm:netlify-cli@^26.0.1",
         "npm:puppeteer-core@^22.15.0",
+        "npm:qrcode.react@^4.2.0",
         "npm:react-dom@^18.2.0",
         "npm:react-i18next@^17.0.6",
         "npm:react-router-dom@^7.15.0",
         "npm:react@^18.2.0",
-        "npm:vite@^5.0.8"
+        "npm:vite@^5.0.8",
+        "npm:web-push@^3.6.7"
       ]
     }
   }
