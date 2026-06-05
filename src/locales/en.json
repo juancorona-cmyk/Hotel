@@ -142,7 +142,9 @@
       "habitacion": "Room",
       "llegada": "Check-in",
       "salida": "Check-out",
-      "gracias": "Thank you very much."
+      "gracias": "Thank you very much.",
+      "folio": "Reference",
+      "firma": "Sent from the website · hotelpuntagaleria.mx"
     }
   },
   "drp": {

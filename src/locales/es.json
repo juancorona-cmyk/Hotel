@@ -144,7 +144,9 @@
       "habitacion": "Habitación",
       "llegada": "Llegada",
       "salida": "Salida",
-      "gracias": "Muchas gracias."
+      "gracias": "Muchas gracias.",
+      "folio": "Folio",
+      "firma": "Enviado desde la página web · hotelpuntagaleria.mx"
     }
   },
   "drp": {

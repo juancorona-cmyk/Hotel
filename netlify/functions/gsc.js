@@ -34,12 +34,22 @@ export const handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ error: 'not_configured' }) }
     }
 
-    const days = Math.min(parseInt(event.queryStringParameters?.days ?? '28'), 90)
-    const end = new Date()
-    const start = new Date(end)
-    start.setDate(start.getDate() - days)
-    const startDate = start.toISOString().slice(0, 10)
-    const endDate   = end.toISOString().slice(0, 10)
+    // Acepta rango explícito (from/to YYYY-MM-DD) o, en su defecto, días desde hoy.
+    const qp = event.queryStringParameters ?? {}
+    const isYMD = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '')
+    let startDate, endDate, days
+    if (isYMD(qp.from) && isYMD(qp.to)) {
+      startDate = qp.from
+      endDate   = qp.to
+      days = Math.max(1, Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1)
+    } else {
+      days = Math.min(parseInt(qp.days ?? '28'), 90)
+      const end = new Date()
+      const start = new Date(end)
+      start.setDate(start.getDate() - days)
+      startDate = start.toISOString().slice(0, 10)
+      endDate   = end.toISOString().slice(0, 10)
+    }
 
     const token = await getAccessToken()
 

@@ -59,6 +59,13 @@ const PERMS_CONFIG = [
   { key: 'reportes',      label: 'Reportes'       },
 ]
 
+// Agrupación de tabs en menús desplegables (barra más limpia)
+const TAB_GROUPS = [
+  { id: 'metricas',      label: 'Métricas',      items: [['stats', 'Estadísticas'], ['google', 'Google'], ['reportes', 'Reportes']] },
+  { id: 'reservaciones', label: 'Reservaciones', items: [['reservas', 'Reservas'], ['inscripciones', 'Inscripciones']] },
+  { id: 'contenido',     label: 'Contenido',     items: [['actividades', 'Actividades'], ['eventos', 'Eventos']] },
+]
+
 // ── Labels ────────────────────────────────────────────────
 const WA_LABELS = {
   float:           'Botón flotante',
@@ -253,7 +260,7 @@ function barsLegendHtml() {
   </div>`
 }
 
-function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk }) {
+function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
   const esc = escHtml
   const genDate = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
   const topN = (arr, n = 6) => {
@@ -267,9 +274,7 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk }) {
       <div class="kpi-lbl">${esc(label)}</div>
       ${sub ? `<div class="kpi-sub">${esc(sub)}</div>` : ''}
     </div>`
-  const rows = (arr, total) => arr.length
-    ? arr.slice(0, 5).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v}</td><td class="num">${total ? Math.round((v / total) * 100) : 0}%</td></tr>`).join('')
-    : `<tr><td colspan="3" class="empty">Sin datos</td></tr>`
+  const wv = (v) => web && web.ok ? web[v] : '—'
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -279,92 +284,96 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk }) {
   html,body { width:100%; height:100%; }
   body { font-family:'Montserrat',sans-serif; background:#fff; color:#1d2410; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   @page { size:A4 landscape; margin:0; }
-  .sheet { width:297mm; height:210mm; padding:9mm 12mm; display:flex; flex-direction:column; overflow:hidden; }
-  .head { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid ${HOTEL_OLIVE}; padding-bottom:7px; margin-bottom:9px; }
-  .brand { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:${HOTEL_OLIVE}; font-weight:700; }
-  .title { font-size:22px; font-weight:800; margin-top:2px; }
-  .period { font-size:12px; color:#5b6347; margin-top:2px; font-weight:600; text-transform:capitalize; }
-  .meta { text-align:right; font-size:10px; color:#8a9170; line-height:1.6; }
-  .meta strong { color:${HOTEL_OLIVE}; font-size:12px; }
-  h2 { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:${HOTEL_OLIVE}; margin:0 0 6px; font-weight:700; }
-  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:9px; }
-  .kpi { border:1px solid #e7ead9; border-radius:10px; padding:8px 10px; background:#fafbf5; }
-  .kpi-val { font-size:22px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
-  .kpi-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.4px; color:#6b7350; margin-top:5px; font-weight:600; }
+  .sheet { width:297mm; height:210mm; padding:10mm 13mm; display:flex; flex-direction:column; overflow:hidden; }
+  .head { text-align:center; border-bottom:3px solid ${HOTEL_OLIVE}; padding-bottom:9px; margin-bottom:10px; position:relative; }
+  .brand { font-size:11px; letter-spacing:4px; text-transform:uppercase; color:${HOTEL_OLIVE}; font-weight:700; }
+  .title { font-size:24px; font-weight:800; margin-top:2px; letter-spacing:.3px; }
+  .period { font-size:12px; color:#5b6347; margin-top:3px; font-weight:600; text-transform:capitalize; }
+  .meta { position:absolute; right:0; bottom:9px; text-align:right; font-size:9.5px; color:#8a9170; line-height:1.5; }
+  .meta strong { color:${HOTEL_OLIVE}; font-size:11px; }
+  h2 { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:${HOTEL_OLIVE}; margin:0 0 8px; font-weight:700; text-align:center; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; margin-bottom:9px; }
+  .kpi { border:1px solid #e7ead9; border-radius:12px; padding:11px 10px; background:#fafbf5; text-align:center; }
+  .kpi-val { font-size:24px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
+  .kpi-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#6b7350; margin-top:6px; font-weight:700; }
   .kpi-sub { font-size:8.5px; color:#9aa07e; margin-top:2px; }
-  .main { flex:1; display:grid; grid-template-columns:1.45fr 1fr; gap:10px; min-height:0; }
-  .col { display:flex; flex-direction:column; gap:9px; min-height:0; }
-  .panel { border:1px solid #e7ead9; border-radius:11px; padding:9px 11px; background:#fff; }
-  .panel.grow { flex:1; min-height:0; display:flex; flex-direction:column; }
+  .webstrip { display:grid; grid-template-columns:108px repeat(4,1fr); gap:9px; align-items:stretch; margin-bottom:11px; }
+  .webstrip .kpi { background:#f1f5e4; }
+  .webstrip-tag { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-size:9.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:#fff; background:${HOTEL_OLIVE}; border-radius:12px; padding:8px; line-height:1.35; }
+  .main { flex:1; display:grid; grid-template-columns:1.5fr 1fr; gap:11px; min-height:0; margin-bottom:11px; }
+  .panel { border:1px solid #e7ead9; border-radius:13px; padding:12px 14px; background:#fff; display:flex; flex-direction:column; min-height:0; }
   .panel.grow svg { flex:1; min-height:0; }
-  .two { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
-  table { width:100%; border-collapse:collapse; font-size:11px; }
-  th { text-align:left; font-size:9px; letter-spacing:.4px; text-transform:uppercase; color:#8a9170; border-bottom:1.5px solid #e7ead9; padding:5px 6px; }
-  td { padding:5px 6px; border-bottom:1px solid #f0f2e6; }
-  td.num, th.num { text-align:right; }
-  .empty { color:#aab089; font-style:italic; padding:8px 6px; font-size:11px; }
+  .stat-rows { display:flex; flex-direction:column; gap:7px; margin-top:2px; }
+  .stat-row { display:flex; align-items:center; gap:9px; }
+  .stat-name { flex:1; font-size:11.5px; font-weight:600; color:#3a4220; text-transform:capitalize; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .stat-bar { flex:1.3; height:9px; background:#eef0e2; border-radius:5px; overflow:hidden; }
+  .stat-fill { display:block; height:100%; background:${HOTEL_OLIVE}; border-radius:5px; }
+  .stat-num { width:58px; text-align:right; font-size:11.5px; font-weight:700; color:${HOTEL_OLIVE}; }
+  .donuts { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; }
   .barleg { display:flex; gap:16px; justify-content:center; margin-top:5px; font-size:10px; color:#6b7350; font-weight:600; }
   .barleg span span { width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:5px; }
-  .foot { margin-top:9px; border-top:1px solid #e7ead9; padding-top:7px; font-size:9px; color:#aab089; text-align:center; letter-spacing:.5px; }
+  .foot { border-top:1px solid #e7ead9; padding-top:8px; font-size:9px; color:#aab089; text-align:center; letter-spacing:.5px; }
+  .empty { color:#aab089; font-style:italic; font-size:11px; padding:6px 0; text-align:center; }
 </style></head><body>
   <div class="sheet">
     <div class="head">
-      <div>
-        <div class="brand">Hotel Punta Galería</div>
-        <div class="title">Reporte de Reservas</div>
-        <div class="period">${esc(modeLabel)}: ${esc(periodLabel)}</div>
-      </div>
+      <div class="brand">Hotel Punta Galería</div>
+      <div class="title">Reporte General de la Página</div>
+      <div class="period">${esc(modeLabel)}: ${esc(periodLabel)}</div>
       <div class="meta">Generado<br><strong>${esc(genDate)}</strong></div>
     </div>
 
     <div class="kpis">
-      ${kpi(agg.confirmed, 'Confirmadas')}
-      ${kpi(agg.intents, 'Intentos')}
-      ${kpi(agg.conversion + '%', 'Conversión')}
-      ${kpi(agg.nights, 'Noches', 'prom. ' + agg.avgNights)}
+      ${kpi(wv('clics'), 'Visitas web', 'desde Google')}
+      ${kpi(agg.confirmed, 'Reservas', 'confirmadas')}
+      ${kpi(agg.intents, 'Intentos', 'de reserva')}
+      ${kpi(agg.conversion + '%', 'Conversión', 'conf. / intentos')}
       ${kpi(ins.total, 'Inscripciones', ins.paid + ' pagadas')}
     </div>
 
-    <div class="main">
-      <div class="col">
-        <div class="panel grow">
-          <h2>Reservas por período</h2>
-          ${svgGroupedBars(bk)}
-          <div class="barleg"><span><span style="background:#5a6c1e;"></span>Confirmadas</span><span><span style="background:#b5c840;"></span>Intentos</span></div>
-        </div>
-        <div class="two">
-          <div class="panel">
-            <h2>Detalle habitación</h2>
-            <table><thead><tr><th>Habitación</th><th class="num">Res.</th><th class="num">%</th></tr></thead>
-              <tbody>${rows(agg.byRoom, agg.confirmed)}</tbody></table>
-          </div>
-          <div class="panel">
-            <h2>Detalle origen</h2>
-            <table><thead><tr><th>Origen</th><th class="num">Res.</th><th class="num">%</th></tr></thead>
-              <tbody>${rows(agg.bySource, agg.confirmed)}</tbody></table>
-          </div>
-        </div>
-      </div>
+    <div class="webstrip">
+      <div class="webstrip-tag">Tráfico web<br>Google</div>
+      ${kpi(wv('impresiones'), 'Impresiones', 'en Google')}
+      ${kpi(wv('clics'), 'Visitas (clics)', 'desde Google')}
+      ${kpi(wv('ctr'), 'CTR', 'tasa de clics')}
+      ${kpi(wv('pos'), 'Posición media', 'en resultados')}
+    </div>
 
-      <div class="col">
-        <div class="panel">
-          <h2>Distribución por habitación</h2>
-          ${pieBlockHtml(topN(agg.byRoom), 86)}
+    <div class="main">
+      <div class="panel grow">
+        <h2>Reservas por período — confirmadas vs intentos</h2>
+        ${svgGroupedBars(bk)}
+        <div class="barleg"><span><span style="background:#5a6c1e;"></span>Confirmadas</span><span><span style="background:#b5c840;"></span>Intentos</span></div>
+      </div>
+      <div class="panel">
+        <h2>Noches y desempeño</h2>
+        <div class="stat-rows">
+          ${statRow('Noches reservadas', agg.nights, Math.max(agg.nights, agg.confirmed, 1))}
+          ${statRow('Reservas confirmadas', agg.confirmed, Math.max(agg.intents, agg.confirmed, 1))}
+          ${statRow('Intentos de reserva', agg.intents, Math.max(agg.intents, agg.confirmed, 1))}
+          ${statRow('Inscripciones', ins.total, Math.max(ins.total, agg.confirmed, 1))}
+          ${statRow('Inscripciones pagadas', ins.paid, Math.max(ins.total, 1))}
         </div>
-        <div class="panel">
-          <h2>Origen de la reserva</h2>
-          ${pieBlockHtml(topN(agg.bySource), 86)}
-        </div>
-        <div class="panel">
-          <h2>Inscripciones por evento</h2>
-          ${pieBlockHtml(topN(ins.byEvent), 86)}
+        <div style="margin-top:auto;padding-top:8px;font-size:10px;color:#8a9170;text-align:center;">
+          Promedio ${esc(agg.avgNights)} noches por reserva · CTR web ${esc(wv('ctr'))}
         </div>
       </div>
     </div>
 
-    <div class="foot">Hotel Punta Galería · Reporte interno de reservas · ${esc(periodLabel)}</div>
+    <div class="donuts">
+      <div class="panel"><h2>Por habitación</h2>${pieBlockHtml(topN(agg.byRoom), 84)}</div>
+      <div class="panel"><h2>Origen de la reserva</h2>${pieBlockHtml(topN(agg.bySource), 84)}</div>
+      <div class="panel"><h2>Inscripciones por evento</h2>${pieBlockHtml(topN(ins.byEvent), 84)}</div>
+    </div>
+
+    <div class="foot">Hotel Punta Galería · Reporte general (web + reservas) · ${esc(periodLabel)}</div>
   </div>
 </body></html>`
+}
+
+function statRow(name, val, max) {
+  const pct = max ? Math.round((Number(val) / max) * 100) : 0
+  return `<div class="stat-row"><span class="stat-name">${escHtml(name)}</span><span class="stat-bar"><span class="stat-fill" style="width:${pct}%"></span></span><span class="stat-num">${escHtml(val)}</span></div>`
 }
 
 // ── Helpers ──────────────────────────────────────────────
@@ -1306,6 +1315,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
                     />
                   </th>
                   <th>Origen</th>
+                  <th>Folio</th>
                   <th>Habitación</th>
                   {view === 'confirmed' && <th>Noches</th>}
                   <th onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} style={{ cursor: 'pointer' }}>
@@ -1321,6 +1331,10 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
                       <input type="checkbox" className="adm-chk" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} />
                     </td>
                     <td><span className="adm-how-badge">{RESERVA_LABELS[r.source] ?? r.source ?? '—'}</span></td>
+                    <td>
+                      {r.folio ? <span className="adm-folio">{r.folio}</span> : <span style={{ color: '#c5c9b8' }}>—</span>}
+                      {r.origin === 'web' && <span className="adm-origin-badge">web</span>}
+                    </td>
                     <td><strong style={{ textTransform: 'capitalize' }}>{r.room ?? '—'}</strong></td>
                     {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
                     <td className="adm-table__date">{fmtDBDate(r.created_at)}</td>
@@ -1394,6 +1408,7 @@ function ReportesSection() {
   const [loading, setLoading]   = useState(false)
   const [exporting, setExporting] = useState(false)
   const [err, setErr]           = useState('')
+  const [web, setWeb]           = useState(null)   // tráfico web (Google Search Console)
 
   const months = monthOptions(12)
   const weeks  = weekOptions(12)
@@ -1417,11 +1432,32 @@ function ReportesSection() {
   const ins = aggregateInscripciones(regs, range.from, range.to)
   const bk  = bucketReservas(rows, range.from, range.to)
 
+  // Tráfico web del periodo (Google Search Console: impresiones, clics, CTR, posición)
+  useEffect(() => {
+    let cancel = false
+    setWeb(null)
+    const url = `${API_BASE}/.netlify/functions/gsc?from=${range.from}&to=${range.to}`
+    fetch(url)
+      .then(r => r.json())
+      .then(j => {
+        if (cancel) return
+        if (j && j.totals && !j.error) {
+          const t = j.totals
+          const fmtN = n => Number(n || 0).toLocaleString('es-MX')
+          setWeb({ ok: true, impresiones: fmtN(t.impressions), clics: fmtN(t.clicks), ctr: ((t.ctr || 0) * 100).toFixed(1) + '%', pos: (t.position || 0).toFixed(1) })
+        } else {
+          setWeb({ ok: false, error: j?.error || 'sin datos' })
+        }
+      })
+      .catch(() => { if (!cancel) setWeb({ ok: false, error: 'error' }) })
+    return () => { cancel = true }
+  }, [range.from, range.to])
+
   const handleExport = async () => {
     setExporting(true); setErr('')
     try {
-      const html = buildHotelReportHTML({ periodLabel: range.label, modeLabel, agg, ins, bk })
-      const fname = `reporte-reservas-${range.from}_${range.to}.pdf`
+      const html = buildHotelReportHTML({ periodLabel: range.label, modeLabel, agg, ins, bk, web })
+      const fname = `reporte-general-${range.from}_${range.to}.pdf`
       const res = await fetch(`${API_BASE}/.netlify/functions/export-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1436,14 +1472,6 @@ function ReportesSection() {
     finally { setExporting(false) }
   }
 
-  const kpiCard = (val, label, sub) => (
-    <div className="adm-rep-kpi">
-      <div className="adm-rep-kpi__val">{val}</div>
-      <div className="adm-rep-kpi__lbl">{label}</div>
-      {sub && <div className="adm-rep-kpi__sub">{sub}</div>}
-    </div>
-  )
-
   const presetBtn = (key, label) => (
     <button className={mode === key ? 'active' : ''} onClick={() => setMode(key)}>{label}</button>
   )
@@ -1452,7 +1480,7 @@ function ReportesSection() {
     <div className="adm-activities">
       <div className="adm-users__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span>Reportes de Reservas</span>
+          <span>Reporte General</span>
           <div className="adm-ins-toggle">
             {presetBtn('7d', '7 días')}
             {presetBtn('1m', '1 mes')}
@@ -1479,68 +1507,24 @@ function ReportesSection() {
       {err && <p style={{ color: '#c0392b', padding: '8px 4px', fontSize: 13 }}>{err}</p>}
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
-        <div style={{ padding: '4px 2px 18px' }}>
-          <p style={{ fontSize: 13, color: '#6b7350', margin: '4px 0 14px', fontWeight: 600, textTransform: 'capitalize' }}>
-            {modeLabel}: {range.label}
+        <div className="adm-rep-empty">
+          <div className="adm-rep-empty__icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>
+            </svg>
+          </div>
+          <h3 className="adm-rep-empty__title">Reporte listo para exportar</h3>
+          <p className="adm-rep-empty__sub">Período: <strong style={{ textTransform: 'capitalize' }}>{range.label}</strong></p>
+          <p className="adm-rep-empty__txt">
+            El PDF incluye: visitas e impresiones web (Google), reservas confirmadas e intentos,
+            conversión, noches, distribución por habitación y origen, e inscripciones por evento.
           </p>
-
-          <div className="adm-rep-kpis">
-            {kpiCard(agg.confirmed, 'Reservas confirmadas')}
-            {kpiCard(agg.intents, 'Intentos de reserva')}
-            {kpiCard(`${agg.conversion}%`, 'Conversión', 'conf. / intentos')}
-            {kpiCard(agg.nights, 'Noches reservadas', `prom. ${agg.avgNights} / reserva`)}
-          </div>
-
-          <h4 className="adm-rep-h4">Reservas por período</h4>
-          <div className="adm-rep-panel">
-            <div dangerouslySetInnerHTML={{ __html: svgGroupedBars(bk) }} />
-            <div dangerouslySetInnerHTML={{ __html: barsLegendHtml() }} />
-          </div>
-
-          <div className="adm-rep-cols" style={{ marginTop: 16 }}>
-            <div>
-              <h4 className="adm-rep-h4">Distribución por habitación</h4>
-              <div className="adm-rep-panel" dangerouslySetInnerHTML={{ __html: pieBlockHtml(agg.byRoom) }} />
-            </div>
-            <div>
-              <h4 className="adm-rep-h4">Origen de la reserva</h4>
-              <div className="adm-rep-panel" dangerouslySetInnerHTML={{ __html: pieBlockHtml(agg.bySource) }} />
-            </div>
-          </div>
-
-          <div className="adm-rep-cols" style={{ marginTop: 14 }}>
-            <div>
-              <h4 className="adm-rep-h4">Detalle habitación</h4>
-              <table className="adm-table">
-                <thead><tr><th>Habitación</th><th style={{ textAlign: 'right' }}>Reservas</th><th style={{ textAlign: 'right' }}>%</th></tr></thead>
-                <tbody>
-                  {agg.byRoom.length ? agg.byRoom.map(([k, v]) => (
-                    <tr key={k}><td style={{ textTransform: 'capitalize' }}>{k}</td><td style={{ textAlign: 'right' }}>{v}</td><td style={{ textAlign: 'right' }}>{agg.confirmed ? Math.round((v / agg.confirmed) * 100) : 0}%</td></tr>
-                  )) : <tr><td colSpan={3} style={{ color: '#9aa07e', fontStyle: 'italic' }}>Sin datos</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <div>
-              <h4 className="adm-rep-h4">Detalle origen</h4>
-              <table className="adm-table">
-                <thead><tr><th>Origen</th><th style={{ textAlign: 'right' }}>Reservas</th><th style={{ textAlign: 'right' }}>%</th></tr></thead>
-                <tbody>
-                  {agg.bySource.length ? agg.bySource.map(([k, v]) => (
-                    <tr key={k}><td>{k}</td><td style={{ textAlign: 'right' }}>{v}</td><td style={{ textAlign: 'right' }}>{agg.confirmed ? Math.round((v / agg.confirmed) * 100) : 0}%</td></tr>
-                  )) : <tr><td colSpan={3} style={{ color: '#9aa07e', fontStyle: 'italic' }}>Sin datos</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <h4 className="adm-rep-h4" style={{ marginTop: 16 }}>Inscripciones a eventos / actividades</h4>
-          <div className="adm-rep-kpis" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
-            {kpiCard(ins.total, 'Inscripciones')}
-            {kpiCard(ins.paid, 'Pagadas')}
-            {kpiCard(ins.pending, 'Pendientes')}
-          </div>
-          {ins.byEvent.length > 0 && (
-            <div className="adm-rep-panel" style={{ marginTop: 12 }} dangerouslySetInnerHTML={{ __html: pieBlockHtml(ins.byEvent) }} />
+          <button className="adm-btn-sm adm-btn-sm--primary" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Generando…' : 'Exportar PDF'}
+          </button>
+          {web && !web.ok && (
+            <p className="adm-rep-empty__warn">Tráfico web no disponible ({web.error}). El resto del reporte sí se genera.</p>
           )}
         </div>
       )}
@@ -2604,13 +2588,10 @@ export default function AdminDashboard({ onClose }) {
 
           {/* Tab + period bar */}
           <div className="adm-period-bar">
-            {canSee('stats') && <button className={`adm-period-btn adm-tab-btn ${tab === 'stats' ? 'active' : ''}`} onClick={() => setTab('stats')}>Estadísticas</button>}
-            {canSee('google') && <button className={`adm-period-btn adm-tab-btn ${tab === 'google' ? 'active' : ''}`} onClick={() => setTab('google')}>Google</button>}
-            {canSee('actividades') && <button className={`adm-period-btn adm-tab-btn ${tab === 'actividades' ? 'active' : ''}`} onClick={() => setTab('actividades')}>Actividades</button>}
-            {canSee('eventos') && <button className={`adm-period-btn adm-tab-btn ${tab === 'eventos' ? 'active' : ''}`} onClick={() => setTab('eventos')}>Eventos</button>}
-            {canSee('reservas') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reservas' ? 'active' : ''}`} onClick={() => setTab('reservas')}>Reservas</button>}
-            {canSee('inscripciones') && <button className={`adm-period-btn adm-tab-btn ${tab === 'inscripciones' ? 'active' : ''}`} onClick={() => setTab('inscripciones')}>Inscripciones</button>}
-            {canSee('reportes') && <button className={`adm-period-btn adm-tab-btn ${tab === 'reportes' ? 'active' : ''}`} onClick={() => setTab('reportes')}>Reportes</button>}
+            {/* Todas las tabs visibles (planas) para cualquier usuario. */}
+            {TAB_GROUPS.flatMap(g => g.items).filter(([k]) => canSee(k)).map(([k, label]) => (
+              <button key={k} className={`adm-period-btn adm-tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{label}</button>
+            ))}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
             {(tab === 'inscripciones' || tab === 'reservas') && (
               <div className="adm-bar-daterange">

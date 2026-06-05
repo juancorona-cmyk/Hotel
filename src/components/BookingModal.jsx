@@ -77,7 +77,9 @@ export default function BookingModal({ initialRoom, onClose }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!checkin || !checkout) return
-    trackEvent('reserva_confirmada', { source: 'booking_modal', room: roomId, nights })
+    // Folio = firma para identificar que el prospecto vino de la página web y cruzarlo en métricas
+    const folio = 'HPG-' + Date.now().toString(36).toUpperCase().slice(-6)
+    trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', folio, room: roomId, nights, adults, children, rooms, checkin, checkout })
     const lines = [
       t('modal.waMsg.hola'),
       ``,
@@ -90,6 +92,9 @@ export default function BookingModal({ initialRoom, onClose }) {
       ...(extraPersons > 0 ? [`⚠️ Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra × $200 = $${extraPersons * 200} MXN por noche`] : []),
       ``,
       t('modal.waMsg.gracias'),
+      `——————`,
+      `🔖 ${t('modal.waMsg.folio')}: ${folio}`,
+      `🌐 ${t('modal.waMsg.firma')}`,
     ].join('\n')
     window.open(`https://wa.me/5214433972720?text=${encodeURIComponent(lines)}`, '_blank', 'noopener,noreferrer')
   }
