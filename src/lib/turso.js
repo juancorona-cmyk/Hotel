@@ -634,7 +634,12 @@ export async function adminChangePassword(username, newPassword) {
 export async function getStats(days = 28) {
   const pf = days > 0 ? `created_at >= datetime('now', '-${days} days')` : '1=1'
 
-  const [byType, byDayType, sessions, todayByType, yesterdayByType, waSources, reservaSources, confirmaSources, intentSources, regConfirmSources] = await Promise.all([
+  // Inscripciones confirmadas REALES desde la tabla activity_registrations (fuente de verdad,
+  // coincide con la pestaña Inscripciones). Los bot_events activity_reg_confirm pueden faltar.
+  const rpf = days > 0 ? `created_at >= datetime('now', '-${days} days')` : '1=1'
+
+  const [byType, byDayType, sessions, todayByType, yesterdayByType, waSources, reservaSources, confirmaSources, intentSources,
+         regConfPeriod, regConfToday, regConfYest, regConfReal] = await Promise.all([
     exec(`SELECT event_type, COUNT(*) as cnt FROM bot_events WHERE ${pf} GROUP BY event_type ORDER BY cnt DESC`),
     exec(`SELECT date(created_at) as day, event_type, COUNT(*) as cnt FROM bot_events WHERE created_at >= datetime('now', '-13 days') GROUP BY day, event_type ORDER BY day ASC`),
     exec(`SELECT COUNT(DISTINCT session_id) as cnt FROM bot_events WHERE ${pf}`),
@@ -644,8 +649,13 @@ export async function getStats(days = 28) {
     exec(`SELECT json_extract(metadata, '$.source') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'reserva_click' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
     exec(`SELECT json_extract(metadata, '$.source') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'reserva_confirmada' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
     exec(`SELECT COALESCE(json_extract(metadata, '$.activity_name'), 'General') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'activity_reg_intent' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
-    exec(`SELECT COALESCE(json_extract(metadata, '$.activity_name'), 'General') as source, COUNT(*) as cnt FROM bot_events WHERE event_type = 'activity_reg_confirm' AND ${pf} GROUP BY source ORDER BY cnt DESC`),
+    exec(`SELECT COUNT(*) as cnt FROM activity_registrations WHERE ${rpf}`),
+    exec(`SELECT COUNT(*) as cnt FROM activity_registrations WHERE date(created_at) = date('now')`),
+    exec(`SELECT COUNT(*) as cnt FROM activity_registrations WHERE date(created_at) = date('now', '-1 day')`),
+    exec(`SELECT COALESCE(NULLIF(TRIM(event_name), ''), NULLIF(TRIM(activity_name), ''), 'General') as source, COUNT(*) as cnt FROM activity_registrations WHERE ${rpf} GROUP BY source ORDER BY cnt DESC`),
   ])
+
+  const regReal = parseRows(regConfReal)
 
   return {
     byType:           parseRows(byType),
@@ -657,12 +667,26 @@ export async function getStats(days = 28) {
     reservaSources:   parseRows(reservaSources),
     confirmaSources:  parseRows(confirmaSources),
     intentSources:    parseRows(intentSources),
-    regConfirmSources:parseRows(regConfirmSources),
+    // Siempre desde la tabla real (activity_registrations) — coincide con la pestaña Inscripciones.
+    // NO usar bot_events (datos viejos con casing inconsistente: "Zumba"/"zumba").
+    regConfirmSources: regReal,
+    // Inscripciones confirmadas reales (tabla activity_registrations)
+    regConfirmed:          Number(parseRows(regConfPeriod)[0]?.cnt ?? 0),
+    regConfirmedToday:     Number(parseRows(regConfToday)[0]?.cnt ?? 0),
+    regConfirmedYesterday: Number(parseRows(regConfYest)[0]?.cnt ?? 0),
   }
 }
 
 export async function clearEvents() {
   await exec('DELETE FROM bot_events')
+}
+
+// Reinicia a 0 las inscripciones a eventos/actividades (zumba, yoga, etc.):
+// borra los registros confirmados y los eventos de intento/confirmación de inscripción.
+// NO toca reservas de hotel, WhatsApp ni mensajes del bot.
+export async function clearActivityInscriptions() {
+  await exec('DELETE FROM activity_registrations')
+  await exec("DELETE FROM bot_events WHERE event_type IN ('activity_reg_intent', 'activity_reg_confirm')")
 }
 
 // ── Check-in ────────────────────────────────────────────────

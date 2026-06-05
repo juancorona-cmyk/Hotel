@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 const DIAS = ['D','L','M','X','J','V','S']
 const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
-export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
+export function DatePicker({ value, onChange, placeholder = 'Fecha', allowPast = false }) {
   const [open, setOpen]   = useState(false)
   const [view, setView]   = useState(() => {
     if (value) { const d = new Date(value + 'T00:00:00'); return { y: d.getFullYear(), m: d.getMonth() } }
@@ -30,12 +30,13 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
 
   const isCurrentMonth = view.y === today.getFullYear() && view.m === today.getMonth()
 
-  function prevMonth() { if (!isCurrentMonth) setView(v => v.m === 0 ? { y: v.y-1, m: 11 } : { y: v.y, m: v.m-1 }) }
+  const blockPrev = !allowPast && isCurrentMonth
+  function prevMonth() { if (!blockPrev) setView(v => v.m === 0 ? { y: v.y-1, m: 11 } : { y: v.y, m: v.m-1 }) }
   function nextMonth() { setView(v => v.m === 11 ? { y: v.y+1, m: 0 } : { y: v.y, m: v.m+1 }) }
 
   function selectDay(day) {
     const candidate = new Date(view.y, view.m, day)
-    if (candidate <= today) return
+    if (!allowPast && candidate <= today) return
     const mm = String(view.m + 1).padStart(2, '0')
     const dd = String(day).padStart(2, '0')
     onChange(`${view.y}-${mm}-${dd}`)
@@ -68,7 +69,7 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
       {open && (
         <div className="adm-dp__cal">
           <div className="adm-dp__cal-head">
-            <button type="button" className={`adm-dp__nav ${isCurrentMonth ? 'adm-dp__nav--disabled' : ''}`} onClick={prevMonth} disabled={isCurrentMonth}>‹</button>
+            <button type="button" className={`adm-dp__nav ${blockPrev ? 'adm-dp__nav--disabled' : ''}`} onClick={prevMonth} disabled={blockPrev}>‹</button>
             <span className="adm-dp__cal-title">{MESES_CORTOS[view.m]} {view.y}</span>
             <button type="button" className="adm-dp__nav" onClick={nextMonth}>›</button>
           </div>
@@ -79,7 +80,7 @@ export function DatePicker({ value, onChange, placeholder = 'Fecha' }) {
             {cells.map((day, i) => {
               if (!day) return <span key={`e${i}`} />
               const candidate = new Date(view.y, view.m, day)
-              const isPast  = candidate <= today
+              const isPast  = !allowPast && candidate <= today
               const isToday = today.getFullYear() === view.y && today.getMonth() === view.m && today.getDate() === day
               const isSel   = selectedDay === day
               return (

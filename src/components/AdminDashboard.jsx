@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  getStats, clearEvents,
+  getStats, clearEvents, clearActivityInscriptions,
   adminLoginSingle, adminVerifyToken, adminCreateUser, adminGetUsers, adminDeleteUser, adminChangePassword, adminSetPermissions,
   getActivities, saveActivity, deleteActivity, updateActivity,
   getEvents, createEvent, updateEvent, deleteEvent, getRegistrationsByEvent,
@@ -640,12 +640,18 @@ function UsersSection({ currentUser, userRole }) {
     finally { setCreating(false) }
   }
 
-  const togglePerm = async (key) => {
-    if (!permModal) return
-    const updated = { ...(permModal.permissions ?? {}), [key]: !(permModal.permissions?.[key]) }
-    setPermModal(p => ({ ...p, permissions: updated }))
-    setSavingPerms(true)
-    try { await adminSetPermissions(permModal.id, updated) } finally { setSavingPerms(false); loadUsers() }
+  const togglePerm = (key) => {
+    // Optimista y con estado funcional: permite marcar varios permisos seguidos sin bloquear la lista.
+    setPermModal(p => {
+      if (!p) return p
+      const updated = { ...(p.permissions ?? {}), [key]: !(p.permissions?.[key]) }
+      setSavingPerms(true)
+      adminSetPermissions(p.id, updated)
+        .then(() => loadUsers())
+        .catch(() => alert('Error al guardar permisos'))
+        .finally(() => setSavingPerms(false))
+      return { ...p, permissions: updated }
+    })
   }
 
   return (
@@ -735,8 +741,7 @@ function UsersSection({ currentUser, userRole }) {
                 return (
                   <button key={key} type="button"
                     className={`adm-perms__row${active ? ' adm-perms__row--on' : ''}`}
-                    onClick={() => togglePerm(key)}
-                    disabled={savingPerms}>
+                    onClick={() => togglePerm(key)}>
                     <span className="adm-perms__label">{label}</span>
                     <span className={`adm-toggle${active ? ' adm-toggle--on' : ''}`}>
                       <span className="adm-toggle__knob"/>
@@ -1535,6 +1540,7 @@ function ReportesSection() {
 function ActivityRegistrationsSection({ dateFrom = '', dateTo = '', isAdmin = false }) {
   const [regs, setRegs]           = useState([])
   const [intents, setIntents]     = useState([])
+  const [payingId, setPayingId]   = useState(null)
   const [loading, setLoading]     = useState(false)
   const [view, setView]           = useState('confirmed') // 'confirmed' | 'intents'
   const [evtFilter, setEvtFilter] = useState('')
@@ -1642,12 +1648,36 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '', isAdmin = fa
   }
 
   const handleTogglePaid = async (id, currentPaid) => {
+    if (payingId) return
+    const next = !currentPaid
+    setPayingId(id)
+    // Actualización optimista: feedback inmediato y evita el doble-clic que cancelaba el cambio
+    const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19)
+    setRegs(rs => rs.map(r => r.id === id ? { ...r, paid: next ? 1 : 0, paid_at: next ? nowIso : null } : r))
     try {
-      await updateActivityRegistrationPayment(id, !currentPaid)
-      loadData()
+      await updateActivityRegistrationPayment(id, next)
     } catch {
+      setRegs(rs => rs.map(r => r.id === id ? { ...r, paid: currentPaid ? 1 : 0 } : r))
       alert('Error al actualizar pago')
+    } finally {
+      setPayingId(null)
     }
+  }
+
+  // Reinicia a 0 TODAS las inscripciones a eventos (confirmadas + intentos: zumba, yoga, etc.)
+  const handleResetAll = () => {
+    if (!isAdmin) return
+    setConfirmModal({
+      title: 'Reiniciar inscripciones a 0',
+      message: 'Se eliminarán TODAS las inscripciones a eventos/actividades (confirmadas e intentos: zumba, yoga, etc.) y sus contadores quedarán en 0. No afecta reservas de hotel. Esta acción no se puede deshacer.',
+      confirmLabel: 'Reiniciar a 0',
+      onConfirm: async () => {
+        setDeleting(true)
+        try { await clearActivityInscriptions(); setSelected(new Set()); loadData() }
+        catch { /* silent */ }
+        finally { setDeleting(false); setConfirmModal(null) }
+      },
+    })
   }
 
   const currentData = view === 'confirmed' ? regs : intents
@@ -1717,7 +1747,12 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '', isAdmin = fa
           )}
           {isAdmin && sorted.length > 0 && (
             <button className="adm-btn-sm adm-btn-sm--red-outline" onClick={handleClearAll} disabled={deleting}>
-              Vaciar todo
+              Vaciar vista
+            </button>
+          )}
+          {isAdmin && (regs.length > 0 || intents.length > 0) && (
+            <button className="adm-btn-sm adm-btn-sm--red" onClick={handleResetAll} disabled={deleting} title="Borra confirmadas e intentos y deja en 0">
+              Reiniciar a 0
             </button>
           )}
           <span className="adm-users__count">
@@ -1812,9 +1847,10 @@ function ActivityRegistrationsSection({ dateFrom = '', dateTo = '', isAdmin = fa
                     <td>{r.phone}</td>
                     {view === 'confirmed' && (
                       <td>
-                        <button 
+                        <button
                           className={`adm-pay-toggle ${r.paid ? 'adm-pay-toggle--paid' : ''}`}
                           onClick={() => handleTogglePaid(r.id, !!r.paid)}
+                          disabled={payingId === r.id}
                           title={r.paid ? 'Marcar como pendiente' : 'Marcar como pagado'}
                         >
                           {r.paid ? (
@@ -2520,7 +2556,8 @@ export default function AdminDashboard({ onClose }) {
   const aRes   = cnt(stats?.byType, 'reserva_click')
   const aConf  = cnt(stats?.byType, 'reserva_confirmada')
   const aRegI  = cnt(stats?.byType, 'activity_reg_intent')
-  const aRegC  = cnt(stats?.byType, 'activity_reg_confirm')
+  // Inscripciones confirmadas: conteo REAL de activity_registrations (coincide con la pestaña Inscripciones)
+  const aRegC  = stats?.regConfirmed ?? cnt(stats?.byType, 'activity_reg_confirm')
 
   // Hoy
   const tMsg   = cnt(stats?.todayByType, 'bot_message')
@@ -2528,7 +2565,7 @@ export default function AdminDashboard({ onClose }) {
   const tRes   = cnt(stats?.todayByType, 'reserva_click')
   const tConf  = cnt(stats?.todayByType, 'reserva_confirmada')
   const tRegI  = cnt(stats?.todayByType, 'activity_reg_intent')
-  const tRegC  = cnt(stats?.todayByType, 'activity_reg_confirm')
+  const tRegC  = stats?.regConfirmedToday ?? cnt(stats?.todayByType, 'activity_reg_confirm')
 
   // Ayer (delta)
   const yMsg   = cnt(stats?.yesterdayByType, 'bot_message')
@@ -2536,7 +2573,7 @@ export default function AdminDashboard({ onClose }) {
   const yRes   = cnt(stats?.yesterdayByType, 'reserva_click')
   const yConf  = cnt(stats?.yesterdayByType, 'reserva_confirmada')
   const yRegI  = cnt(stats?.yesterdayByType, 'activity_reg_intent')
-  const yRegC  = cnt(stats?.yesterdayByType, 'activity_reg_confirm')
+  const yRegC  = stats?.regConfirmedYesterday ?? cnt(stats?.yesterdayByType, 'activity_reg_confirm')
 
   const chartData = buildChartData(stats?.byDayType)
 
@@ -2596,9 +2633,9 @@ export default function AdminDashboard({ onClose }) {
             {(tab === 'inscripciones' || tab === 'reservas') && (
               <div className="adm-bar-daterange">
                 <span className="adm-bar-daterange__label">Período</span>
-                <DatePicker value={insDateFrom} onChange={setInsDateFrom} placeholder="Desde" />
+                <DatePicker value={insDateFrom} onChange={setInsDateFrom} placeholder="Desde" allowPast />
                 <span className="adm-bar-datesep">→</span>
-                <DatePicker value={insDateTo} onChange={setInsDateTo} placeholder="Hasta" />
+                <DatePicker value={insDateTo} onChange={setInsDateTo} placeholder="Hasta" allowPast />
               </div>
             )}
           </div>
