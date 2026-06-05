@@ -2928,3 +2928,50 @@
   .adm-rep-kpis { grid-template-columns: 1fr 1fr; }
   .adm-period-bar { flex-wrap: wrap; }
 }
+
+/* Sección combinada Actividades + Eventos */
+.adm-contenido__bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.adm-seg-group {
+  display: inline-flex;
+  background: #f3f4ec;
+  border: 1px solid #e7ead9;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+.adm-seg {
+  border: none;
+  background: transparent;
+  padding: 9px 22px;
+  border-radius: 9px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7350;
+  cursor: pointer;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.adm-seg:hover { color: #5a6c1e; }
+.adm-seg--on {
+  background: #5a6c1e;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(90,108,30,.25);
+}
+
+/* Empty state con CTA (Actividades) */
+.adm-empty-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 20px;
+  border: 1px dashed #d7dcc2;
+  border-radius: 14px;
+  background: #fafbf5;
+}
+.adm-empty-cta__icon { font-size: 30px; opacity: .7; }
+.adm-empty-cta__txt { color: #6b7350; font-size: 14px; margin: 0; }

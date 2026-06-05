@@ -178,6 +178,12 @@ export default function HotelBot() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  const resetChat = () => {
+    setMessages([{ role: 'assistant', content: '¡Hola! Soy HotelBot, el asistente virtual del Hotel Punta Galería. ¿En qué puedo ayudarte hoy?' }])
+    setShowQuick(true)
+    setInput('')
+  }
+
   const sendMessage = async (text) => {
     const userText = (text || input).trim()
     if (!userText || loading) return
@@ -221,7 +227,7 @@ export default function HotelBot() {
       {open && (
         <div className="hb-window">
           <div className="hb-header">
-            <button className="hb-close" onClick={() => setOpen(false)} aria-label="Regresar">
+            <button className="hb-close" onClick={resetChat} aria-label="Volver al inicio" title="Volver al inicio">
               <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
               </svg>
@@ -238,6 +244,11 @@ export default function HotelBot() {
                 </div>
               </div>
             </div>
+            <button className="hb-close" onClick={() => setOpen(false)} aria-label="Cerrar" title="Cerrar" style={{ marginLeft: 'auto' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width="18" height="18">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
 
           <div className="hb-messages">

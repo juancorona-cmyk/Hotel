@@ -14,7 +14,7 @@ import {
 import { getActivityIcon } from '../lib/activityIcons'
 import { fmtFecha as _fmtFecha, fmtHora } from '../lib/utils'
 import SearchConsoleTab from './SearchConsoleTab'
-import { DatePicker, TimePicker } from './common/DateTimePickers'
+import { DatePicker } from './common/DateTimePickers'
 import './AdminDashboard.css'
 
 function fmtFecha(s) {
@@ -63,7 +63,7 @@ const PERMS_CONFIG = [
 const TAB_GROUPS = [
   { id: 'metricas',      label: 'Métricas',      items: [['stats', 'Estadísticas'], ['google', 'Google'], ['reportes', 'Reportes']] },
   { id: 'reservaciones', label: 'Reservaciones', items: [['reservas', 'Reservas'], ['inscripciones', 'Inscripciones']] },
-  { id: 'contenido',     label: 'Contenido',     items: [['actividades', 'Actividades'], ['eventos', 'Eventos']] },
+  { id: 'contenido',     label: 'Contenido',     items: [['contenido', 'Actividades y Eventos']] },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -722,7 +722,7 @@ function UsersSection({ currentUser, userRole }) {
 
       {/* Permissions modal */}
       {permModal && (
-        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setPermModal(null)}>
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setPermModal(null)}>
           <div className="adm-evt-modal">
             <div className="adm-evt-modal__head">
               <span className="adm-users__change-title" style={{ margin: 0 }}>
@@ -830,6 +830,33 @@ function actSlug(name, id) {
 }
 
 // ── Activities section ────────────────────────────────────
+// Sección combinada: Actividades + Eventos bajo un solo tab con sub-toggle.
+function ContenidoSection({ canSee, initial = 'actividades' }) {
+  const canA = canSee('actividades')
+  const canE = canSee('eventos')
+  const [sub, setSub] = useState(initial)
+  const view = (sub === 'eventos' && canE) ? 'eventos' : (canA ? 'actividades' : 'eventos')
+  return (
+    <div className="adm-contenido">
+      <div className="adm-contenido__bar">
+        <div className="adm-seg-group">
+          {canA && (
+            <button className={`adm-seg ${view === 'actividades' ? 'adm-seg--on' : ''}`} onClick={() => setSub('actividades')}>
+              Actividades
+            </button>
+          )}
+          {canE && (
+            <button className={`adm-seg ${view === 'eventos' ? 'adm-seg--on' : ''}`} onClick={() => setSub('eventos')}>
+              Eventos
+            </button>
+          )}
+        </div>
+      </div>
+      {view === 'actividades' ? <ActivitiesSection /> : <EventosSection />}
+    </div>
+  )
+}
+
 function ActivitiesSection() {
   const [activities, setActivities] = useState([])
   const [loading, setLoading]       = useState(false)
@@ -838,6 +865,7 @@ function ActivitiesSection() {
   const [err, setErr]               = useState('')
   const [createdModal, setCreatedModal] = useState(null)
   const [linkCopied, setLinkCopied]    = useState(false)
+  const [showCreate, setShowCreate]    = useState(false)
 
   // New activity form state
   const [newAct, setNewAct] = useState({
@@ -931,6 +959,7 @@ function ActivitiesSection() {
         )
       }
       const slug = newId ? actSlug(newAct.name.trim(), newId) : null
+      setShowCreate(false)
       setCreatedModal({ name: newAct.name.trim(), slug, hasEvt: !!(newId && hasEvt) })
       setNewAct({ name: '', fechaTipo: 'rec', fecha: '', diaRec: 'Viernes', frecRec: 'todas', hora: '', price: '', capacity: '', evtDate: '', description: '', showEvt: false })
       load()
@@ -960,13 +989,20 @@ function ActivitiesSection() {
     <div className="adm-activities">
       <div className="adm-users__header">
         <span>Actividades</span>
-        <span className="adm-users__count">{activities.length} activa{activities.length !== 1 ? 's' : ''}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+          <span className="adm-users__count">{activities.length} activa{activities.length !== 1 ? 's' : ''}</span>
+          <button className="adm-btn-sm adm-btn-sm--green" onClick={() => { setShowCreate(true); setErr('') }}>+ Nueva actividad</button>
+        </div>
       </div>
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
         <div className="adm-users__list">
           {activities.length === 0 && (
-            <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin actividades. Agrega la primera abajo.</p>
+            <div className="adm-empty-cta">
+              <span className="adm-empty-cta__icon">{getActivityIcon('')}</span>
+              <p className="adm-empty-cta__txt">Aún no tienes actividades.</p>
+              <button className="adm-btn-sm adm-btn-sm--green" onClick={() => { setShowCreate(true); setErr('') }}>+ Crear la primera</button>
+            </div>
           )}
           {activities.map(a => {
             const ev = eventInfo[a.id]
@@ -1018,7 +1054,7 @@ function ActivitiesSection() {
 
       {/* ── Edit modal ── */}
       {editItem && (
-        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setEditItem(null)}>
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setEditItem(null)}>
           <div className="adm-evt-modal">
             <div className="adm-evt-modal__head">
               <span className="adm-users__change-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1040,7 +1076,7 @@ function ActivitiesSection() {
                 <button type="button" className={editItem.tipo === 'rec'   ? 'active' : ''} onClick={() => setEditItem(p => ({...p, tipo: 'rec',   fecha: ''}))}>Recurrente</button>
               </div>
               {editItem.tipo === 'fecha' ? (
-                <DatePicker key="edit-fecha" value={editItem.fecha} onChange={v => setEditItem(p => ({...p, fecha: v}))} placeholder="Fecha específica" />
+                <input type="date" value={editItem.fecha || ''} onChange={setE('fecha')} className="adm-users__input" aria-label="Fecha específica" />
               ) : (
                 <div className="adm-act-rec-fields">
                   <div className="adm-act-rec-wrap">
@@ -1051,10 +1087,10 @@ function ActivitiesSection() {
                       {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
                     </select>
                   </div>
-                  <DatePicker key="edit-evt-fecha" value={editItem.evtDate} onChange={v => setEditItem(p => ({...p, evtDate: v}))} placeholder="Próxima fecha (ej: viernes 9)" />
+                  <input type="date" value={editItem.evtDate || ''} onChange={setE('evtDate')} className="adm-users__input" aria-label="Próxima fecha" />
                 </div>
               )}
-              <TimePicker value={editItem.hora} onChange={v => setEditItem(p => ({...p, hora: v}))} placeholder="Hora" variant="input" />
+              <input type="time" value={editItem.hora || ''} onChange={setE('hora')} className="adm-users__input" aria-label="Hora" />
 
               <EventFieldsDivider />
               <div className="adm-act-evt-grid">
@@ -1079,22 +1115,33 @@ function ActivitiesSection() {
         </div>
       )}
 
-      {/* ── Add form ── */}
-      <form onSubmit={add} className="adm-act-form">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="adm-act-form__preview">{getActivityIcon(newAct.name)}</span>
-          <input type="text" value={newAct.name}
-            onChange={e => { setN('name')(e); setErr('') }}
-            placeholder="Nombre de la actividad (ej: Yoga, Pilates…)"
-            className="adm-users__input adm-act-form__name" style={{ flex: 1 }} />
-        </div>
+      {/* ── Add form (modal) ── */}
+      {showCreate && (
+       <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setShowCreate(false)}>
+        <div className="adm-evt-modal">
+          <div className="adm-evt-modal__head">
+            <span className="adm-users__change-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>{getActivityIcon(newAct.name)}</span>
+              Nueva actividad
+            </span>
+            <button className="adm-evt-modal__close" onClick={() => setShowCreate(false)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+      <form onSubmit={add} className="adm-act-edit">
+        <input type="text" value={newAct.name}
+          onChange={e => { setN('name')(e); setErr('') }}
+          placeholder="Nombre de la actividad (ej: Yoga, Pilates…)"
+          className="adm-users__input adm-act-form__name" />
 
         <div className="adm-act-tipo">
           <button type="button" className={newAct.fechaTipo === 'fecha' ? 'active' : ''} onClick={() => setNewAct(p => ({...p, fechaTipo: 'fecha', evtDate: ''}))}>Fecha específica</button>
           <button type="button" className={newAct.fechaTipo === 'rec'   ? 'active' : ''} onClick={() => setNewAct(p => ({...p, fechaTipo: 'rec',   fecha:   ''}))}>Recurrente</button>
         </div>
         {newAct.fechaTipo === 'fecha' ? (
-          <DatePicker key="new-fecha" value={newAct.fecha} onChange={setN('fecha')} placeholder="Fecha específica" />
+          <input type="date" value={newAct.fecha || ''} onChange={e => setN('fecha')(e.target.value)} className="adm-users__input" aria-label="Fecha específica" />
         ) : (
           <div className="adm-act-rec-fields">
             <div className="adm-act-rec-wrap">
@@ -1105,10 +1152,10 @@ function ActivitiesSection() {
                 {FREC_REC.map(f => <option key={f.val} value={f.val}>{f.label}</option>)}
               </select>
             </div>
-            <DatePicker key="new-evt-fecha" value={newAct.evtDate} onChange={setN('evtDate')} placeholder="Próxima fecha (ej: viernes 9)" />
+            <input type="date" value={newAct.evtDate || ''} onChange={e => setN('evtDate')(e.target.value)} className="adm-users__input" aria-label="Próxima fecha" />
           </div>
         )}
-        <TimePicker value={newAct.hora} onChange={setN('hora')} placeholder="Hora" variant="input" />
+        <input type="time" value={newAct.hora || ''} onChange={e => setN('hora')(e.target.value)} className="adm-users__input" aria-label="Hora" />
 
         <button type="button"
           className="adm-act-toggle-evt"
@@ -1133,15 +1180,21 @@ function ActivitiesSection() {
           </>
         )}
 
-        <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving} style={{ marginTop: 4 }}>
-          {saving ? 'Guardando…' : '+ Crear actividad'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={saving} style={{ flex: 1 }}>
+            {saving ? 'Guardando…' : '+ Crear actividad'}
+          </button>
+          <button type="button" className="adm-btn-sm" onClick={() => setShowCreate(false)}>Cancelar</button>
+        </div>
         {err && <p className="adm-users__err">{err}</p>}
       </form>
+        </div>
+       </div>
+      )}
 
       {/* ── Created modal ── */}
       {createdModal && (
-        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setCreatedModal(null)}>
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setCreatedModal(null)}>
           <div className="adm-evt-modal adm-created-modal">
             <button className="adm-evt-modal__close" style={{ alignSelf: 'flex-end' }} onClick={() => { setCreatedModal(null); setLinkCopied(false) }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -2212,7 +2265,7 @@ function EventosSection() {
   }
 
   // ── Form shared between modal (new) and inline (edit) ──
-  const EventForm = ({ isNew }) => (
+  const renderEventForm = (isNew) => (
     <form onSubmit={isNew ? addEvent : saveEdit} className="adm-evt-form-inner">
       <input type="text" value={isNew ? newEventForm.name : editItem.name}
         onChange={isNew ? setNew('name') : set('name')}
@@ -2226,11 +2279,10 @@ function EventosSection() {
         <input type="number" value={isNew ? newEventForm.capacity : editItem.capacity}
           onChange={isNew ? setNew('capacity') : set('capacity')} placeholder="Lugares" className="adm-users__input" />
       </div>
-      <DatePicker
-        value={isNew ? newEventForm.date : editItem.date}
-        onChange={v => isNew ? setNewEventForm(p => ({...p, date: v})) : setEditItem(p => ({...p, date: v}))}
-        placeholder="Fecha del evento"
-      />
+      <input type="date"
+        value={isNew ? (newEventForm.date || '') : (editItem.date || '')}
+        onChange={e => isNew ? setNewEventForm(p => ({...p, date: e.target.value})) : setEditItem(p => ({...p, date: e.target.value}))}
+        className="adm-users__input" aria-label="Fecha del evento" />
       <DescField
         value={isNew ? newEventForm.description : editItem.description}
         onChange={isNew ? setNew('description') : set('description')}
@@ -2320,7 +2372,7 @@ function EventosSection() {
 
       {/* Edit event modal */}
       {editItem && (
-        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && setEditItem(null)}>
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setEditItem(null)}>
           <div className="adm-evt-modal">
             <div className="adm-evt-modal__head">
               <span className="adm-users__change-title" style={{ margin: 0 }}>Editar — {editItem.name}</span>
@@ -2330,14 +2382,14 @@ function EventosSection() {
                 </svg>
               </button>
             </div>
-            <EventForm isNew={false} />
+            {renderEventForm(false)}
           </div>
         </div>
       )}
 
       {/* New event modal */}
       {showNewModal && (
-        <div className="adm-evt-modal-overlay" onClick={e => e.target === e.currentTarget && (setShowNewModal(false), setErr(''))}>
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && (setShowNewModal(false), setErr(''))}>
           <div className="adm-evt-modal">
             <div className="adm-evt-modal__head">
               <span className="adm-users__change-title" style={{ margin: 0 }}>Nuevo evento</span>
@@ -2347,7 +2399,7 @@ function EventosSection() {
                 </svg>
               </button>
             </div>
-            <EventForm isNew={true} />
+            {renderEventForm(true)}
           </div>
         </div>
       )}
@@ -2477,6 +2529,7 @@ export default function AdminDashboard({ onClose }) {
   const canSee = (key) => {
     if (isAdmin) return true
     if (key === 'users') return false
+    if (key === 'contenido') return userPerms?.actividades === true || userPerms?.eventos === true
     return userPerms?.[key] === true
   }
 
@@ -2626,9 +2679,12 @@ export default function AdminDashboard({ onClose }) {
           {/* Tab + period bar */}
           <div className="adm-period-bar">
             {/* Todas las tabs visibles (planas) para cualquier usuario. */}
-            {TAB_GROUPS.flatMap(g => g.items).filter(([k]) => canSee(k)).map(([k, label]) => (
-              <button key={k} className={`adm-period-btn adm-tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{label}</button>
-            ))}
+            {TAB_GROUPS.flatMap(g => g.items).filter(([k]) => canSee(k)).map(([k, label]) => {
+              const active = tab === k || (k === 'contenido' && (tab === 'actividades' || tab === 'eventos'))
+              return (
+                <button key={k} className={`adm-period-btn adm-tab-btn ${active ? 'active' : ''}`} onClick={() => setTab(k)}>{label}</button>
+              )
+            })}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
             {(tab === 'inscripciones' || tab === 'reservas') && (
               <div className="adm-bar-daterange">
@@ -2651,10 +2707,8 @@ export default function AdminDashboard({ onClose }) {
           <div className="adm-dash__body">
             {tab === 'users' ? (
               <UsersSection currentUser={currentUser} userRole={userRole} />
-            ) : tab === 'actividades' ? (
-              <ActivitiesSection />
-            ) : tab === 'eventos' ? (
-              <EventosSection />
+            ) : (tab === 'contenido' || tab === 'actividades' || tab === 'eventos') ? (
+              <ContenidoSection canSee={canSee} initial={tab === 'eventos' ? 'eventos' : 'actividades'} />
             ) : tab === 'reservas' ? (
               <HotelReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
             ) : tab === 'inscripciones' ? (
