@@ -80,21 +80,22 @@ export default function BookingModal({ initialRoom, onClose }) {
     // Folio = firma para identificar que el prospecto vino de la página web y cruzarlo en métricas
     const folio = 'HPG-' + Date.now().toString(36).toUpperCase().slice(-6)
     trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', folio, room: roomId, nights, adults, children, rooms, checkin, checkout })
+    // Sin emojis: en WhatsApp de PC se veían como "◆". Etiquetas en negrita se ven igual en PC y celular.
     const lines = [
       t('modal.waMsg.hola'),
       ``,
-      `🏨 ${t('modal.waMsg.habitacion')}: ${room.name} (${room.label})`,
-      `📅 ${t('modal.waMsg.llegada')}: ${fmtDate(checkin)}`,
-      `📅 ${t('modal.waMsg.salida')}: ${fmtDate(checkout)} (${nights} ${t(nights === 1 ? 'modal.noche' : 'modal.noches')})`,
-      `👤 ${t('modal.adultosLbl')}: ${adults}`,
-      ...(room.maxChildren > 0 ? [`👶 ${t('modal.ninosLbl')}: ${children}`] : []),
-      `🛏 ${t('modal.habitacionesLbl')}: ${rooms}`,
-      ...(extraPersons > 0 ? [`⚠️ Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra × $200 = $${extraPersons * 200} MXN por noche`] : []),
+      `*${t('modal.waMsg.habitacion')}:* ${room.name} (${room.label})`,
+      `*${t('modal.waMsg.llegada')}:* ${fmtDate(checkin)}`,
+      `*${t('modal.waMsg.salida')}:* ${fmtDate(checkout)} (${nights} ${t(nights === 1 ? 'modal.noche' : 'modal.noches')})`,
+      `*${t('modal.adultosLbl')}:* ${adults}`,
+      ...(room.maxChildren > 0 ? [`*${t('modal.ninosLbl')}:* ${children}`] : []),
+      `*${t('modal.habitacionesLbl')}:* ${rooms}`,
+      ...(extraPersons > 0 ? [`Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra x $200 = $${extraPersons * 200} MXN por noche`] : []),
       ``,
       t('modal.waMsg.gracias'),
-      `——————`,
-      `🔖 ${t('modal.waMsg.folio')}: ${folio}`,
-      `🌐 ${t('modal.waMsg.firma')}`,
+      `-----------------`,
+      `*${t('modal.waMsg.folio')}:* ${folio}`,
+      t('modal.waMsg.firma'),
     ].join('\n')
     window.open(`https://wa.me/5214433972720?text=${encodeURIComponent(lines)}`, '_blank', 'noopener,noreferrer')
   }
