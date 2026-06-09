@@ -1327,8 +1327,8 @@
 .sa-donut {
   --pct: 0;
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   flex-shrink: 0;
   border-radius: 50%;
   background: conic-gradient(#5a6c1e calc(var(--pct) * 1%), #ece8e1 0);
@@ -1338,8 +1338,8 @@
   transition: background 0.5s ease;
 }
 .sa-donut-hole {
-  width: 60px;
-  height: 60px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   background: #fff;
   display: flex;
