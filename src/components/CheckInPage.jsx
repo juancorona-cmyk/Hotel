@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { QRCodeSVG } from 'qrcode.react'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, adminChangePassword, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
 import { subscribeToPush } from '../lib/pushNotifications'
 import { CDN } from '../lib/cdn'
@@ -149,18 +149,27 @@ export default function CheckInPage() {
   const handleRecover = async (e) => {
     e.preventDefault()
     setRecErr('')
-    const setupKey = import.meta.env.VITE_ADMIN_SETUP_KEY || ''
     if (!recUser.trim()) { setRecErr('Ingresa el usuario'); return }
-    if (!setupKey || recKey.trim() !== setupKey) { setRecErr('Clave de recuperación incorrecta'); return }
+    if (!recKey.trim()) { setRecErr('Ingresa la clave de recuperación'); return }
     const chk = checkPasswordStrength(recPwd.trim())
     if (!chk.ok) { setRecErr(chk.message); return }
     setRecBusy(true)
     try {
-      await adminChangePassword(recUser.trim(), recPwd.trim())
-      setRecOk(true)
-      setRecPwd(''); setRecKey('')
+      const path = '/.netlify/functions/auth'
+      const res = await fetch(API_BASE ? `${API_BASE}${path}` : path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset', username: recUser.trim(), setupKey: recKey.trim(), newPassword: recPwd.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.ok) {
+        setRecOk(true)
+        setRecPwd(''); setRecKey('')
+      } else {
+        setRecErr(data.error || 'No se pudo actualizar')
+      }
     } catch {
-      setRecErr('No se pudo actualizar. Intenta de nuevo.')
+      setRecErr('Error de conexión')
     } finally {
       setRecBusy(false)
     }
@@ -538,16 +547,22 @@ export default function CheckInPage() {
             </button>
           </form>
 
-          <button type="button" className="ci-forgot-link" onClick={() => { setShowRecover(v => !v); setRecErr(''); setRecOk(false) }}>
-            {showRecover ? 'Volver al inicio de sesión' : '¿Olvidaste tu contraseña?'}
+          <button type="button" className="ci-forgot-link" onClick={() => { setShowRecover(true); setRecErr(''); setRecOk(false) }}>
+            ¿Olvidaste tu contraseña?
           </button>
+        </div>
 
-          {showRecover && (
-            <form onSubmit={handleRecover} className="ci-recover">
+        {showRecover && (
+          <div className="ci-recover-overlay" onClick={e => { if (e.target === e.currentTarget) setShowRecover(false) }}>
+            <form onSubmit={handleRecover} className="ci-recover-modal">
+              <button type="button" className="ci-recover-x" onClick={() => setShowRecover(false)} aria-label="Cerrar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
               {recOk ? (
                 <div className="ci-recover-ok">
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                   <p>Contraseña actualizada. Ya puedes iniciar sesión.</p>
+                  <button type="button" className="ci-login-btn" onClick={() => setShowRecover(false)}>Entendido</button>
                 </div>
               ) : (
                 <>
@@ -574,8 +589,8 @@ export default function CheckInPage() {
                 </>
               )}
             </form>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     )
   }

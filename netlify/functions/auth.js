@@ -1,4 +1,4 @@
-import { pbkdf2, createHmac, timingSafeEqual } from 'crypto'
+import { pbkdf2, createHmac, timingSafeEqual, randomBytes } from 'crypto'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -113,12 +113,32 @@ export default async (req) => {
       })
     }
 
-    // ── Login ─────────────────────────────────────────────────────────────────
-    if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
-
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
       || req.headers.get('x-nf-client-connection-ip')
       || null
+
+    // ── Recuperar contraseña (valida la clave de recuperacion server-side) ──────
+    if (action === 'reset') {
+      if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
+      const { newPassword, setupKey } = body
+      const sk = process.env.ADMIN_SETUP_KEY
+      if (!sk || setupKey !== sk) return json({ ok: false, error: 'Clave de recuperación incorrecta' }, 401)
+      if (!username?.trim() || !newPassword || String(newPassword).length < 8) {
+        return json({ ok: false, error: 'Datos inválidos' }, 400)
+      }
+      const [u] = await dbQuery('SELECT id FROM admin_users WHERE username = ? LIMIT 1', [{ type: 'text', value: username.trim() }])
+      if (!u) return json({ ok: false, error: 'El usuario no existe' }, 404)
+      const salt = randomBytes(16).toString('hex')
+      const hash = await hashPassword(newPassword, salt)
+      await dbQuery('UPDATE admin_users SET hash = ?, salt = ? WHERE username = ?', [
+        { type: 'text', value: hash }, { type: 'text', value: salt }, { type: 'text', value: username.trim() },
+      ])
+      return json({ ok: true })
+    }
+
+    // ── Login ─────────────────────────────────────────────────────────────────
+    if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
+
     if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
 
     const [countRow] = await dbQuery('SELECT COUNT(*) as cnt FROM admin_users')

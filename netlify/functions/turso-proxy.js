@@ -1,7 +1,37 @@
+import { createHmac, timingSafeEqual } from 'crypto'
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+// Verifica JWT HMAC-SHA256 (mismo esquema que auth.js)
+function verifyJWT(token, secret) {
+  const parts = token?.split('.')
+  if (parts?.length !== 3) return null
+  const [h, p, sig] = parts
+  const expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url')
+  const a = Buffer.from(sig, 'base64url')
+  const b = Buffer.from(expected, 'base64url')
+  if (a.length !== b.length) return null
+  try { if (!timingSafeEqual(a, b)) return null } catch { return null }
+  try {
+    const payload = JSON.parse(Buffer.from(p, 'base64url').toString())
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null
+    return payload
+  } catch { return null }
+}
+
+// SQL sensible: lectura/escritura sobre admin_users (no bloquea CREATE/ALTER de setupDB)
+function isSensitiveSQL(bodyText) {
+  try {
+    const reqs = JSON.parse(bodyText)?.requests || []
+    return reqs.some(r => {
+      const sql = (r?.stmt?.sql || '').trim()
+      return /admin_users/i.test(sql) && /^(insert|update|delete|select)\b/i.test(sql)
+    })
+  } catch { return false }
 }
 
 function getCleanConfig() {
@@ -86,10 +116,23 @@ export default async (req) => {
 
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS })
   try {
+    const bodyText = await req.text()
+
+    // Seguridad: operaciones sobre admin_users requieren token admin valido
+    if (isSensitiveSQL(bodyText)) {
+      const secret = process.env.ADMIN_JWT_SECRET
+      const auth = req.headers.get('authorization') || ''
+      const clientToken = auth.replace(/^bearer\s+/i, '').trim()
+      const payload = secret ? verifyJWT(clientToken, secret) : null
+      if (!payload || payload.role !== 'admin') {
+        return new Response(JSON.stringify({ error: 'No autorizado' }), { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } })
+      }
+    }
+
     const res = await fetch(`${normalizedUrl}/v2/pipeline`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: await req.text()
+      body: bodyText
     })
     if (!res.ok) {
         const errText = await res.text()

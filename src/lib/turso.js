@@ -33,9 +33,16 @@ async function pipeline(requests) {
   const timer = setTimeout(() => controller.abort(), 15000)
 
   try {
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+    // Adjunta el token admin para operaciones protegidas (admin_users)
+    try {
+      const t = localStorage.getItem('ci_token')
+      if (t) headers.Authorization = `Bearer ${t}`
+    } catch {}
+
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers,
       body: JSON.stringify({ requests }),
       signal: controller.signal,
     })

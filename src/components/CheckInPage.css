@@ -1696,15 +1696,49 @@
   cursor: pointer;
   text-decoration: underline;
 }
-.ci-recover {
+.ci-recover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(30, 36, 28, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: ciFade 0.18s ease-out;
+}
+@keyframes ciFade { from { opacity: 0 } to { opacity: 1 } }
+.ci-recover-modal {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: #fffefb;
+  border-radius: 24px;
+  padding: 26px 22px 22px;
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #ece8e1;
+  gap: 12px;
+  animation: ciPop 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-.ci-recover-title { font-size: 15px; font-weight: 800; color: #323f48; margin: 0; }
+@keyframes ciPop { from { transform: scale(0.92); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+.ci-recover-x {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #f1ede4;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a7d6b;
+  cursor: pointer;
+}
+.ci-recover-title { font-size: 17px; font-weight: 800; color: #323f48; margin: 0; padding-right: 30px; }
 .ci-recover-hint { font-size: 12px; color: #9a8e7e; margin: 0 0 4px; }
 .ci-recover-ok {
   display: flex;
