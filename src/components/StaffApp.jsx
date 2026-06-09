@@ -9,6 +9,34 @@ import './StaffApp.css'
 const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
 const DESC_MAX = 200
 
+const DIAS_SEM = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+const MESES_ABR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+// "2026-06-09" → "mar 9 jun"
+function fmtEventDate(dateStr) {
+  if (!dateStr) return 'Sin fecha'
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (isNaN(d.getTime())) return dateStr
+  return `${DIAS_SEM[d.getDay()]} ${d.getDate()} ${MESES_ABR[d.getMonth()]}`
+}
+
+// Etiqueta de recencia para historial: "Cerró hoy", "hace N días"...
+function closedRelative(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(`${dateStr}T00:00:00`)
+  if (isNaN(d.getTime())) return ''
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const diff = Math.round((today - d) / 86400000)
+  if (diff < 0) return 'Próximo'
+  if (diff === 0) return 'Cerró hoy'
+  if (diff === 1) return 'Cerró ayer'
+  if (diff < 7) return `Cerró hace ${diff} días`
+  if (diff < 14) return 'Cerró hace 1 semana'
+  if (diff < 30) return `Cerró hace ${Math.floor(diff / 7)} semanas`
+  if (diff < 60) return 'Cerró hace 1 mes'
+  return `Cerró hace ${Math.floor(diff / 30)} meses`
+}
+
 // ── Alert utilities (fuera del componente para estabilidad) ──
 function playAlertSound(type = 'reg') {
   try {
@@ -134,6 +162,88 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [creating, setCreating] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [createdSlug, setCreatedSlug] = useState(null)
+  const [autoClose, setAutoClose] = useState(null)
+
+  const goHome = useCallback(() => {
+    setCreatedSlug(null)
+    setAutoClose(null)
+    setView('dashboard')
+  }, [])
+
+  // Inicia cuenta regresiva al mostrar la pantalla de exito
+  useEffect(() => {
+    setAutoClose(createdSlug ? 8 : null)
+  }, [createdSlug])
+
+  // Tick cada segundo (pausado si autoClose es null)
+  useEffect(() => {
+    if (autoClose === null || autoClose <= 0) return
+    const id = setTimeout(() => setAutoClose(s => (s === null ? null : s - 1)), 1000)
+    return () => clearTimeout(id)
+  }, [autoClose])
+
+  // Al llegar a 0, vuelve al inicio
+  useEffect(() => {
+    if (autoClose === 0) goHome()
+  }, [autoClose, goHome])
+
+  // ── Menu (bottom sheet) + OTA manual ──
+  const [showMenu, setShowMenu] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const onRemoteBuild = typeof location !== 'undefined' && location.hostname.includes('hotelpuntagaleria')
+
+  useEffect(() => {
+    fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then(r => r.json()).then(v => setAppVersion(v?.version || '')).catch(() => {})
+  }, [])
+
+  const checkForUpdates = useCallback(async () => {
+    const fetchVer = async (url) => {
+      try {
+        const r = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' })
+        if (!r.ok) return null
+        return await r.json()
+      } catch { return null }
+    }
+    setCheckingUpdate(true)
+    showToast('Buscando actualizaciones…')
+    try {
+      const [localV, remoteV] = await Promise.all([
+        fetchVer('/version.json'),
+        fetchVer('https://hotelpuntagaleria.mx/version.json'),
+      ])
+      if (!remoteV?.version) {
+        showToast('Aún no hay versión publicada. Haz deploy (git push) primero.', 'error')
+        return
+      }
+      if (remoteV.version === (localV?.version || '')) {
+        showToast('Ya tienes la última versión')
+        return
+      }
+      setModal({
+        title: 'Actualización disponible',
+        message: `Hay una versión nueva del sistema (${remoteV.version}). Se cargará la versión más reciente.`,
+        confirmLabel: 'Actualizar ahora',
+        onConfirm: () => {
+          localStorage.setItem('ota_mode', 'remote')
+          window.location.href = 'https://hotelpuntagaleria.mx/checkin'
+        },
+      })
+    } finally {
+      setCheckingUpdate(false)
+    }
+  }, [])
+
+  const backToInstalled = useCallback(() => {
+    setModal({
+      icon: 'lock',
+      title: 'Volver a la versión instalada',
+      message: 'La app cargará la versión instalada en el dispositivo (funciona sin internet).',
+      confirmLabel: 'Volver a instalada',
+      onConfirm: () => { window.location.href = 'http://localhost/?installed=1' },
+    })
+  }, [])
 
   const handleAiGenerate = async () => {
     if (!newEvt.name?.trim()) { showToast('Ingresa primero el nombre del evento', 'error'); return }
@@ -164,7 +274,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }
 
   const lowerRole = role?.toLowerCase()
-  const canCreate = lowerRole === 'admin' || lowerRole === 'staff' || lowerRole === 'editor' || (localStorage.getItem('ci_perms') && JSON.parse(localStorage.getItem('ci_perms')).eventos)
+  const canCreate = lowerRole === 'admin' || lowerRole === 'staff' || lowerRole === 'editor' || JSON.parse(localStorage.getItem('ci_perms') || 'null')?.eventos === true
 
   const getEventUrl = (ev) => `https://hotelpuntagaleria.mx/evento/${ev.slug}`
 
@@ -362,6 +472,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const handleCreateEvent = async (e) => {
     e.preventDefault()
     if (!newEvt.name.trim()) { showToast('El nombre es obligatorio', 'error'); return }
+    if (!newEvt.date) { showToast('La fecha es obligatoria', 'error'); return }
+    const price = parseFloat(newEvt.price) || 0
+    const capacity = parseInt(newEvt.capacity) || 0
+    if (price < 0) { showToast('El precio no puede ser negativo', 'error'); return }
+    if (capacity < 0) { showToast('La capacidad no puede ser negativa', 'error'); return }
     setCreating(true)
     try {
       let activityId = editingId
@@ -371,17 +486,16 @@ export default function StaffApp({ onStartScan, onLogout }) {
         activityId = await saveActivity(newEvt.name.trim(), newEvt.date, newEvt.time)
       }
 
-      let slug = null
-      if (activityId) {
-        slug = await upsertActivityEvent(
-          activityId,
-          newEvt.name.trim(),
-          parseFloat(newEvt.price) || 0,
-          newEvt.description.trim(),
-          newEvt.date,
-          parseInt(newEvt.capacity) || 0
-        )
-      }
+      if (!activityId) { showToast('Error al guardar la actividad', 'error'); return }
+
+      const slug = await upsertActivityEvent(
+        activityId,
+        newEvt.name.trim(),
+        price,
+        (newEvt.description ?? '').trim(),
+        newEvt.date,
+        capacity
+      )
       setCreatedSlug(slug)
       if (!editingId) {
         setNewEvt({ name: '', date: '', time: '', price: '', capacity: '', description: '' })
@@ -782,24 +896,21 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
         <section className="sa-header-hero-section">
           <div className="sa-top-bar">
-            <div className="sa-top-left">
+            <button className="sa-top-left sa-top-left--btn" onClick={() => setShowMenu(true)} aria-label="Abrir menú">
               <div className="sa-avatar-circle">
                 <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="sa-avatar-logo" />
               </div>
               <div className="sa-greeting-block">
                 <span className="sa-greeting-sub">Bienvenido</span>
-                <span className="sa-greeting-role">{role === 'admin' ? 'Administrador' : 'Staff'}</span>
+                <span className="sa-greeting-role">
+                  {role === 'admin' ? 'Administrador' : 'Staff'}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="sa-greeting-caret">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </span>
               </div>
-            </div>
+            </button>
             <div className="sa-top-actions">
-              {lowerRole === 'admin' && (
-                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
-                  <button onClick={handleTestPush} style={{fontSize:11,padding:'3px 8px',borderRadius:6,background:'#5a6c1e',color:'#fff',border:'none',cursor:'pointer',fontFamily:'Montserrat,sans-serif'}}>
-                    Test Push
-                  </button>
-                  {pushDiag && <span style={{fontSize:10,color:'#5a6c1e',maxWidth:200,textAlign:'right',fontFamily:'Montserrat,sans-serif'}}>{pushDiag}</span>}
-                </div>
-              )}
               <button className="sa-notif-btn" aria-label="Notificaciones" onClick={handleNotifClick}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -808,11 +919,6 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 {notifCount > 0 && (
                   <span className="sa-notif-count">{notifCount > 9 ? '9+' : notifCount}</span>
                 )}
-              </button>
-              <button className="sa-logout-btn" onClick={onLogout} aria-label="Salir">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4757" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
               </button>
             </div>
           </div>
@@ -888,7 +994,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       </div>
                       <div className="sa-ev-info">
                         <span className="sa-ev-name">{ev.name}</span>
-                        <span className="sa-ev-date">{ev.date || 'Sin fecha'}</span>
+                        <span className="sa-ev-date">{fmtEventDate(ev.date)}</span>
                       </div>
                       <div className="sa-arrow-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -980,7 +1086,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       </div>
                       <div className="sa-ev-info">
                         <span className="sa-ev-name">{ev.name}</span>
-                        <span className="sa-ev-date">{ev.date || 'Sin fecha'}</span>
+                        <span className="sa-ev-date">
+                          {fmtEventDate(ev.date)}
+                          <span className="sa-ev-closed">{closedRelative(ev.date)}</span>
+                        </span>
                       </div>
                       <div className="sa-arrow-icon">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -1122,6 +1231,65 @@ export default function StaffApp({ onStartScan, onLogout }) {
         )}
 
         <BottomNav />
+        {showMenu && (
+          <div className="sa-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) setShowMenu(false) }}>
+            <div className="sa-sheet">
+              <span className="sa-sheet-grip" />
+              <div className="sa-sheet-head">
+                <div className="sa-sheet-avatar">
+                  <img src="/logo/logNegro.svg" alt="" className="sa-avatar-logo" />
+                </div>
+                <div className="sa-sheet-head-info">
+                  <span className="sa-sheet-name">{role === 'admin' ? 'Administrador' : 'Staff'}</span>
+                  <span className="sa-sheet-sub">Hotel Punta Galería</span>
+                </div>
+              </div>
+
+              <div className="sa-sheet-list">
+                <button className="sa-sheet-item" disabled={checkingUpdate}
+                  onClick={() => { setShowMenu(false); onRemoteBuild ? backToInstalled() : checkForUpdates() }}>
+                  <span className={`sa-sheet-ic ${checkingUpdate ? 'sa-update-btn--spin' : ''}`}>
+                    {onRemoteBuild ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    )}
+                  </span>
+                  <span className="sa-sheet-label">{onRemoteBuild ? 'Volver a versión instalada' : 'Buscar actualizaciones'}</span>
+                  <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+
+                <button className="sa-sheet-item" onClick={() => { setShowMenu(false); handleNotifClick() }}>
+                  <span className="sa-sheet-ic">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  </span>
+                  <span className="sa-sheet-label">Notificaciones</span>
+                  {notifCount > 0 && <span className="sa-sheet-badge">{notifCount > 9 ? '9+' : notifCount}</span>}
+                  <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+
+                {lowerRole === 'admin' && (
+                  <button className="sa-sheet-item" onClick={() => { setShowMenu(false); handleTestPush() }}>
+                    <span className="sa-sheet-ic">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </span>
+                    <span className="sa-sheet-label">Probar notificación push</span>
+                    <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
+
+                <button className="sa-sheet-item sa-sheet-item--danger" onClick={() => { setShowMenu(false); onLogout() }}>
+                  <span className="sa-sheet-ic">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  </span>
+                  <span className="sa-sheet-label">Cerrar sesión</span>
+                </button>
+              </div>
+
+              <span className="sa-sheet-version">{onRemoteBuild ? 'En línea' : 'Instalada'} · {appVersion || '—'}</span>
+            </div>
+          </div>
+        )}
         {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
         {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
@@ -1168,7 +1336,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                     </div>
                     <div className="sa-ev-info">
                       <span className="sa-ev-name">{ev.name}</span>
-                      <span className="sa-ev-date">{ev.date || 'Sin fecha'} • {ev.hora || 'Sin hora'}</span>
+                      <span className="sa-ev-date">{fmtEventDate(ev.date)} • {ev.hora || 'Sin hora'}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {ev.slug && (
@@ -1237,7 +1405,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
                         </div>
                         <div className="sa-ev-info">
                           <span className="sa-ev-name">{ev.name}</span>
-                          <span className="sa-ev-date">{ev.date || 'Sin fecha'} · {evRegs.length} reg.</span>
+                          <span className="sa-ev-date">
+                            {fmtEventDate(ev.date)} · {evRegs.length} reg.
+                            <span className="sa-ev-closed">{closedRelative(ev.date)}</span>
+                          </span>
                         </div>
                         <button
                           className="sa-new-edition-btn sa-new-edition-btn--compact"
@@ -1324,28 +1495,38 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </div>
 
           <div className="sa-create-view" style={{ textAlign: 'center' }}>
-            <div className="sa-form" style={{ alignItems: 'center', gap: 24 }}>
-              <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+            <div className="sa-success">
+              <div className="sa-success-check">
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </div>
+
               <div>
                 <h2 className="sa-form-title">¡Listo para compartir!</h2>
-                <p className="sa-form-sub">Envía la invitación a tus contactos o copia el enlace.</p>
+                <p className="sa-form-sub">Envía la invitación o copia el enlace.</p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-                <button className="sa-submit-btn" onClick={shareInvitation} style={{ background: '#25d366', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)' }}>
-                  Compartir en WhatsApp
+              <div className="sa-success-actions">
+                <button className="sa-act sa-act--wa" onClick={() => { setAutoClose(null); shareInvitation() }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm5.8 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5-4.5-.2-.2-1.2-1.6-1.2-3s.7-2.1 1-2.4c.3-.3.6-.4.8-.4h.6c.2 0 .4 0 .7.5l.9 2.1c.1.2.1.4 0 .6l-.4.6-.4.4c-.1.1-.3.3-.1.6.1.3.7 1.1 1.4 1.8 1 .9 1.7 1.1 2 1.3.3.1.4.1.6-.1l.7-.9c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.5.4.1.1.1.7-.2 1.4z"/>
+                  </svg>
+                  WhatsApp
                 </button>
-                <button className="sa-submit-btn" onClick={copyInvitation} style={{ background: '#f8fafc', color: '#1e293b', border: '1.5px solid #e2e8f0', boxShadow: 'none' }}>
-                  Copiar Enlace
-                </button>
-                <button className="sa-bn-item" onClick={() => { setCreatedSlug(null); setView('dashboard') }} style={{ marginTop: 10 }}>
-                  Volver al Inicio
+                <button className="sa-act sa-act--copy" onClick={() => { setAutoClose(null); copyInvitation() }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copiar
                 </button>
               </div>
+
+              <button className="sa-success-counter" onClick={goHome} aria-label="Ir al inicio ahora">
+                <span className="sa-counter-num">{autoClose ?? 0}</span>
+                <span className="sa-counter-label">Volviendo al inicio…</span>
+                <span className="sa-counter-hint">Toca para ir ahora</span>
+              </button>
             </div>
           </div>
           <BottomNav />
@@ -1356,7 +1537,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
     }
 
     return (
-      <div className="sa-root">
+      <div className="sa-root sa-root--create">
         <div className="sa-sticky-top sa-top-gradient">
           <header className="sa-attendees-header">
             <button className="sa-back-btn" onClick={goBack}>
@@ -1378,6 +1559,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
         <div className="sa-create-view">
           <form onSubmit={handleCreateEvent} className="sa-form">
+            <span className="sa-form-accent" />
+
             <div className="sa-field">
               <label className="sa-label">Nombre del Evento</label>
               <input
@@ -1389,6 +1572,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 required
               />
             </div>
+
+            <div className="sa-section-divider"><span>Fecha y hora</span></div>
 
             <div className="sa-grid-2">
               <div className="sa-field">
@@ -1410,21 +1595,28 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
             </div>
 
+            <div className="sa-section-divider"><span>Precio y aforo</span></div>
+
             <div className="sa-grid-2">
               <div className="sa-field">
-                <label className="sa-label">Precio ($)</label>
-                <input
-                  type="number"
-                  className="sa-input"
-                  placeholder="0.00"
-                  value={newEvt.price}
-                  onChange={e => setNewEvt({ ...newEvt, price: e.target.value })}
-                />
+                <label className="sa-label">Precio</label>
+                <div className="sa-input-affix">
+                  <span className="sa-input-prefix">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    className="sa-input sa-input--affixed"
+                    placeholder="0.00"
+                    value={newEvt.price}
+                    onChange={e => setNewEvt({ ...newEvt, price: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="sa-field">
                 <label className="sa-label">Lugares</label>
                 <input
                   type="number"
+                  min="0"
                   className="sa-input"
                   placeholder="Capacidad"
                   value={newEvt.capacity}
@@ -1433,15 +1625,21 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
             </div>
 
+            <div className="sa-section-divider"><span>Descripción</span></div>
+
             <div className="sa-field">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="sa-label">Descripción</label>
+              <div className="sa-field-head">
+                <label className="sa-label">Detalles</label>
                 <button
                   type="button"
                   className="sa-ai-btn"
                   onClick={handleAiGenerate}
                   disabled={aiLoading}
                 >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 2l1.9 5.7L19.6 9.5 13.9 11.4 12 17l-1.9-5.6L4.4 9.5l5.7-1.8L12 2z"/>
+                    <path d="M19 14l.8 2.4L22 17l-2.2.7L19 20l-.7-2.3L16 17l2.3-.6L19 14z"/>
+                  </svg>
                   {aiLoading ? 'Generando...' : 'Generar con IA'}
                 </button>
               </div>
@@ -1452,7 +1650,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 maxLength={DESC_MAX}
                 onChange={e => setNewEvt({ ...newEvt, description: e.target.value })}
               />
-              <span style={{ fontSize: 10, color: '#94a3b8', textAlign: 'right', fontWeight: 700 }}>
+              <span className="sa-char-count">
                 {newEvt.description.length} / {DESC_MAX}
               </span>
             </div>

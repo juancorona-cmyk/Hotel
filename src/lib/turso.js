@@ -288,7 +288,7 @@ export async function linkEventToActivity(eventId, activityId) {
 export async function upsertActivityEvent(activityId, activityName, price, description, date, capacity) {
   const existing = await getEventByActivityId(activityId)
   const slug = activityName.toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     + '-' + activityId
   if (existing) {

@@ -7,7 +7,9 @@ const config: CapacitorConfig = {
   appName: 'Hotel Punta Galeria',
   webDir: 'dist',
   server: {
-    androidScheme: 'http'
+    androidScheme: 'http',
+    // OTA manual: permite cargar la version desplegada manteniendo el bridge nativo
+    allowNavigation: ['hotelpuntagaleria.mx', '*.hotelpuntagaleria.mx']
   }
 };
 
