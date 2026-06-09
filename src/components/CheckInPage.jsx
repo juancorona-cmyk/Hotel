@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { QRCodeSVG } from 'qrcode.react'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, adminChangePassword, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
+import { checkPasswordStrength } from '../lib/passwordStrength'
 import { subscribeToPush } from '../lib/pushNotifications'
 import { CDN } from '../lib/cdn'
 import { fmtFecha } from '../lib/utils'
@@ -30,6 +31,14 @@ export default function CheckInPage() {
   const [loginErr, setLoginErr] = useState('')
   const [loginBusy, setLoginBusy] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+  // Recuperar contraseña
+  const [showRecover, setShowRecover] = useState(false)
+  const [recUser, setRecUser] = useState('')
+  const [recKey, setRecKey] = useState('')
+  const [recPwd, setRecPwd] = useState('')
+  const [recBusy, setRecBusy] = useState(false)
+  const [recErr, setRecErr] = useState('')
+  const [recOk, setRecOk] = useState(false)
 
   // Suscribir a push cada vez que el staff está autenticado
   useEffect(() => {
@@ -134,6 +143,26 @@ export default function CheckInPage() {
       setLoginErr(err.message || 'Error de conexión')
     } finally {
       setLoginBusy(false)
+    }
+  }
+
+  const handleRecover = async (e) => {
+    e.preventDefault()
+    setRecErr('')
+    const setupKey = import.meta.env.VITE_ADMIN_SETUP_KEY || ''
+    if (!recUser.trim()) { setRecErr('Ingresa el usuario'); return }
+    if (!setupKey || recKey.trim() !== setupKey) { setRecErr('Clave de recuperación incorrecta'); return }
+    const chk = checkPasswordStrength(recPwd.trim())
+    if (!chk.ok) { setRecErr(chk.message); return }
+    setRecBusy(true)
+    try {
+      await adminChangePassword(recUser.trim(), recPwd.trim())
+      setRecOk(true)
+      setRecPwd(''); setRecKey('')
+    } catch {
+      setRecErr('No se pudo actualizar. Intenta de nuevo.')
+    } finally {
+      setRecBusy(false)
     }
   }
 
@@ -508,6 +537,44 @@ export default function CheckInPage() {
               )}
             </button>
           </form>
+
+          <button type="button" className="ci-forgot-link" onClick={() => { setShowRecover(v => !v); setRecErr(''); setRecOk(false) }}>
+            {showRecover ? 'Volver al inicio de sesión' : '¿Olvidaste tu contraseña?'}
+          </button>
+
+          {showRecover && (
+            <form onSubmit={handleRecover} className="ci-recover">
+              {recOk ? (
+                <div className="ci-recover-ok">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#5a6c1e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <p>Contraseña actualizada. Ya puedes iniciar sesión.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="ci-recover-title">Recuperar contraseña</p>
+                  <p className="ci-recover-hint">Necesitas la clave de recuperación del administrador.</p>
+                  <input className="ci-login-input" placeholder="Usuario" value={recUser} onChange={e => { setRecUser(e.target.value); setRecErr('') }} />
+                  <input className="ci-login-input" placeholder="Clave de recuperación" value={recKey} onChange={e => { setRecKey(e.target.value); setRecErr('') }} />
+                  <input className="ci-login-input" type="text" placeholder="Nueva contraseña" value={recPwd} onChange={e => { setRecPwd(e.target.value); setRecErr('') }} />
+                  {recPwd && (() => {
+                    const s = checkPasswordStrength(recPwd)
+                    return (
+                      <div className="ci-pwd-meter">
+                        <div className="ci-pwd-meter-track">
+                          <div className={`ci-pwd-meter-fill ci-pwd-meter-fill--${s.score}`} style={{ width: `${(s.score / 4) * 100}%` }} />
+                        </div>
+                        <span className={s.ok ? 'ci-pwd-meter-ok' : 'ci-pwd-meter-bad'}>{s.message}</span>
+                      </div>
+                    )
+                  })()}
+                  {recErr && <div className="ci-login-err"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>{recErr}</div>}
+                  <button type="submit" className="ci-login-btn" disabled={recBusy}>
+                    {recBusy ? <span className="ci-login-btn-spinner" /> : 'Restablecer contraseña'}
+                  </button>
+                </>
+              )}
+            </form>
+          )}
         </div>
       </div>
     )

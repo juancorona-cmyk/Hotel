@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
+import { checkPasswordStrength } from '../lib/passwordStrength'
 import { subscribeToPush } from '../lib/pushNotifications'
 import './StaffApp.css'
 
@@ -250,7 +251,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }, [view, loadUsers])
 
   const savePassword = useCallback(async (username) => {
-    if (pwValue.trim().length < 4) { showToast('Mínimo 4 caracteres', 'error'); return }
+    const chk = checkPasswordStrength(pwValue.trim())
+    if (!chk.ok) { showToast(chk.message, 'error'); return }
     setPwSaving(true)
     try {
       await adminChangePassword(username, pwValue.trim())
