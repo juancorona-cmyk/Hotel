@@ -1480,7 +1480,7 @@
 .sa-sheet-overlay {
   position: fixed;
   inset: 0;
-  z-index: 400;
+  z-index: 2000;
   background: rgba(30, 36, 28, 0.5);
   backdrop-filter: blur(3px);
   display: flex;
