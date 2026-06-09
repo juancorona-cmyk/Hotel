@@ -61,9 +61,10 @@
     Content-Type = "application/json"
     Cache-Control = "no-cache"
 
-# version.json — nunca cachear, para que el OTA detecte cada deploy al instante
+# version.json — nunca cachear + CORS para que el APK (origen localhost) lo lea
 [[headers]]
   for = "/version.json"
   [headers.values]
     Content-Type = "application/json"
     Cache-Control = "no-cache, no-store, must-revalidate"
+    Access-Control-Allow-Origin = "*"
