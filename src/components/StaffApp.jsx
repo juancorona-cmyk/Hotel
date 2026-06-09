@@ -213,12 +213,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
         fetchVer('/version.json'),
         fetchVer('https://hotelpuntagaleria.mx/version.json'),
       ])
-      if (!remoteV?.version) {
-        showToast('Aún no hay versión publicada. Haz deploy (git push) primero.', 'error')
-        return
-      }
-      if (remoteV.version === (localV?.version || '')) {
-        showToast('Ya tienes la última versión')
+      if (!remoteV?.version || remoteV.version === (localV?.version || '')) {
+        showToast('Ya tienes la versión más reciente')
         return
       }
       setModal({
