@@ -1311,6 +1311,24 @@
   align-items: center;
 }
 
+/* ── Desglose por evento (pagados / pendientes / asistieron) ── */
+.sa-ev-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sa-evb {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+.sa-evb--paid { color: #4c5b18; background: #eef0dc; }
+.sa-evb--pend { color: #9a6b06; background: #fdf0d5; }
+.sa-evb--att  { color: #1f7a44; background: #dff5e6; }
+
 /* ── Panel de ingresos + donut ── */
 .sa-ingresos {
   display: flex;

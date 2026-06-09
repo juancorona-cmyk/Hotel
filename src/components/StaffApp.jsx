@@ -949,6 +949,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 const registered = evRegs.length
                 const capacity = Number(ev.capacity) || 0
                 const checkedIn = evRegs.filter(isCheckedIn).length
+                const paidE = evRegs.filter(isPaid).length
+                const pendingE = registered - paidE
 
                 // Porcentaje basado en capacidad; sin capacidad usa registrados vs check-ins
                 const pct = capacity > 0
@@ -994,16 +996,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
                           <span className="sa-progress-label">
                             <b style={{ color: fillColor }}>{registered}</b>
                             <span> / {capacity} lugares</span>
-                            {checkedIn > 0 && (
-                              <span style={{ color: '#236d00', marginLeft: 6, fontSize: 11 }}>· {checkedIn} confirmados</span>
-                            )}
                           </span>
                         ) : (
                           <span className="sa-progress-label">
                             <b>{registered}</b> registrados
-                            {checkedIn > 0 && (
-                              <span style={{ color: '#236d00', marginLeft: 6, fontSize: 11 }}>· {checkedIn} confirmados</span>
-                            )}
                           </span>
                         )}
                         <span className="sa-progress-pct" style={{ color: fillColor }}>
@@ -1015,6 +1011,13 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       {capacity > 0 && (
                         <div className="sa-bar-bg">
                           <div className="sa-bar-fill" style={{ width: `${pct}%`, background: fillColor }} />
+                        </div>
+                      )}
+                      {registered > 0 && (
+                        <div className="sa-ev-breakdown">
+                          {paidE > 0 && <span className="sa-evb sa-evb--paid">{paidE} pagados</span>}
+                          {pendingE > 0 && <span className="sa-evb sa-evb--pend">{pendingE} pendientes</span>}
+                          {checkedIn > 0 && <span className="sa-evb sa-evb--att">{checkedIn} asistieron</span>}
                         </div>
                       )}
                     </div>
