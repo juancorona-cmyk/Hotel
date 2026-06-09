@@ -228,6 +228,11 @@ export default function CheckInPage() {
     localStorage.removeItem('ci_perms')
     setAuthed(false)
     setReg(null)
+    // Resetear login: contraseña vacia y oculta
+    setLoginPwd('')
+    setShowPwd(false)
+    setMustChange(false)
+    setChgPwd(''); setChgPwd2('')
     navigate('/checkin')
   }
 
