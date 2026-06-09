@@ -142,6 +142,12 @@ export default function CheckInPage() {
         // Clave generica: pasar a pantalla de nueva contraseña
         setMustChange(true)
         setChgPwd(''); setChgPwd2(''); setChgErr('')
+      } else if (result.reason === 'not_found') {
+        setLoginErr('El usuario no existe')
+      } else if (result.reason === 'bad_password') {
+        setLoginErr('Contraseña incorrecta')
+      } else if (result.error) {
+        setLoginErr(result.error)
       } else {
         setLoginErr(
           result.reason === 'setup'

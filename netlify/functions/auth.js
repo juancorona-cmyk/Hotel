@@ -6,22 +6,26 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-// Rate limiter: max 10 login attempts per IP per 15 minutes
+// Rate limiter: max 10 intentos FALLIDOS por IP cada 15 minutos.
+// Solo cuenta fallos; un login/cambio exitoso limpia el contador.
 const limiter = new Map()
-function checkLimit(ip) {
-  const now = Date.now()
-  const WINDOW = 15 * 60 * 1000
-  const MAX = 10
+const RL_WINDOW = 15 * 60 * 1000
+const RL_MAX = 10
+function isBlocked(ip) {
   const key = ip || 'unknown'
   const entry = limiter.get(key)
-  if (!entry || now > entry.reset) {
-    limiter.set(key, { count: 1, reset: now + WINDOW })
-    return false
-  }
-  if (entry.count >= MAX) return true
-  entry.count++
-  return false
+  if (!entry) return false
+  if (Date.now() > entry.reset) { limiter.delete(key); return false }
+  return entry.count >= RL_MAX
 }
+function recordFail(ip) {
+  const key = ip || 'unknown'
+  const now = Date.now()
+  const entry = limiter.get(key)
+  if (!entry || now > entry.reset) { limiter.set(key, { count: 1, reset: now + RL_WINDOW }); return }
+  entry.count++
+}
+function clearLimit(ip) { limiter.delete(ip || 'unknown') }
 
 // JWT (HMAC-SHA256) — no external dependencies
 function b64url(data) {
@@ -129,10 +133,10 @@ export default async (req) => {
 
     // ── Recuperar contraseña (valida la clave de recuperacion server-side) ──────
     if (action === 'reset') {
-      if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
+      if (isBlocked(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
       const { newPassword, setupKey } = body
       const sk = process.env.ADMIN_SETUP_KEY
-      if (!sk || setupKey !== sk) return json({ ok: false, error: 'Clave de recuperación incorrecta' }, 401)
+      if (!sk || setupKey !== sk) { recordFail(ip); return json({ ok: false, error: 'Clave de recuperación incorrecta' }, 401) }
       if (!username?.trim() || !newPassword || String(newPassword).length < 8) {
         return json({ ok: false, error: 'Datos inválidos' }, 400)
       }
@@ -143,12 +147,13 @@ export default async (req) => {
       await dbQuery('UPDATE admin_users SET hash = ?, salt = ? WHERE username = ?', [
         { type: 'text', value: hash }, { type: 'text', value: salt }, { type: 'text', value: username.trim() },
       ])
+      clearLimit(ip)
       return json({ ok: true })
     }
 
     // ── Cambio forzado de contraseña (clave generica → nueva) ──────────────────
     if (action === 'change') {
-      if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
+      if (isBlocked(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
       const { newPassword } = body
       if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
       const msg = validatePassword(newPassword)
@@ -159,15 +164,16 @@ export default async (req) => {
         'SELECT hash, salt, role, permissions FROM admin_users WHERE username = ? LIMIT 1',
         [{ type: 'text', value: username.trim() }]
       )
-      if (!u) return json({ ok: false, reason: 'not_found' })
+      if (!u) { recordFail(ip); return json({ ok: false, reason: 'not_found' }) }
       const curHash = await hashPassword(password, u.salt)
-      if (curHash !== u.hash) return json({ ok: false, reason: 'bad_password' })
+      if (curHash !== u.hash) { recordFail(ip); return json({ ok: false, reason: 'bad_password' }) }
 
       const salt = randomBytes(16).toString('hex')
       const hash = await hashPassword(newPassword, salt)
       await dbQuery('UPDATE admin_users SET hash = ?, salt = ?, must_change = 0 WHERE username = ?', [
         { type: 'text', value: hash }, { type: 'text', value: salt }, { type: 'text', value: username.trim() },
       ])
+      clearLimit(ip)
 
       let permissions = null
       try { if (u.permissions) permissions = JSON.parse(u.permissions) } catch {}
@@ -182,7 +188,7 @@ export default async (req) => {
     // ── Login ─────────────────────────────────────────────────────────────────
     if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
 
-    if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
+    if (isBlocked(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
 
     const [countRow] = await dbQuery('SELECT COUNT(*) as cnt FROM admin_users')
     const userCount = Number(countRow?.cnt ?? 0)
@@ -190,6 +196,7 @@ export default async (req) => {
     if (userCount === 0) {
       const sk = process.env.ADMIN_SETUP_KEY
       if (sk && password === sk) {
+        clearLimit(ip)
         const now = Math.floor(Date.now() / 1000)
         const token = signJWT({
           sub: username.trim(), role: 'admin', permissions: null, setup: true,
@@ -205,16 +212,19 @@ export default async (req) => {
       [{ type: 'text', value: username.trim() }]
     )
 
-    if (!row) return json({ ok: false, reason: 'not_found' })
+    if (!row) { recordFail(ip); return json({ ok: false, reason: 'not_found' }) }
 
     const hash = await hashPassword(password, row.salt)
-    if (hash !== row.hash) return json({ ok: false, reason: 'bad_password' })
+    if (hash !== row.hash) { recordFail(ip); return json({ ok: false, reason: 'bad_password' }) }
 
-    // Forzar cambio: flag de clave generica O contraseña actual que no cumple la politica
+    // Forzar cambio: flag de clave generica O contraseña actual que no cumple la politica.
+    // La contraseña es correcta, no penaliza el limiter.
     if (Number(row.must_change) === 1 || validatePassword(password) !== null) {
+      clearLimit(ip)
       return json({ ok: false, reason: 'must_change' })
     }
 
+    clearLimit(ip)
     let permissions = null
     try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}
 
