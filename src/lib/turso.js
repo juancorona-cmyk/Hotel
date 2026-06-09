@@ -689,6 +689,16 @@ export async function clearActivityInscriptions() {
   await exec("DELETE FROM bot_events WHERE event_type IN ('activity_reg_intent', 'activity_reg_confirm')")
 }
 
+// Reset total: borra TODOS los eventos, actividades y asistentes.
+// Deja la app como nueva. NO toca usuarios admin ni suscripciones push.
+export async function resetAllEventsAndAttendees() {
+  await exec('DELETE FROM activity_registrations')
+  await exec('DELETE FROM event_registrations')
+  await exec('DELETE FROM hotel_events')
+  await exec('DELETE FROM activities')
+  await exec("DELETE FROM bot_events WHERE event_type IN ('activity_reg_intent', 'activity_reg_confirm')")
+}
+
 // ── Check-in ────────────────────────────────────────────────
 export async function checkInRegistration(id) {
   await exec(
