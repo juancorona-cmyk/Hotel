@@ -1,17 +1,29 @@
-import { writeFileSync } from 'fs'
+import { writeFileSync, readFileSync } from 'fs'
 import { execSync } from 'child_process'
 
-// Version unica por build: hash corto de git + fecha. Se sirve en /version.json
+// Version legible (v1.0.N) para mostrar + hash de commit para comparar.
+// El hash es identico en local y en Netlify para el mismo commit -> deteccion fiable.
 let commit = 'nogit'
+let count = 0
+try { commit = execSync('git rev-parse --short HEAD').toString().trim() } catch {}
+try { count = parseInt(execSync('git rev-list --count HEAD').toString().trim(), 10) || 0 } catch {}
+
+// Base major.minor desde package.json (ej "1.0"); patch = numero de commits
+let base = '1.0'
 try {
-  commit = execSync('git rev-parse --short HEAD').toString().trim()
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+  const parts = String(pkg.version || '1.0.0').split('.')
+  base = `${parts[0] || 1}.${parts[1] || 0}`
 } catch {}
 
-const now = new Date()
-const pad = n => String(n).padStart(2, '0')
-const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.${pad(now.getHours())}${pad(now.getMinutes())}`
-const version = `${stamp}-${commit}`
+const label = `v${base}.${count}`
 
-const payload = JSON.stringify({ version, commit, builtAt: now.toISOString() }, null, 2)
+const payload = JSON.stringify({
+  version: commit,   // clave de comparacion (hash)
+  label,             // texto a mostrar (v1.0.N)
+  commit,
+  builtAt: new Date().toISOString(),
+}, null, 2)
+
 writeFileSync('public/version.json', payload)
-console.log(`✅ version.json → ${version}`)
+console.log(`✅ version.json → ${label} (${commit})`)

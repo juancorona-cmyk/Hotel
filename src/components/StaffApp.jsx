@@ -189,9 +189,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   // ── Menu (bottom sheet) + OTA manual ──
   const [showMenu, setShowMenu] = useState(false)
-  const [appVersion, setAppVersion] = useState('')
-  const [latestVersion, setLatestVersion] = useState(undefined) // undefined=sin checar, null=error, string=ok
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [localVer, setLocalVer] = useState(null)        // { version, label }
+  const [latestVer, setLatestVer] = useState(undefined) // undefined=sin checar, null=error, obj=ok
   const [showVersions, setShowVersions] = useState(false)
   const onRemoteBuild = typeof location !== 'undefined' && location.hostname.includes('hotelpuntagaleria')
 
@@ -205,7 +204,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   // Version que corre ahora mismo (la del origen cargado)
   useEffect(() => {
-    fetchVer('/version.json').then(v => setAppVersion(v?.version || '')).catch(() => {})
+    fetchVer('/version.json').then(v => v && setLocalVer(v)).catch(() => {})
   }, [fetchVer])
 
   // Carga la version desplegada (cache-bust para ver los cambios al instante)
@@ -223,13 +222,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
   // Abre el panel de versiones y consulta la ultima publicada
   const openVersions = useCallback(async () => {
     setShowMenu(false)
-    setLatestVersion(undefined)
+    setLatestVer(undefined)
     setShowVersions(true)
     const remote = await fetchVer('https://hotelpuntagaleria.mx/version.json')
-    setLatestVersion(remote?.version || null)
+    setLatestVer(remote || null)
   }, [fetchVer])
 
-  const checkForUpdates = openVersions
+  const appVersion = localVer?.label || ''
+  const updateAvailable = latestVer && localVer && latestVer.version !== localVer.version
 
   const handleAiGenerate = async () => {
     if (!newEvt.name?.trim()) { showToast('Ingresa primero el nombre del evento', 'error'); return }
@@ -1289,12 +1289,12 @@ export default function StaffApp({ onStartScan, onLogout }) {
               <div className="sa-ver-card">
                 <div className="sa-ver-row">
                   <span className="sa-ver-tag">ÚLTIMA PUBLICADA</span>
-                  {latestVersion === undefined && <span className="sa-ver-mode">Consultando…</span>}
-                  {latestVersion === null && <span className="sa-ver-mode sa-ver-mode--err">Sin conexión</span>}
-                  {typeof latestVersion === 'string' && latestVersion === appVersion && <span className="sa-ver-mode sa-ver-mode--ok">Al día</span>}
-                  {typeof latestVersion === 'string' && latestVersion !== appVersion && <span className="sa-ver-mode sa-ver-mode--new">Nueva</span>}
+                  {latestVer === undefined && <span className="sa-ver-mode">Consultando…</span>}
+                  {latestVer === null && <span className="sa-ver-mode sa-ver-mode--err">Sin conexión</span>}
+                  {latestVer && !updateAvailable && <span className="sa-ver-mode sa-ver-mode--ok">Al día</span>}
+                  {latestVer && updateAvailable && <span className="sa-ver-mode sa-ver-mode--new">Nueva</span>}
                 </div>
-                <span className="sa-ver-code">{latestVersion || (latestVersion === null ? '—' : '…')}</span>
+                <span className="sa-ver-code">{latestVer?.label || (latestVer === null ? '—' : '…')}</span>
               </div>
 
               <div className="sa-ver-actions">
@@ -1302,11 +1302,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   <button className="sa-ver-btn sa-ver-btn--soft" onClick={() => { setShowVersions(false); backToInstalled() }}>
                     Volver a versión instalada
                   </button>
-                ) : (typeof latestVersion === 'string' && latestVersion !== appVersion) ? (
+                ) : updateAvailable ? (
                   <button className="sa-ver-btn" onClick={loadOnline}>
-                    Actualizar a la versión nueva
+                    Actualizar a {latestVer.label}
                   </button>
-                ) : latestVersion === null ? (
+                ) : latestVer === null ? (
                   <button className="sa-ver-btn sa-ver-btn--soft" onClick={openVersions}>Reintentar</button>
                 ) : (
                   <button className="sa-ver-btn sa-ver-btn--soft" disabled>Estás en la última versión</button>
