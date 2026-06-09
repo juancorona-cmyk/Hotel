@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning'
 import { QRCodeSVG } from 'qrcode.react'
-import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
+import { getRegistrationById, checkInRegistration, undoCheckInRegistration, updateActivityRegistrationPayment, updateTransferProof, adminLoginSingle, adminForceChangePassword, API_BASE, checkWhatsappMember, addWhatsappMember } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
 import { subscribeToPush } from '../lib/pushNotifications'
 import { CDN } from '../lib/cdn'
@@ -31,6 +31,12 @@ export default function CheckInPage() {
   const [loginErr, setLoginErr] = useState('')
   const [loginBusy, setLoginBusy] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
+  // Cambio forzado de contraseña (clave generica → nueva)
+  const [mustChange, setMustChange] = useState(false)
+  const [chgPwd, setChgPwd] = useState('')
+  const [chgPwd2, setChgPwd2] = useState('')
+  const [chgErr, setChgErr] = useState('')
+  const [chgBusy, setChgBusy] = useState(false)
   // Recuperar contraseña
   const [showRecover, setShowRecover] = useState(false)
   const [recUser, setRecUser] = useState('')
@@ -132,6 +138,10 @@ export default function CheckInPage() {
         localStorage.setItem('ci_perms', JSON.stringify(payload?.permissions ?? null))
         setAuthed(true)
         subscribeToPush().catch(() => {})
+      } else if (result.reason === 'must_change') {
+        // Clave generica: pasar a pantalla de nueva contraseña
+        setMustChange(true)
+        setChgPwd(''); setChgPwd2(''); setChgErr('')
       } else {
         setLoginErr(
           result.reason === 'setup'
@@ -143,6 +153,36 @@ export default function CheckInPage() {
       setLoginErr(err.message || 'Error de conexión')
     } finally {
       setLoginBusy(false)
+    }
+  }
+
+  const handleForceChange = async (e) => {
+    e.preventDefault()
+    setChgErr('')
+    const chk = checkPasswordStrength(chgPwd)
+    if (!chk.ok) { setChgErr(chk.message); return }
+    if (chgPwd !== chgPwd2) { setChgErr('Las contraseñas no coinciden'); return }
+    if (chgPwd === loginPwd) { setChgErr('Debe ser distinta a la genérica'); return }
+    setChgBusy(true)
+    try {
+      const result = await adminForceChangePassword(loginUser.trim(), loginPwd, chgPwd)
+      if (result.ok && result.token) {
+        const payload = decodeJWT(result.token)
+        localStorage.setItem('ci_authed', 'true')
+        localStorage.setItem('ci_token', result.token)
+        localStorage.setItem('ci_role', payload?.role ?? 'staff')
+        localStorage.setItem('ci_perms', JSON.stringify(payload?.permissions ?? null))
+        setMustChange(false)
+        setLoginPwd('')
+        setAuthed(true)
+        subscribeToPush().catch(() => {})
+      } else {
+        setChgErr(result.error || 'No se pudo actualizar')
+      }
+    } catch (err) {
+      setChgErr(err.message || 'Error de conexión')
+    } finally {
+      setChgBusy(false)
     }
   }
 
@@ -474,6 +514,78 @@ export default function CheckInPage() {
   }
 
   // ── NATIVE APP: Staff flow below ──
+
+  // Clave generica: forzar nueva contraseña antes de entrar
+  if (mustChange) {
+    const s = chgPwd ? checkPasswordStrength(chgPwd) : null
+    return (
+      <div className="ci-page ci-page--login">
+        <div className="ci-login-top">
+          <img src="/logo/logNegro.svg" alt="Hotel Punta Galería" className="ci-login-logo" />
+          <span className="ci-login-badge">STAFF</span>
+        </div>
+        <div className="ci-login-body">
+          <h2 className="ci-login-title">Crea tu contraseña</h2>
+          <p className="ci-login-sub">Primer ingreso. Define una contraseña personal.</p>
+          <form onSubmit={handleForceChange} className="ci-login-form">
+            <div className="ci-login-fields">
+              <div className="ci-login-field">
+                <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={chgPwd}
+                  onChange={e => { setChgPwd(e.target.value); setChgErr('') }}
+                  placeholder="Nueva contraseña"
+                  className="ci-login-input ci-login-input--pwd"
+                  autoComplete="new-password"
+                />
+                <button type="button" className="ci-pwd-toggle" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}>
+                  {showPwd ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              {s && (
+                <div className="ci-pwd-meter">
+                  <div className="ci-pwd-meter-track">
+                    <div className={`ci-pwd-meter-fill ci-pwd-meter-fill--${s.score}`} style={{ width: `${(s.score / 4) * 100}%` }} />
+                  </div>
+                  <span className={s.ok ? 'ci-pwd-meter-ok' : 'ci-pwd-meter-bad'}>{s.message}</span>
+                </div>
+              )}
+              <div className="ci-login-field">
+                <svg className="ci-login-field-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={chgPwd2}
+                  onChange={e => { setChgPwd2(e.target.value); setChgErr('') }}
+                  placeholder="Repite la contraseña"
+                  className="ci-login-input ci-login-input--pwd"
+                  autoComplete="new-password"
+                />
+              </div>
+              <p className="ci-login-sub" style={{ fontSize: 12, margin: 0 }}>Mínimo 8 caracteres, con letras y números. Sin espacios.</p>
+              {chgErr && (
+                <div className="ci-login-err">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  {chgErr}
+                </div>
+              )}
+            </div>
+            <button type="submit" className="ci-login-btn" disabled={chgBusy}>
+              {chgBusy ? <span className="ci-login-btn-spinner" /> : <>Guardar y entrar</>}
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   if (!authed) {
     return (

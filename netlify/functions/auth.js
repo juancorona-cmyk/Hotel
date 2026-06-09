@@ -77,6 +77,16 @@ async function dbQuery(sql, args = []) {
   })))
 }
 
+// Politica de contraseña server-side: 8+, sin espacios, letra + numero.
+function validatePassword(pwd = '') {
+  const p = String(pwd)
+  if (p.length < 8) return 'Mínimo 8 caracteres'
+  if (/\s/.test(p)) return 'Sin espacios'
+  if (/^\d+$/.test(p)) return 'No puede ser solo números'
+  if (!/[a-zA-Z]/.test(p) || !/\d/.test(p)) return 'Combina letras y números'
+  return null
+}
+
 function hashPassword(password, saltHex) {
   return new Promise((resolve, reject) => {
     pbkdf2(password, Buffer.from(saltHex, 'hex'), 100000, 32, 'sha256',
@@ -136,6 +146,39 @@ export default async (req) => {
       return json({ ok: true })
     }
 
+    // ── Cambio forzado de contraseña (clave generica → nueva) ──────────────────
+    if (action === 'change') {
+      if (checkLimit(ip)) return json({ ok: false, error: 'Demasiados intentos. Espera 15 minutos.' }, 429)
+      const { newPassword } = body
+      if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
+      const msg = validatePassword(newPassword)
+      if (msg) return json({ ok: false, error: msg }, 400)
+      if (newPassword === password) return json({ ok: false, error: 'La nueva contraseña debe ser distinta' }, 400)
+
+      const [u] = await dbQuery(
+        'SELECT hash, salt, role, permissions FROM admin_users WHERE username = ? LIMIT 1',
+        [{ type: 'text', value: username.trim() }]
+      )
+      if (!u) return json({ ok: false, reason: 'not_found' })
+      const curHash = await hashPassword(password, u.salt)
+      if (curHash !== u.hash) return json({ ok: false, reason: 'bad_password' })
+
+      const salt = randomBytes(16).toString('hex')
+      const hash = await hashPassword(newPassword, salt)
+      await dbQuery('UPDATE admin_users SET hash = ?, salt = ?, must_change = 0 WHERE username = ?', [
+        { type: 'text', value: hash }, { type: 'text', value: salt }, { type: 'text', value: username.trim() },
+      ])
+
+      let permissions = null
+      try { if (u.permissions) permissions = JSON.parse(u.permissions) } catch {}
+      const now = Math.floor(Date.now() / 1000)
+      const token = signJWT({
+        sub: username.trim(), role: u.role ?? 'admin', permissions,
+        iat: now, exp: now + 8 * 3600,
+      }, secret)
+      return json({ ok: true, token })
+    }
+
     // ── Login ─────────────────────────────────────────────────────────────────
     if (!username?.trim() || !password) return json({ ok: false, error: 'Credenciales requeridas' }, 400)
 
@@ -158,7 +201,7 @@ export default async (req) => {
     }
 
     const [row] = await dbQuery(
-      'SELECT hash, salt, role, permissions FROM admin_users WHERE username = ? LIMIT 1',
+      'SELECT hash, salt, role, permissions, must_change FROM admin_users WHERE username = ? LIMIT 1',
       [{ type: 'text', value: username.trim() }]
     )
 
@@ -166,6 +209,9 @@ export default async (req) => {
 
     const hash = await hashPassword(password, row.salt)
     if (hash !== row.hash) return json({ ok: false, reason: 'bad_password' })
+
+    // Clave generica: forzar cambio antes de entrar
+    if (Number(row.must_change) === 1) return json({ ok: false, reason: 'must_change' })
 
     let permissions = null
     try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}

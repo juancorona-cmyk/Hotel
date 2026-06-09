@@ -596,6 +596,7 @@ function UsersSection({ currentUser, userRole }) {
   const [newUser, setNewUser]   = useState('')
   const [newPwd, setNewPwd]     = useState('')
   const [newRole, setNewRole]   = useState('editor')
+  const [newMustChange, setNewMustChange] = useState(true)
   const [showNew, setShowNew]   = useState(false)
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
@@ -616,8 +617,8 @@ function UsersSection({ currentUser, userRole }) {
     if (!newUser.trim() || newPwd.length < 6) { setErrU('Mínimo 6 caracteres en la contraseña'); return }
     setCreating(true); setErrU('')
     try {
-      await adminCreateUser(newUser.trim(), newPwd, newRole)
-      setNewUser(''); setNewPwd(''); setNewRole('editor'); loadUsers()
+      await adminCreateUser(newUser.trim(), newPwd, newRole, newMustChange)
+      setNewUser(''); setNewPwd(''); setNewRole('editor'); setNewMustChange(true); loadUsers()
     } catch { setErrU('Error al crear usuario') }
     finally { setCreating(false) }
   }
@@ -794,6 +795,10 @@ function UsersSection({ currentUser, userRole }) {
               {creating ? '…' : '+ Crear Usuario'}
             </button>
           </div>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={newMustChange} onChange={e => setNewMustChange(e.target.checked)} />
+            Clave genérica: pedir nueva contraseña en el primer ingreso
+          </label>
         </form>
       )}
       {errU && <p className="adm-users__err">{errU}</p>}

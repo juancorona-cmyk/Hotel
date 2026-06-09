@@ -188,6 +188,7 @@ export async function setupDB() {
     `ALTER TABLE activity_registrations ADD COLUMN paid_at TEXT DEFAULT NULL`,
     `ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'editor'`,
     `ALTER TABLE admin_users ADD COLUMN permissions TEXT DEFAULT NULL`,
+    `ALTER TABLE admin_users ADD COLUMN must_change INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
     `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`,
@@ -589,21 +590,33 @@ export async function adminVerifyToken(token) {
   } catch { return { ok: false } }
 }
 
-export async function adminCreateUser(username, password, role = 'editor') {
+export async function adminCreateUser(username, password, role = 'editor', mustChange = false) {
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
   const saltHex   = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')
   const hash      = await pbkdf2(password, saltBytes)
-  
+
   // For staff, set limited default permissions
   let permissions = null
   if (role === 'staff') {
     permissions = JSON.stringify({ checkin: true, inscripciones: true })
   }
-  
+
   return exec(
-    'INSERT OR REPLACE INTO admin_users (username, hash, salt, role, permissions) VALUES (?, ?, ?, ?, ?)',
-    [txt(username), txt(hash), txt(saltHex), txt(role), permissions ? txt(permissions) : { type: 'null' }]
+    'INSERT OR REPLACE INTO admin_users (username, hash, salt, role, permissions, must_change) VALUES (?, ?, ?, ?, ?, ?)',
+    [txt(username), txt(hash), txt(saltHex), txt(role), permissions ? txt(permissions) : { type: 'null' }, int(mustChange ? 1 : 0)]
   )
+}
+
+// Cambio forzado de contraseña en primer ingreso (clave generica → nueva)
+export async function adminForceChangePassword(username, currentPassword, newPassword) {
+  const url = `${API_BASE}/.netlify/functions/auth`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ action: 'change', username, password: currentPassword, newPassword }),
+  })
+  const text = await res.text()
+  try { return JSON.parse(text) } catch { throw new Error(`Respuesta inválida del servidor en ${url}`) }
 }
 
 export async function adminGetUsers() {
