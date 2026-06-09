@@ -1665,6 +1665,15 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }
 
   // ── Attendees View ──
+  const evPrice = Number(selectedEvent?.price) || 0
+  const evCapacity = Number(selectedEvent?.capacity) || 0
+  const recaudado = paidCount * evPrice
+  const esperado = (evCapacity > 0 ? evCapacity : attendees.length) * evPrice
+  const ringPct = evPrice > 0
+    ? (esperado > 0 ? Math.round((recaudado / esperado) * 100) : 0)
+    : (attendees.length > 0 ? Math.round((attendedCount / attendees.length) * 100) : 0)
+  const ringLabel = evPrice > 0 ? 'recaudado' : 'asistencia'
+
   return (
     <div className="sa-root">
       <div className="sa-sticky-top">
@@ -1727,6 +1736,35 @@ export default function StaffApp({ onStartScan, onLogout }) {
             </div>
           </div>
         </div>
+
+        {selectedEvent && (
+          <div className="sa-ingresos">
+            <div className="sa-donut" style={{ '--pct': ringPct }}>
+              <div className="sa-donut-hole">
+                <span className="sa-donut-pct">{ringPct}%</span>
+                <span className="sa-donut-cap">{ringLabel}</span>
+              </div>
+            </div>
+            <div className="sa-ingresos-info">
+              {evPrice > 0 ? (
+                <div className="sa-ingresos-money">
+                  <span className="sa-money-now">${recaudado.toLocaleString('es-MX')}</span>
+                  <span className="sa-money-exp"> / ${esperado.toLocaleString('es-MX')}</span>
+                </div>
+              ) : (
+                <div className="sa-ingresos-money"><span className="sa-money-now">Evento gratuito</span></div>
+              )}
+              <div className="sa-ingresos-legend">
+                <span className="sa-leg"><i className="sa-leg-dot sa-leg-dot--paid" />Pagados {paidCount}</span>
+                <span className="sa-leg"><i className="sa-leg-dot sa-leg-dot--pend" />Pend {pendingCount}</span>
+                <span className="sa-leg"><i className="sa-leg-dot sa-leg-dot--att" />Asist {attendedCount}</span>
+              </div>
+              {evCapacity > 0 && (
+                <span className="sa-ingresos-aforo">Aforo: {attendees.length}/{evCapacity}</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="sa-filter-bar">
           {/* Selector de evento */}
