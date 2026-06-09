@@ -538,12 +538,7 @@ export default function EventoPage() {
                     </div>
                   ) : (
                   <div className="ep-pay-options">
-                    <button
-                      type="button"
-                      className="ep-pay-card"
-                      onClick={() => reg.setShowTransferInfo(true)}
-                      disabled={reg.submitting}
-                    >
+                    <button type="button" className="ep-pay-card ep-pay-card--disabled" disabled aria-disabled="true">
                       <div className="ep-pay-card__icon">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="2" y="5" width="20" height="14" rx="2"/>
@@ -552,9 +547,9 @@ export default function EventoPage() {
                       </div>
                       <div className="ep-pay-card__info">
                         <strong>Transferencia bancaria</strong>
-                        <span>Ver CLABE y confirmar pago</span>
+                        <span>No disponible por ahora</span>
                       </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                      <span className="ep-pay-soon">No disponible</span>
                     </button>
 
                     <button
