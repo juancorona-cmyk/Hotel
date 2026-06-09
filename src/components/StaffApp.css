@@ -25,6 +25,10 @@
   top: 0;
   z-index: 500;
 }
+/* Fondo opaco solo en el sticky de asistentes (no en el header con gradiente) */
+.sa-sticky-top:not(.sa-top-gradient) {
+  background: #ede9e1;
+}
 
 /* ── Header ── */
 .sa-header-hero-section {
