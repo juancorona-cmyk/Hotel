@@ -9,8 +9,10 @@ import {
   deleteEventRegistration, getActivityRegistrationIntents, getHotelReservationEvents,
   deleteBotEvent, updateActivityRegistrationPayment,
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
+  adminForceChangePassword,
   API_BASE
 } from '../lib/turso'
+import { checkPasswordStrength } from '../lib/passwordStrength'
 import { getActivityIcon } from '../lib/activityIcons'
 import { fmtFecha as _fmtFecha, fmtHora } from '../lib/utils'
 import SearchConsoleTab from './SearchConsoleTab'
@@ -606,8 +608,15 @@ function UsersSection({ currentUser, userRole }) {
 
   const loadUsers = useCallback(async () => {
     setLoadingU(true)
-    setUsers(await adminGetUsers())
-    setLoadingU(false)
+    try {
+      setUsers(await adminGetUsers())
+      setErrU('')
+    } catch (e) {
+      setUsers([])
+      setErrU('No se pudieron cargar los usuarios: ' + (e?.message || 'error'))
+    } finally {
+      setLoadingU(false)
+    }
   }, [])
 
   useEffect(() => { loadUsers() }, [loadUsers])
@@ -2014,6 +2023,10 @@ function LoginScreen({ onLogin }) {
   const [show, setShow]   = useState(false)
   const [err, setErr]     = useState('')
   const [busy, setBusy]   = useState(false)
+  // Cambio forzado de contraseña (clave generica / debil)
+  const [mustChange, setMustChange] = useState(false)
+  const [npwd, setNpwd]   = useState('')
+  const [npwd2, setNpwd2] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
@@ -2023,6 +2036,8 @@ function LoginScreen({ onLogin }) {
       const result = await adminLoginSingle(user.trim(), pwd)
       if (result.ok && result.token) {
         onLogin(result.token, result.setup ?? false)
+      } else if (result.reason === 'must_change') {
+        setMustChange(true); setErr(''); setNpwd(''); setNpwd2('')
       } else if (result.reason === 'setup') {
         setErr('Modo de configuración: DB vacía pero sin clave de setup válida en el servidor')
         setPwd('')
@@ -2036,6 +2051,69 @@ function LoginScreen({ onLogin }) {
       console.error('Login error:', err)
       setErr(`Error de conexión: ${err.message}`)
     } finally { setBusy(false) }
+  }
+
+  const submitChange = async (e) => {
+    e.preventDefault()
+    setErr('')
+    const chk = checkPasswordStrength(npwd)
+    if (!chk.ok) { setErr(chk.message); return }
+    if (npwd !== npwd2) { setErr('Las contraseñas no coinciden'); return }
+    if (npwd === pwd) { setErr('Debe ser distinta a la genérica'); return }
+    setBusy(true)
+    try {
+      const result = await adminForceChangePassword(user.trim(), pwd, npwd)
+      if (result.ok && result.token) {
+        onLogin(result.token, false)
+      } else {
+        setErr(result.error || 'No se pudo actualizar')
+      }
+    } catch (err) {
+      setErr(`Error de conexión: ${err.message}`)
+    } finally { setBusy(false) }
+  }
+
+  if (mustChange) {
+    const s = npwd ? checkPasswordStrength(npwd) : null
+    return (
+      <div className="adm-login">
+        <div className="adm-login__accent"/>
+        <div className="adm-login__logo-wrap">
+          <img src="/logo/icono.svg" alt="Hotel Punta Galería" className="adm-login__logo"/>
+        </div>
+        <h2 className="adm-login__title">CREA TU CONTRASEÑA</h2>
+        <p className="adm-login__sub"><span className="adm-login__line"/>SEGURIDAD<span className="adm-login__line"/></p>
+        <form onSubmit={submitChange} className="adm-login__form">
+          <div className="adm-pw">
+            <input
+              type={show ? 'text' : 'password'}
+              value={npwd}
+              onChange={e => { setNpwd(e.target.value); setErr('') }}
+              placeholder="Nueva contraseña"
+              className="adm-pw__input"
+              autoComplete="new-password"
+            />
+            <button type="button" className="adm-pw__eye" onClick={() => setShow(s => !s)} aria-label="Mostrar">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          {s && <p className="adm-pw__err" style={{ color: s.ok ? '#5a6c1e' : undefined }}>{s.message}</p>}
+          <input
+            type={show ? 'text' : 'password'}
+            value={npwd2}
+            onChange={e => { setNpwd2(e.target.value); setErr('') }}
+            placeholder="Repite la contraseña"
+            className="adm-pw__input"
+            autoComplete="new-password"
+          />
+          <p className="adm-login__hint">Mínimo 8, con letras y números. Sin espacios.</p>
+          {err && <p className="adm-pw__err">{err}</p>}
+          <button type="submit" className="adm-login__btn" disabled={busy}>
+            {busy ? 'Guardando…' : 'Guardar y entrar →'}
+          </button>
+        </form>
+      </div>
+    )
   }
 
   return (

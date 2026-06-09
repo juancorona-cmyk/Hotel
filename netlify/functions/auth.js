@@ -210,8 +210,10 @@ export default async (req) => {
     const hash = await hashPassword(password, row.salt)
     if (hash !== row.hash) return json({ ok: false, reason: 'bad_password' })
 
-    // Clave generica: forzar cambio antes de entrar
-    if (Number(row.must_change) === 1) return json({ ok: false, reason: 'must_change' })
+    // Forzar cambio: flag de clave generica O contraseña actual que no cumple la politica
+    if (Number(row.must_change) === 1 || validatePassword(password) !== null) {
+      return json({ ok: false, reason: 'must_change' })
+    }
 
     let permissions = null
     try { if (row.permissions) permissions = JSON.parse(row.permissions) } catch {}
