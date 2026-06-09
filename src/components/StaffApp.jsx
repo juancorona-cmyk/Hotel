@@ -1298,18 +1298,21 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
 
               <div className="sa-ver-actions">
-                {onRemoteBuild ? (
-                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={() => { setShowVersions(false); backToInstalled() }}>
-                    Volver a versión instalada
-                  </button>
-                ) : updateAvailable ? (
+                {updateAvailable && (
                   <button className="sa-ver-btn" onClick={loadOnline}>
                     Actualizar a {latestVer.label}
                   </button>
-                ) : latestVer === null ? (
-                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={openVersions}>Reintentar</button>
-                ) : (
+                )}
+                {onRemoteBuild && (
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={() => { setShowVersions(false); backToInstalled() }}>
+                    Volver a versión instalada
+                  </button>
+                )}
+                {!updateAvailable && !onRemoteBuild && latestVer && (
                   <button className="sa-ver-btn sa-ver-btn--soft" disabled>Estás en la última versión</button>
+                )}
+                {latestVer === null && (
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={openVersions}>Reintentar</button>
                 )}
                 <button className="sa-ver-close" onClick={() => setShowVersions(false)}>Cerrar</button>
               </div>
