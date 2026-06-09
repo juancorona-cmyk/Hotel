@@ -1315,9 +1315,9 @@
 .sa-ingresos {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 22px;
   margin: 14px 16px 0;
-  padding: 16px 18px;
+  padding: 18px 20px;
   background: #fff;
   border-radius: 22px;
   box-shadow: 0 8px 26px -10px rgba(50, 63, 72, 0.18);
@@ -1327,8 +1327,8 @@
 .sa-donut {
   --pct: 0;
   position: relative;
-  width: 86px;
-  height: 86px;
+  width: 80px;
+  height: 80px;
   flex-shrink: 0;
   border-radius: 50%;
   background: conic-gradient(#5a6c1e calc(var(--pct) * 1%), #ece8e1 0);
@@ -1338,8 +1338,8 @@
   transition: background 0.5s ease;
 }
 .sa-donut-hole {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: #fff;
   display: flex;
@@ -1350,9 +1350,9 @@
 .sa-donut-pct { font-size: 20px; font-weight: 900; color: #323f48; line-height: 1; }
 .sa-donut-cap { font-size: 9px; font-weight: 700; color: #b8a99a; text-transform: uppercase; letter-spacing: 0.4px; }
 
-.sa-ingresos-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.sa-ingresos-money { display: flex; align-items: baseline; flex-wrap: wrap; }
-.sa-money-now { font-size: 22px; font-weight: 900; color: #5a6c1e; }
+.sa-ingresos-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; padding-left: 18px; border-left: 1px solid #f0ece4; }
+.sa-ingresos-money { display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px; }
+.sa-money-now { font-size: 20px; font-weight: 900; color: #5a6c1e; }
 .sa-money-exp { font-size: 13px; font-weight: 700; color: #c7b7a4; }
 
 .sa-ingresos-legend { display: flex; flex-wrap: wrap; gap: 10px; }

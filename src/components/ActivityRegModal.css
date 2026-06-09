@@ -828,6 +828,22 @@
 }
 
 .arm-pay-card:disabled { opacity: 0.6; cursor: not-allowed; }
+.arm-pay-card--disabled {
+  background: #f4f4f1;
+  border-color: #e4e4df;
+  border-style: dashed;
+  filter: grayscale(1);
+}
+.arm-pay-soon {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: #9a9a90;
+  background: #e9e9e3;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 
 .arm-pay-card__icon {
   width: 46px;

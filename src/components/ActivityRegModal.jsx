@@ -466,6 +466,19 @@ export default function ActivityRegModal({ activity, onClose, event }) {
                   </div>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
+
+                <button type="button" className="arm-pay-card arm-pay-card--disabled" disabled aria-disabled="true">
+                  <div className="arm-pay-card__icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                  </div>
+                  <div className="arm-pay-card__info">
+                    <strong>Pago con tarjeta</strong>
+                    <span>Próximamente</span>
+                  </div>
+                  <span className="arm-pay-soon">No disponible</span>
+                </button>
               </div>
             )}
 
