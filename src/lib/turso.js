@@ -34,9 +34,12 @@ async function pipeline(requests) {
 
   try {
     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-    // Adjunta el token admin para operaciones protegidas (admin_users)
+    // Adjunta el token admin para operaciones protegidas (admin_users).
+    // App nativa guarda en localStorage.ci_token; dashboard en sessionStorage.adm_token.
     try {
-      const t = localStorage.getItem('ci_token')
+      let t = null
+      try { t = localStorage.getItem('ci_token') } catch {}
+      if (!t) { try { t = sessionStorage.getItem('adm_token') } catch {} }
       if (t) headers.Authorization = `Bearer ${t}`
     } catch {}
 
@@ -640,14 +643,21 @@ export async function adminDeleteUser(id) {
   await exec('DELETE FROM admin_users WHERE id = ?', [int(id)])
 }
 
-export async function adminChangePassword(username, newPassword) {
+export async function adminChangePassword(username, newPassword, mustChange = false) {
   const saltBytes = crypto.getRandomValues(new Uint8Array(16))
   const saltHex   = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')
   const hash      = await pbkdf2(newPassword, saltBytes)
   await exec(
-    'UPDATE admin_users SET hash = ?, salt = ? WHERE username = ?',
-    [txt(hash), txt(saltHex), txt(username)]
+    'UPDATE admin_users SET hash = ?, salt = ?, must_change = ? WHERE username = ?',
+    [txt(hash), txt(saltHex), int(mustChange ? 1 : 0), txt(username)]
   )
+}
+
+// Genera una clave generica que cumple la politica (8+, letras + numeros, sin espacios)
+export function genGenericPassword() {
+  const rnd = crypto.getRandomValues(new Uint8Array(5))
+  const digits = Array.from(rnd).map(b => b % 10).join('')
+  return `HPG${digits}` // ej. HPG40193
 }
 
 // ── Stats ────────────────────────────────────────────────

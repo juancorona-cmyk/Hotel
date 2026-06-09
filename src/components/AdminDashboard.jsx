@@ -9,7 +9,7 @@ import {
   deleteEventRegistration, getActivityRegistrationIntents, getHotelReservationEvents,
   deleteBotEvent, updateActivityRegistrationPayment,
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
-  adminForceChangePassword,
+  adminForceChangePassword, genGenericPassword,
   API_BASE
 } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -602,7 +602,7 @@ function UsersSection({ currentUser, userRole }) {
   const [showNew, setShowNew]   = useState(false)
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
-  const [changePwd, setChangePwd] = useState({ open: false, user: '', val: '', show: false })
+  const [changePwd, setChangePwd] = useState({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })
   const [permModal, setPermModal] = useState(null)
   const [savingPerms, setSavingPerms] = useState(false)
 
@@ -644,8 +644,14 @@ function UsersSection({ currentUser, userRole }) {
     if (changePwd.val.length < 6) { setErrU('Mínimo 6 caracteres'); return }
     setCreating(true); setErrU('')
     try {
-      await adminChangePassword(changePwd.user, changePwd.val)
-      setChangePwd({ open: false, user: '', val: '', show: false })
+      await adminChangePassword(changePwd.user, changePwd.val, changePwd.mustChange)
+      // Si es clave generica, mostrarla para enviarla; si no, cerrar
+      if (changePwd.mustChange) {
+        setChangePwd(p => ({ ...p, done: p.val, val: '' }))
+      } else {
+        setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })
+      }
+      loadUsers()
     } catch { setErrU('Error al cambiar contraseña') }
     finally { setCreating(false) }
   }
@@ -696,8 +702,8 @@ function UsersSection({ currentUser, userRole }) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </button>
               )}
-              <button className="adm-user-row__btn" title="Cambiar contraseña"
-                onClick={() => setChangePwd({ open: true, user: u.username, val: '', show: false })}>
+              <button className="adm-user-row__btn" title="Resetear contraseña"
+                onClick={() => setChangePwd({ open: true, user: u.username, val: '', show: true, mustChange: true, done: '' })}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </button>
               <button className="adm-user-row__btn adm-user-row__btn--del" title="Eliminar"
@@ -709,11 +715,22 @@ function UsersSection({ currentUser, userRole }) {
         </div>
       )}
 
-      {/* Change password modal */}
+      {/* Reset password modal */}
       {changePwd.open && (
-        <form onSubmit={saveChange} className="adm-users__change">
-          <span className="adm-users__change-title">Nueva contraseña para <strong>{changePwd.user}</strong></span>
-          <div className="adm-pw" style={{ flex: 1 }}>
+        changePwd.done ? (
+          <div className="adm-users__change" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+            <span className="adm-users__change-title">Clave genérica de <strong>{changePwd.user}</strong></span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
+              <code style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1, background: '#eef0e3', padding: '6px 12px', borderRadius: 6 }}>{changePwd.done}</code>
+              <button type="button" className="adm-btn-sm" onClick={() => navigator.clipboard?.writeText(changePwd.done)}>Copiar</button>
+            </div>
+            <span style={{ fontSize: 12, color: '#666' }}>Envíasela al usuario. Al ingresar deberá crear su contraseña.</span>
+            <button type="button" className="adm-btn-sm adm-btn-sm--green" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })}>Listo</button>
+          </div>
+        ) : (
+        <form onSubmit={saveChange} className="adm-users__change" style={{ flexWrap: 'wrap' }}>
+          <span className="adm-users__change-title">Resetear contraseña de <strong>{changePwd.user}</strong></span>
+          <div className="adm-pw" style={{ flex: 1, minWidth: 180 }}>
             <input
               type={changePwd.show ? 'text' : 'password'}
               value={changePwd.val}
@@ -725,9 +742,15 @@ function UsersSection({ currentUser, userRole }) {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
+          <button type="button" className="adm-btn-sm" onClick={() => setChangePwd(p => ({ ...p, val: genGenericPassword(), show: true }))}>Generar genérica</button>
           <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating}>Guardar</button>
-          <button type="button" className="adm-btn-sm" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false })}>Cancelar</button>
+          <button type="button" className="adm-btn-sm" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })}>Cancelar</button>
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', fontSize: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={changePwd.mustChange} onChange={e => setChangePwd(p => ({ ...p, mustChange: e.target.checked }))} />
+            Pedir cambio de contraseña al primer ingreso
+          </label>
         </form>
+        )
       )}
 
       {/* Permissions modal */}

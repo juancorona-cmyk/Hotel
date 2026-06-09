@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, genGenericPassword, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -238,6 +238,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [pwTarget, setPwTarget] = useState(null)   // username en edicion
   const [pwValue, setPwValue] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
+  const [pwGeneric, setPwGeneric] = useState(true) // forzar cambio al ingresar
+  const [pwDone, setPwDone] = useState('')          // clave generica generada para enviar
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -255,15 +257,21 @@ export default function StaffApp({ onStartScan, onLogout }) {
     if (!chk.ok) { showToast(chk.message, 'error'); return }
     setPwSaving(true)
     try {
-      await adminChangePassword(username, pwValue.trim())
-      showToast(`Contraseña de ${username} actualizada`)
-      setPwTarget(null); setPwValue('')
+      await adminChangePassword(username, pwValue.trim(), pwGeneric)
+      if (pwGeneric) {
+        setPwDone(pwValue.trim())   // mostrar para enviar
+        showToast(`Clave genérica lista para ${username}`)
+      } else {
+        showToast(`Contraseña de ${username} actualizada`)
+        setPwTarget(null); setPwValue('')
+      }
+      loadUsers()
     } catch {
       showToast('No se pudo cambiar la contraseña', 'error')
     } finally {
       setPwSaving(false)
     }
-  }, [pwValue])
+  }, [pwValue, pwGeneric, loadUsers])
 
   // Reset total (solo admin): borra eventos + asistentes, doble confirmacion
   const handleResetAll = useCallback(() => {
@@ -978,12 +986,23 @@ export default function StaffApp({ onStartScan, onLogout }) {
                     <span className="sa-adm-user-name">{u.username}</span>
                     <span className="sa-adm-user-role">{u.role || 'editor'}</span>
                   </div>
-                  <button className="sa-adm-pw-btn" onClick={() => { setPwTarget(pwTarget === u.username ? null : u.username); setPwValue('') }}>
-                    {pwTarget === u.username ? 'Cancelar' : 'Cambiar contraseña'}
+                  <button className="sa-adm-pw-btn" onClick={() => { setPwTarget(pwTarget === u.username ? null : u.username); setPwValue(''); setPwGeneric(true); setPwDone('') }}>
+                    {pwTarget === u.username ? 'Cancelar' : 'Resetear contraseña'}
                   </button>
                 </div>
                 {pwTarget === u.username && (
-                  <div className="sa-adm-pw-row">
+                  pwDone ? (
+                    <div className="sa-adm-pw-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ fontSize: 13, color: '#666' }}>Clave genérica. Envíasela:</span>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <code style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1, background: '#eef0e3', padding: '6px 12px', borderRadius: 6 }}>{pwDone}</code>
+                        <button className="sa-adm-pw-save" onClick={() => navigator.clipboard?.writeText(pwDone)}>Copiar</button>
+                      </div>
+                      <span style={{ fontSize: 12, color: '#888' }}>Al ingresar deberá crear su contraseña.</span>
+                      <button className="sa-adm-pw-save" onClick={() => { setPwTarget(null); setPwValue(''); setPwDone('') }}>Listo</button>
+                    </div>
+                  ) : (
+                  <div className="sa-adm-pw-row" style={{ flexWrap: 'wrap' }}>
                     <input
                       type="text"
                       className="sa-input"
@@ -992,10 +1011,18 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       onChange={e => setPwValue(e.target.value)}
                       autoFocus
                     />
+                    <button className="sa-adm-pw-btn" onClick={() => { setPwValue(genGenericPassword()); setPwGeneric(true) }}>
+                      Generar genérica
+                    </button>
                     <button className="sa-adm-pw-save" disabled={pwSaving} onClick={() => savePassword(u.username)}>
                       {pwSaving ? '…' : 'Guardar'}
                     </button>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', fontSize: 12 }}>
+                      <input type="checkbox" checked={pwGeneric} onChange={e => setPwGeneric(e.target.checked)} />
+                      Pedir cambio al primer ingreso
+                    </label>
                   </div>
+                  )
                 )}
               </div>
             ))}
