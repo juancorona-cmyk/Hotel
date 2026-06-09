@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import { subscribeToPush } from '../lib/pushNotifications'
@@ -230,6 +230,38 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   const appVersion = localVer?.label || ''
   const updateAvailable = latestVer && localVer && latestVer.version !== localVer.version
+
+  // ── Panel admin movil ──
+  const [adminUsers, setAdminUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [pwTarget, setPwTarget] = useState(null)   // username en edicion
+  const [pwValue, setPwValue] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+
+  const loadUsers = useCallback(async () => {
+    setLoadingUsers(true)
+    try { setAdminUsers(await adminGetUsers()) }
+    catch { showToast('Error al cargar usuarios', 'error') }
+    finally { setLoadingUsers(false) }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'admin') loadUsers()
+  }, [view, loadUsers])
+
+  const savePassword = useCallback(async (username) => {
+    if (pwValue.trim().length < 4) { showToast('Mínimo 4 caracteres', 'error'); return }
+    setPwSaving(true)
+    try {
+      await adminChangePassword(username, pwValue.trim())
+      showToast(`Contraseña de ${username} actualizada`)
+      setPwTarget(null); setPwValue('')
+    } catch {
+      showToast('No se pudo cambiar la contraseña', 'error')
+    } finally {
+      setPwSaving(false)
+    }
+  }, [pwValue])
 
   // Reset total (solo admin): borra eventos + asistentes, doble confirmacion
   const handleResetAll = useCallback(() => {
@@ -876,6 +908,105 @@ export default function StaffApp({ onStartScan, onLogout }) {
     </nav>
   )
 
+  // ── Panel de administrador (movil) ──
+  if (view === 'admin') {
+    const allEvs = [...events, ...archivedEvents]
+    const priceById = {}
+    allEvs.forEach(e => { priceById[String(e.id)] = Number(e.price) || 0 })
+    const gPaid = allRegs.filter(isPaid).length
+    const gPending = allRegs.length - gPaid
+    const gAttended = allRegs.filter(isCheckedIn).length
+    const gRevenue = allRegs.filter(isPaid).reduce((s, r) => s + (priceById[String(r.event_id)] || 0), 0)
+    const attRate = allRegs.length > 0 ? Math.round((gAttended / allRegs.length) * 100) : 0
+    // Top eventos por registros
+    const byEvent = {}
+    allRegs.forEach(r => { const k = r.event_name || 'Sin evento'; byEvent[k] = (byEvent[k] || 0) + 1 })
+    const topEvents = Object.entries(byEvent).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    const maxTop = topEvents.length ? topEvents[0][1] : 1
+
+    return (
+      <div className="sa-root sa-root--admin">
+        <div className="sa-sticky-top sa-top-gradient">
+          <header className="sa-attendees-header">
+            <button className="sa-back-btn" onClick={() => setView('dashboard')}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div className="sa-header-titles">
+              <span className="sa-h-title">Administrador</span>
+              <span className="sa-h-subtitle">Control y usuarios</span>
+            </div>
+            <span style={{ width: 40 }} />
+          </header>
+        </div>
+
+        <div className="sa-body">
+          <h2 className="sa-adm-h">Resumen general</h2>
+          <div className="sa-adm-grid">
+            <div className="sa-adm-metric"><span className="sa-adm-num">{allEvs.length}</span><span className="sa-adm-lbl">Eventos</span></div>
+            <div className="sa-adm-metric"><span className="sa-adm-num">{allRegs.length}</span><span className="sa-adm-lbl">Registros</span></div>
+            <div className="sa-adm-metric sa-adm-metric--money"><span className="sa-adm-num">${gRevenue.toLocaleString('es-MX')}</span><span className="sa-adm-lbl">Recaudado</span></div>
+            <div className="sa-adm-metric"><span className="sa-adm-num">{gPaid}</span><span className="sa-adm-lbl">Pagados</span></div>
+            <div className="sa-adm-metric"><span className="sa-adm-num" style={{ color: '#9a6b06' }}>{gPending}</span><span className="sa-adm-lbl">Pendientes</span></div>
+            <div className="sa-adm-metric"><span className="sa-adm-num" style={{ color: '#1f7a44' }}>{attRate}%</span><span className="sa-adm-lbl">Asistencia</span></div>
+          </div>
+
+          <h2 className="sa-adm-h">Eventos con más registros</h2>
+          <div className="sa-adm-card">
+            {topEvents.length === 0 ? (
+              <p className="sa-adm-empty">Sin registros aún</p>
+            ) : topEvents.map(([name, n]) => (
+              <div key={name} className="sa-adm-bar-row">
+                <span className="sa-adm-bar-name">{name}</span>
+                <div className="sa-adm-bar-track"><div className="sa-adm-bar-fill" style={{ width: `${Math.round((n / maxTop) * 100)}%` }} /></div>
+                <span className="sa-adm-bar-val">{n}</span>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="sa-adm-h">Usuarios</h2>
+          <div className="sa-adm-card">
+            {loadingUsers ? (
+              <p className="sa-adm-empty">Cargando…</p>
+            ) : adminUsers.length === 0 ? (
+              <p className="sa-adm-empty">Sin usuarios</p>
+            ) : adminUsers.map(u => (
+              <div key={u.id} className="sa-adm-user">
+                <div className="sa-adm-user-head">
+                  <div className="sa-adm-user-info">
+                    <span className="sa-adm-user-name">{u.username}</span>
+                    <span className="sa-adm-user-role">{u.role || 'editor'}</span>
+                  </div>
+                  <button className="sa-adm-pw-btn" onClick={() => { setPwTarget(pwTarget === u.username ? null : u.username); setPwValue('') }}>
+                    {pwTarget === u.username ? 'Cancelar' : 'Cambiar contraseña'}
+                  </button>
+                </div>
+                {pwTarget === u.username && (
+                  <div className="sa-adm-pw-row">
+                    <input
+                      type="text"
+                      className="sa-input"
+                      placeholder="Nueva contraseña"
+                      value={pwValue}
+                      onChange={e => setPwValue(e.target.value)}
+                      autoFocus
+                    />
+                    <button className="sa-adm-pw-save" disabled={pwSaving} onClick={() => savePassword(u.username)}>
+                      {pwSaving ? '…' : 'Guardar'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <BottomNav />
+        {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
+        {toast && <StaffToast message={toast.message} type={toast.type} />}
+      </div>
+    )
+  }
+
   // ── Dashboard ──
   if (view === 'dashboard') {
     return (
@@ -1296,6 +1427,16 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </span>
                     <span className="sa-sheet-label">Probar notificación push</span>
+                    <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
+
+                {lowerRole === 'admin' && (
+                  <button className="sa-sheet-item" onClick={() => { setShowMenu(false); setView('admin') }}>
+                    <span className="sa-sheet-ic">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>
+                    </span>
+                    <span className="sa-sheet-label">Panel de administrador</span>
                     <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
                 )}

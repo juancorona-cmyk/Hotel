@@ -1315,6 +1315,78 @@
   align-items: center;
 }
 
+/* ── Panel admin movil ── */
+.sa-adm-h { font-size: 15px; font-weight: 800; color: #323f48; margin: 18px 2px 10px; }
+.sa-adm-h:first-child { margin-top: 4px; }
+
+.sa-adm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.sa-adm-metric {
+  background: #fff;
+  border: 1px solid rgba(199, 183, 164, 0.22);
+  border-radius: 16px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 6px 18px -10px rgba(50, 63, 72, 0.18);
+}
+.sa-adm-num { font-size: 20px; font-weight: 900; color: #323f48; }
+.sa-adm-metric--money .sa-adm-num { color: #5a6c1e; font-size: 17px; }
+.sa-adm-lbl { font-size: 10px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: #b8a99a; }
+
+.sa-adm-card {
+  background: #fff;
+  border: 1px solid rgba(199, 183, 164, 0.22);
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 18px -10px rgba(50, 63, 72, 0.18);
+}
+.sa-adm-empty { text-align: center; color: #b8a99a; font-size: 13px; font-weight: 600; padding: 8px 0; }
+
+.sa-adm-bar-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.sa-adm-bar-name { flex: 0 0 30%; font-size: 12px; font-weight: 700; color: #5b6670; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-adm-bar-track { flex: 1; height: 8px; background: #ece8e1; border-radius: 999px; overflow: hidden; }
+.sa-adm-bar-fill { height: 100%; background: linear-gradient(90deg, #838c2f, #5a6c1e); border-radius: 999px; }
+.sa-adm-bar-val { font-size: 13px; font-weight: 800; color: #5a6c1e; min-width: 22px; text-align: right; }
+
+.sa-adm-user { padding: 12px 0; border-bottom: 1px solid #f1ede4; }
+.sa-adm-user:last-child { border-bottom: none; }
+.sa-adm-user-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sa-adm-user-info { display: flex; flex-direction: column; }
+.sa-adm-user-name { font-size: 15px; font-weight: 800; color: #323f48; }
+.sa-adm-user-role { font-size: 11px; font-weight: 700; color: #9aa845; text-transform: uppercase; letter-spacing: 0.4px; }
+.sa-adm-pw-btn {
+  background: #f1ede0;
+  color: #4c5b18;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sa-adm-pw-row { display: flex; gap: 8px; margin-top: 10px; }
+.sa-adm-pw-row .sa-input { flex: 1; }
+.sa-adm-pw-save {
+  background: linear-gradient(135deg, #6a7d24, #5a6c1e);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sa-adm-pw-save:disabled { opacity: 0.6; }
+
 /* ── Desglose por evento (pagados / pendientes / asistieron) ── */
 .sa-ev-breakdown {
   display: flex;
