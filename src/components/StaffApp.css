@@ -1490,6 +1490,64 @@
   margin-top: 10px;
 }
 
+/* ── Sheet item mini-tag ── */
+.sa-sheet-mini {
+  font-size: 11px;
+  font-weight: 800;
+  color: #5a6c1e;
+  background: #eef0dc;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+/* ── Panel de versiones ── */
+.sa-ver-title { font-size: 18px; font-weight: 800; color: #323f48; margin: 2px 4px 14px; }
+.sa-ver-card {
+  background: #f7f4ee;
+  border: 1px solid #ece6dc;
+  border-radius: 16px;
+  padding: 13px 15px;
+  margin-bottom: 10px;
+}
+.sa-ver-card--current { background: #eef0dc; border-color: #dde0b8; }
+.sa-ver-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.sa-ver-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.8px; color: #9aa845; }
+.sa-ver-tag--on { color: #5a6c1e; }
+.sa-ver-mode { font-size: 11px; font-weight: 800; color: #8a7a35; }
+.sa-ver-mode--ok { color: #2b8a4e; }
+.sa-ver-mode--new { color: #5a6c1e; background: #dfe4b2; padding: 2px 8px; border-radius: 999px; }
+.sa-ver-mode--err { color: #ff4757; }
+.sa-ver-code { font-size: 14px; font-weight: 700; color: #323f48; font-variant-numeric: tabular-nums; word-break: break-all; }
+
+.sa-ver-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+.sa-ver-btn {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #6a7d24, #5a6c1e);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(90, 108, 30, 0.55);
+}
+.sa-ver-btn:active { transform: scale(0.98); }
+.sa-ver-btn:disabled { background: #e7e1d6; color: #a99e8c; box-shadow: none; cursor: default; }
+.sa-ver-btn--soft { background: #f1ede0; color: #4c5b18; box-shadow: none; }
+.sa-ver-close {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: none;
+  color: #b8a99a;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* ── OTA update button ── */
 .sa-update-btn--spin svg { animation: saSpin 0.9s linear infinite; }
 @keyframes saSpin { to { transform: rotate(360deg); } }

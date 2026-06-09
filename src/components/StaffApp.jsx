@@ -190,49 +190,27 @@ export default function StaffApp({ onStartScan, onLogout }) {
   // ── Menu (bottom sheet) + OTA manual ──
   const [showMenu, setShowMenu] = useState(false)
   const [appVersion, setAppVersion] = useState('')
+  const [latestVersion, setLatestVersion] = useState(undefined) // undefined=sin checar, null=error, string=ok
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
   const onRemoteBuild = typeof location !== 'undefined' && location.hostname.includes('hotelpuntagaleria')
 
-  useEffect(() => {
-    fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' })
-      .then(r => r.json()).then(v => setAppVersion(v?.version || '')).catch(() => {})
+  const fetchVer = useCallback(async (url) => {
+    try {
+      const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' })
+      if (!r.ok) return null
+      return await r.json()
+    } catch { return null }
   }, [])
 
-  const checkForUpdates = useCallback(async () => {
-    const fetchVer = async (url) => {
-      try {
-        const r = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' })
-        if (!r.ok) return null
-        return await r.json()
-      } catch { return null }
-    }
-    setCheckingUpdate(true)
-    showToast('Buscando actualizaciones…')
-    try {
-      const [localV, remoteV] = await Promise.all([
-        fetchVer('/version.json'),
-        fetchVer('https://hotelpuntagaleria.mx/version.json'),
-      ])
-      if (!remoteV?.version) {
-        showToast('No se pudo verificar. Intenta de nuevo.', 'error')
-        return
-      }
-      if (remoteV.version === (localV?.version || '')) {
-        showToast('Ya tienes la versión más reciente')
-        return
-      }
-      setModal({
-        title: 'Actualización disponible',
-        message: `Hay una versión nueva del sistema (${remoteV.version}). Se cargará la versión más reciente.`,
-        confirmLabel: 'Actualizar ahora',
-        onConfirm: () => {
-          // Sesion unica: no se persiste. Al reabrir la app vuelve a la instalada sola.
-          window.location.href = 'https://hotelpuntagaleria.mx/checkin'
-        },
-      })
-    } finally {
-      setCheckingUpdate(false)
-    }
+  // Version que corre ahora mismo (la del origen cargado)
+  useEffect(() => {
+    fetchVer('/version.json').then(v => setAppVersion(v?.version || '')).catch(() => {})
+  }, [fetchVer])
+
+  // Carga la version desplegada (cache-bust para ver los cambios al instante)
+  const loadOnline = useCallback(() => {
+    window.location.href = `https://hotelpuntagaleria.mx/checkin?v=${Date.now()}`
   }, [])
 
   const backToInstalled = useCallback(() => {
@@ -241,6 +219,17 @@ export default function StaffApp({ onStartScan, onLogout }) {
     if (window.history.length > 1) window.history.back()
     else window.location.href = 'http://localhost/'
   }, [])
+
+  // Abre el panel de versiones y consulta la ultima publicada
+  const openVersions = useCallback(async () => {
+    setShowMenu(false)
+    setLatestVersion(undefined)
+    setShowVersions(true)
+    const remote = await fetchVer('https://hotelpuntagaleria.mx/version.json')
+    setLatestVersion(remote?.version || null)
+  }, [fetchVer])
+
+  const checkForUpdates = openVersions
 
   const handleAiGenerate = async () => {
     if (!newEvt.name?.trim()) { showToast('Ingresa primero el nombre del evento', 'error'); return }
@@ -1243,16 +1232,12 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
 
               <div className="sa-sheet-list">
-                <button className="sa-sheet-item" disabled={checkingUpdate}
-                  onClick={() => { setShowMenu(false); onRemoteBuild ? backToInstalled() : checkForUpdates() }}>
-                  <span className={`sa-sheet-ic ${checkingUpdate ? 'sa-update-btn--spin' : ''}`}>
-                    {onRemoteBuild ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    )}
+                <button className="sa-sheet-item" onClick={openVersions}>
+                  <span className="sa-sheet-ic">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
                   </span>
-                  <span className="sa-sheet-label">{onRemoteBuild ? 'Volver a versión instalada' : 'Buscar actualizaciones'}</span>
+                  <span className="sa-sheet-label">Versiones y actualizaciones</span>
+                  <span className="sa-sheet-mini">{onRemoteBuild ? 'En línea' : 'Instalada'}</span>
                   <svg className="sa-sheet-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
 
@@ -1284,6 +1269,50 @@ export default function StaffApp({ onStartScan, onLogout }) {
               </div>
 
               <span className="sa-sheet-version">{onRemoteBuild ? 'En línea' : 'Instalada'} · {appVersion || '—'}</span>
+            </div>
+          </div>
+        )}
+        {showVersions && (
+          <div className="sa-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) setShowVersions(false) }}>
+            <div className="sa-sheet">
+              <span className="sa-sheet-grip" />
+              <h3 className="sa-ver-title">Versiones</h3>
+
+              <div className="sa-ver-card sa-ver-card--current">
+                <div className="sa-ver-row">
+                  <span className="sa-ver-tag sa-ver-tag--on">EN USO</span>
+                  <span className="sa-ver-mode">{onRemoteBuild ? 'En línea' : 'Instalada'}</span>
+                </div>
+                <span className="sa-ver-code">{appVersion || 'desconocida'}</span>
+              </div>
+
+              <div className="sa-ver-card">
+                <div className="sa-ver-row">
+                  <span className="sa-ver-tag">ÚLTIMA PUBLICADA</span>
+                  {latestVersion === undefined && <span className="sa-ver-mode">Consultando…</span>}
+                  {latestVersion === null && <span className="sa-ver-mode sa-ver-mode--err">Sin conexión</span>}
+                  {typeof latestVersion === 'string' && latestVersion === appVersion && <span className="sa-ver-mode sa-ver-mode--ok">Al día</span>}
+                  {typeof latestVersion === 'string' && latestVersion !== appVersion && <span className="sa-ver-mode sa-ver-mode--new">Nueva</span>}
+                </div>
+                <span className="sa-ver-code">{latestVersion || (latestVersion === null ? '—' : '…')}</span>
+              </div>
+
+              <div className="sa-ver-actions">
+                {onRemoteBuild ? (
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={() => { setShowVersions(false); backToInstalled() }}>
+                    Volver a versión instalada
+                  </button>
+                ) : (typeof latestVersion === 'string' && latestVersion !== appVersion) ? (
+                  <button className="sa-ver-btn" onClick={loadOnline}>
+                    Actualizar a la versión nueva
+                  </button>
+                ) : latestVersion === null ? (
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={openVersions}>Reintentar</button>
+                ) : (
+                  <button className="sa-ver-btn sa-ver-btn--soft" disabled>Estás en la última versión</button>
+                )}
+                <button className="sa-ver-close" onClick={() => setShowVersions(false)}>Cerrar</button>
+              </div>
             </div>
           </div>
         )}
