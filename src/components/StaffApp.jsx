@@ -226,7 +226,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
         message: `Hay una versión nueva del sistema (${remoteV.version}). Se cargará la versión más reciente.`,
         confirmLabel: 'Actualizar ahora',
         onConfirm: () => {
-          localStorage.setItem('ota_mode', 'remote')
+          // Sesion unica: no se persiste. Al reabrir la app vuelve a la instalada sola.
           window.location.href = 'https://hotelpuntagaleria.mx/checkin'
         },
       })
@@ -236,13 +236,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }, [])
 
   const backToInstalled = useCallback(() => {
-    setModal({
-      icon: 'lock',
-      title: 'Volver a la versión instalada',
-      message: 'La app cargará la versión instalada en el dispositivo (funciona sin internet).',
-      confirmLabel: 'Volver a instalada',
-      onConfirm: () => { window.location.href = 'http://localhost/?installed=1' },
-    })
+    try { localStorage.removeItem('ota_mode') } catch {}
+    // history.back regresa a la pagina local ya cargada (sin cruzar https->http)
+    if (window.history.length > 1) window.history.back()
+    else window.location.href = 'http://localhost/'
   }, [])
 
   const handleAiGenerate = async () => {

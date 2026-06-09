@@ -18,22 +18,9 @@ document.addEventListener('dragstart', (e) => {
   }
 })
 
-// ── OTA manual: modo "version en linea" ──
-// Solo dentro de la app nativa. Si el usuario activo el modo remoto,
-// carga la version desplegada (ultimo git push) al abrir.
-try {
-  const isBundled = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-  if (window.Capacitor && isBundled) {
-    const params = new URLSearchParams(location.search)
-    if (params.get('installed') === '1') {
-      localStorage.setItem('ota_mode', 'installed')
-      history.replaceState(null, '', location.pathname)
-    }
-    if (localStorage.getItem('ota_mode') === 'remote') {
-      location.replace('https://hotelpuntagaleria.mx/checkin')
-    }
-  }
-} catch {}
+// OTA manual (por sesion): limpia cualquier flag persistente viejo
+// para que la app nunca quede atrapada en la version en linea al reabrir.
+try { localStorage.removeItem('ota_mode') } catch {}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
