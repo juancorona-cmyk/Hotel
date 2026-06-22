@@ -79,7 +79,7 @@ export default function BookingModal({ initialRoom, onClose }) {
     if (!checkin || !checkout) return
     // Folio = firma para identificar que el prospecto vino de la página web y cruzarlo en métricas
     const folio = 'HPG-' + Date.now().toString(36).toUpperCase().slice(-6)
-    trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', folio, room: roomId, nights, adults, children, rooms, checkin, checkout })
+    trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', promo: 'web_20', folio, room: roomId, nights, adults, children, rooms, checkin, checkout })
     // Sin emojis: en WhatsApp de PC se veían como "◆". Etiquetas en negrita se ven igual en PC y celular.
     const lines = [
       t('modal.waMsg.hola'),
@@ -91,6 +91,8 @@ export default function BookingModal({ initialRoom, onClose }) {
       ...(room.maxChildren > 0 ? [`*${t('modal.ninosLbl')}:* ${children}`] : []),
       `*${t('modal.habitacionesLbl')}:* ${rooms}`,
       ...(extraPersons > 0 ? [`Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra x $200 = $${extraPersons * 200} MXN por noche`] : []),
+      ``,
+      `*PROMO WEB:* 20% de descuento exclusivo en linea`,
       ``,
       t('modal.waMsg.gracias'),
       `-----------------`,
@@ -115,6 +117,14 @@ export default function BookingModal({ initialRoom, onClose }) {
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
+        </div>
+
+        <div className="bm-promo-strip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+            <line x1="7" y1="7" x2="7.01" y2="7"/>
+          </svg>
+          PROMO WEB · 20% DE DESCUENTO · EXCLUSIVO EN LINEA
         </div>
 
         <form className="bm-form" onSubmit={handleSubmit}>

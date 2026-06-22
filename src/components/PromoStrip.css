@@ -1,0 +1,42 @@
+.ps {
+  background: #b5c840;
+  overflow: hidden;
+  padding: 13px 0;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+}
+
+.ps__track {
+  display: flex;
+  width: max-content;
+  animation: psScroll 22s linear infinite;
+}
+
+.ps:hover .ps__track {
+  animation-play-state: paused;
+}
+
+@keyframes psScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.333%); }
+}
+
+.ps__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #1a1f0e;
+  white-space: nowrap;
+  padding: 0 18px;
+}
+
+.ps__sep {
+  font-size: 8px;
+  color: rgba(26, 31, 14, 0.4);
+}

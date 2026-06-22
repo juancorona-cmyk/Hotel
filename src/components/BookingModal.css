@@ -1,3 +1,19 @@
+/* Promo strip */
+.bm-promo-strip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #b5c840;
+  color: #1a1f0e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* Overlay */
 .bm-overlay {
   position: fixed;

@@ -6,16 +6,25 @@
     "videos": "VIDEOS",
     "restaurante": "RESTAURANTE",
     "eventos": "SALÓN DE EVENTOS",
-    "ubicacion": "UBICACIÓN"
+    "ubicacion": "UBICACIÓN",
+    "menu": "Menú",
+    "cambiarIdioma": "Cambiar idioma"
   },
-"hero": {
-     "titulo": "MORELIA",
-      "subtitulo": "Un lugar de descanso",
-     "titulosDinamicos": ["TRADICIÓN", "NATURALEZA", "HOSPITALIDAD",
-     "COMODIDAD", "EXCLUSIVIDAD"],
-     "btn": "Reservar Ahora"
-   },
-
+  "hero": {
+    "titulo": "MORELIA",
+    "subtitulo": "Un lugar de descanso",
+    "titulosDinamicos": [
+      "TRADICIÓN",
+      "NATURALEZA",
+      "HOSPITALIDAD",
+      "COMODIDAD",
+      "EXCLUSIVIDAD"
+    ],
+    "btn": "Reservar Ahora",
+    "promoTag": "EXCLUSIVO ONLINE",
+    "promoDescuento": "20% de descuento en tu estadía",
+    "promoCta": "Reservar con 20% OFF"
+  },
   "nosotros": {
     "lead": "Hotel Punta Galería, tu refugio en Morelia",
     "p1": "Nuestra historia comenzó hace aproximadamente 40 años bajo el nombre de Hostal Real Camelinas. En febrero de 2011, evolucionamos para convertirnos en Hotel Punta Galería, manteniendo siempre nuestra esencia de hospitalidad.",
@@ -157,9 +166,43 @@
     "cuandoTeVas": "¿Cuándo te vas?",
     "borrar": "Borrar fechas",
     "listo": "Listo",
-    "meses": ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
-    "mesesCorto": ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"],
-    "dias": ["Lu","Ma","Mi","Ju","Vi","Sa","Do"]
+    "meses": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ],
+    "mesesCorto": [
+      "ene",
+      "feb",
+      "mar",
+      "abr",
+      "may",
+      "jun",
+      "jul",
+      "ago",
+      "sep",
+      "oct",
+      "nov",
+      "dic"
+    ],
+    "dias": [
+      "Lu",
+      "Ma",
+      "Mi",
+      "Ju",
+      "Vi",
+      "Sa",
+      "Do"
+    ]
   },
   "footer": {
     "navegacion": "Navegación",
@@ -170,16 +213,5 @@
     "terminos": "Términos de uso",
     "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
     "derechos": "Hotel Punta Galería · Todos los derechos reservados."
-  },
-  "nav": {
-    "inicio": "INICIO",
-    "nosotros": "NOSOTROS",
-    "habitaciones": "HABITACIONES",
-    "videos": "VIDEOS",
-    "restaurante": "RESTAURANTE",
-    "eventos": "SALÓN DE EVENTOS",
-    "ubicacion": "UBICACIÓN",
-    "menu": "Menú",
-    "cambiarIdioma": "Cambiar idioma"
   }
 }

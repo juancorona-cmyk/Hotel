@@ -17,6 +17,7 @@ import Testimonials from './components/Testimonials'
 import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
+import PromoStrip from './components/PromoStrip'
 import { setupDB, trackEvent, getProxyConfig, getRegistrationById } from './lib/turso'
 import { fmtFecha } from './lib/utils'
 import { updateCDN } from './lib/cdn'
@@ -291,7 +292,7 @@ function CheckInBrowserGateway() {
 
 function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion }) {
   const openBooking = (source, roomId) => {
-    trackEvent('reserva_click', { source, origin: 'web', room: roomId })
+    trackEvent('reserva_click', { source, origin: 'web', promo: 'web_20', room: roomId })
     setBookingRoom(roomId)
   }
 
@@ -299,6 +300,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
     <>
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} />
+      <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} />
       <About />
       <Stats />
       <Marquee />

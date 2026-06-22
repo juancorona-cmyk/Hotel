@@ -753,6 +753,16 @@ export default function StaffApp({ onStartScan, onLogout }) {
     else navigate('/checkin')
   }
 
+  // Busqueda manual por numero de ticket (sin QR ni PDF)
+  const [ticketNum, setTicketNum] = useState('')
+  const handleManualTicket = (e) => {
+    e?.preventDefault?.()
+    const n = parseInt(String(ticketNum).trim(), 10)
+    if (!n || isNaN(n) || n <= 0) { showToast('Ingresa un número de ticket válido', 'error'); return }
+    setTicketNum('')
+    navigate(`/checkin?rid=${n}`)
+  }
+
   const handleNavAsistentes = () => {
     viewAllAttendees('all')
   }
@@ -1128,6 +1138,27 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </section>
 
         <div className="sa-body">
+          <form onSubmit={handleManualTicket} className="sa-ticket-lookup">
+            <div className="sa-ticket-lookup-head">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#626c1f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/><line x1="12" y1="7" x2="12" y2="17" strokeDasharray="2 3"/>
+              </svg>
+              <span>Validar por número de ticket</span>
+            </div>
+            <p className="sa-ticket-lookup-hint">Si el invitado no trae QR ni PDF, busca con el número de ticket.</p>
+            <div className="sa-ticket-lookup-row">
+              <input
+                type="number"
+                inputMode="numeric"
+                className="sa-input"
+                placeholder="Ej. 1234"
+                value={ticketNum}
+                onChange={e => setTicketNum(e.target.value)}
+              />
+              <button type="submit" className="sa-ticket-lookup-btn">Buscar</button>
+            </div>
+          </form>
+
           <div className="sa-section-header">
             <h2 className="sa-section-title">Eventos activos</h2>
             <span className="sa-badge-count">{events.length}</span>
