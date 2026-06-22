@@ -194,7 +194,6 @@ export async function setupDB() {
     `ALTER TABLE admin_users ADD COLUMN must_change INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
-    `UPDATE admin_users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM admin_users) AND (role IS NULL OR role = 'editor')`,
     `ALTER TABLE activity_registrations ADD COLUMN transfer_proof_url TEXT DEFAULT NULL`,
     `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431288388')`,
     `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431103910')`,
