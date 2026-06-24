@@ -144,7 +144,7 @@ export default async (req) => {
       if (!u) return json({ ok: false, error: 'El usuario no existe' }, 404)
       const salt = randomBytes(16).toString('hex')
       const hash = await hashPassword(newPassword, salt)
-      await dbQuery('UPDATE admin_users SET hash = ?, salt = ? WHERE username = ?', [
+      await dbQuery('UPDATE admin_users SET hash = ?, salt = ?, must_change = 0 WHERE username = ?', [
         { type: 'text', value: hash }, { type: 'text', value: salt }, { type: 'text', value: username.trim() },
       ])
       clearLimit(ip)

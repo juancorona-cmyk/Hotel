@@ -620,7 +620,11 @@ export async function adminForceChangePassword(username, currentPassword, newPas
     body: JSON.stringify({ action: 'change', username, password: currentPassword, newPassword }),
   })
   const text = await res.text()
-  try { return JSON.parse(text) } catch { throw new Error(`Respuesta inválida del servidor en ${url}`) }
+  try {
+    const d = JSON.parse(text)
+    if (!d.ok && d.reason && !d.error) d.error = d.reason === 'bad_password' ? 'Contraseña actual incorrecta' : d.reason
+    return d
+  } catch { throw new Error(`Respuesta inválida del servidor en ${url}`) }
 }
 
 export async function adminGetUsers() {
