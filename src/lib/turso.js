@@ -195,6 +195,8 @@ export async function setupDB() {
     `ALTER TABLE activity_registrations ADD COLUMN checked_in INTEGER DEFAULT 0`,
     `ALTER TABLE activity_registrations ADD COLUMN checked_in_at TEXT DEFAULT NULL`,
     `ALTER TABLE activity_registrations ADD COLUMN transfer_proof_url TEXT DEFAULT NULL`,
+    `CREATE TABLE IF NOT EXISTS hotel_settings (key TEXT PRIMARY KEY, value TEXT)`,
+    `INSERT OR IGNORE INTO hotel_settings (key, value) VALUES ('promo_web_20', '1')`,
     `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431288388')`,
     `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431103910')`,
     `INSERT OR IGNORE INTO whatsapp_members (phone) VALUES ('4431276964')`,
@@ -769,5 +771,22 @@ export async function saveTransferProof(id, proofUrl) {
   await exec(
     `UPDATE activity_registrations SET transfer_proof_url = ? WHERE id = ?`,
     [txt(proofUrl), int(id)]
+  )
+}
+
+// ── Hotel Settings (promo, etc.) ─────────────────────────
+export async function getPromoActive() {
+  try {
+    const res = await exec("SELECT value FROM hotel_settings WHERE key = 'promo_web_20' LIMIT 1")
+    const row = parseRows(res)[0]
+    if (!row) return true
+    return row.value !== '0'
+  } catch { return true }
+}
+
+export async function setPromoActive(active) {
+  return exec(
+    "INSERT OR REPLACE INTO hotel_settings (key, value) VALUES ('promo_web_20', ?)",
+    [txt(active ? '1' : '0')]
   )
 }

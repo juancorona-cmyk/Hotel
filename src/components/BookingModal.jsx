@@ -27,7 +27,7 @@ function Counter({ value, onChange, min = 0, max = 10 }) {
   )
 }
 
-export default function BookingModal({ initialRoom, onClose }) {
+export default function BookingModal({ initialRoom, onClose, promoActive = true }) {
   const { t, i18n } = useTranslation()
 
   const ROOMS = [
@@ -92,8 +92,7 @@ export default function BookingModal({ initialRoom, onClose }) {
       `*${t('modal.habitacionesLbl')}:* ${rooms}`,
       ...(extraPersons > 0 ? [`Cargo adicional: ${extraPersons} persona${extraPersons > 1 ? 's' : ''} extra x $200 = $${extraPersons * 200} MXN por noche`] : []),
       ``,
-      `*PROMO WEB:* 20% de descuento exclusivo en linea`,
-      ``,
+      ...(promoActive ? [`*PROMO WEB:* 20% de descuento exclusivo en linea`, ``] : []),
       t('modal.waMsg.gracias'),
       `-----------------`,
       `*${t('modal.waMsg.folio')}:* ${folio}`,
@@ -119,13 +118,15 @@ export default function BookingModal({ initialRoom, onClose }) {
           </button>
         </div>
 
-        <div className="bm-promo-strip">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
-            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-            <line x1="7" y1="7" x2="7.01" y2="7"/>
-          </svg>
-          PROMO WEB · 20% DE DESCUENTO · EXCLUSIVO EN LINEA
-        </div>
+        {promoActive && (
+          <div className="bm-promo-strip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+            PROMO WEB · 20% DE DESCUENTO · EXCLUSIVO EN LINEA
+          </div>
+        )}
 
         <form className="bm-form" onSubmit={handleSubmit}>
 

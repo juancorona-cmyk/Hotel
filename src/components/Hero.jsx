@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CDN } from '../lib/cdn'
 import './Hero.css'
 
-export default function Hero({ onBook }) {
+export default function Hero({ onBook, promoActive = true }) {
   const { t } = useTranslation()
   const [titleNumber, setTitleNumber] = useState(0)
   const [animKey, setAnimKey] = useState(0)
@@ -41,13 +41,15 @@ export default function Hero({ onBook }) {
         </p>
 
         <div className="hero__cta-wrap hero__anim-fade-up hero__anim-delay-2">
-          <span className="hero__cta-badge">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-              <line x1="7" y1="7" x2="7.01" y2="7"/>
-            </svg>
-            {t('hero.promoTag')} · 20% OFF
-          </span>
+          {promoActive && (
+            <span className="hero__cta-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+              {t('hero.promoTag')} · 20% OFF
+            </span>
+          )}
           <button
             type="button"
             className="hero__btn"

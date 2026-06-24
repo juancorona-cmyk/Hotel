@@ -10,6 +10,7 @@ import {
   deleteBotEvent, updateActivityRegistrationPayment,
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
   adminForceChangePassword, genGenericPassword,
+  getPromoActive, setPromoActive,
   API_BASE
 } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -59,6 +60,7 @@ const PERMS_CONFIG = [
   { key: 'reservas',      label: 'Reservas Hotel' },
   { key: 'inscripciones', label: 'Inscripciones Actividades'  },
   { key: 'reportes',      label: 'Reportes'       },
+  { key: 'config',        label: 'Configuración'  },
 ]
 
 // Agrupación de tabs en menús desplegables (barra más limpia)
@@ -66,6 +68,7 @@ const TAB_GROUPS = [
   { id: 'metricas',      label: 'Métricas',      items: [['stats', 'Estadísticas'], ['google', 'Google'], ['reportes', 'Reportes']] },
   { id: 'reservaciones', label: 'Reservaciones', items: [['reservas', 'Reservas'], ['inscripciones', 'Inscripciones']] },
   { id: 'contenido',     label: 'Contenido',     items: [['contenido', 'Actividades y Eventos']] },
+  { id: 'config',        label: 'Configuración', items: [['config', 'Configuración']] },
 ]
 
 // ── Labels ────────────────────────────────────────────────
@@ -2822,6 +2825,8 @@ export default function AdminDashboard({ onClose }) {
               <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
             ) : tab === 'reportes' ? (
               <ReportesSection />
+            ) : tab === 'config' ? (
+              <PromoConfigSection />
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (
@@ -2902,6 +2907,73 @@ export default function AdminDashboard({ onClose }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Promo Config Section ────────────────────────────────────
+function PromoConfigSection() {
+  const [active, setActive] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    getPromoActive().then(setActive)
+  }, [])
+
+  const toggle = async (val) => {
+    setSaving(true); setMsg('')
+    try {
+      await setPromoActive(val)
+      setActive(val)
+      setMsg(val ? 'Promo activada. Recarga la web para verla.' : 'Promo desactivada. Recarga la web para confirmar.')
+    } catch { setMsg('Error al guardar') }
+    finally { setSaving(false) }
+  }
+
+  if (active === null) return <p className="adm-users__loading">Cargando…</p>
+
+  return (
+    <div style={{ padding: '20px 0', maxWidth: 480 }}>
+      <div className="adm-section-lbl">PROMO WEB — 20% DESCUENTO</div>
+      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '20px 22px', marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 52, height: 28, borderRadius: 14, cursor: saving ? 'default' : 'pointer',
+            background: active ? '#5a6c1e' : '#ccc', position: 'relative', transition: 'background .2s',
+            flexShrink: 0,
+          }} onClick={() => !saving && toggle(!active)}>
+            <div style={{
+              width: 22, height: 22, borderRadius: '50%', background: '#fff',
+              position: 'absolute', top: 3, left: active ? 27 : 3, transition: 'left .2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+            }} />
+          </div>
+          <span style={{ fontWeight: 700, fontSize: 15, color: active ? '#3a4a10' : '#888' }}>
+            {active ? 'ACTIVA' : 'INACTIVA'}
+          </span>
+        </div>
+        <p style={{ fontSize: 13, color: '#666', margin: '0 0 14px' }}>
+          Controla si el banner de promo, el marquee y el descuento del 20% se muestran en el inicio.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className={`adm-btn-sm ${active ? '' : 'adm-btn-sm--green'}`}
+            disabled={saving || active}
+            onClick={() => toggle(true)}
+          >
+            Activar promo
+          </button>
+          <button
+            className={`adm-btn-sm ${active ? 'adm-btn-sm--del' : ''}`}
+            disabled={saving || !active}
+            onClick={() => toggle(false)}
+          >
+            Quitar promo
+          </button>
+        </div>
+        {msg && <p style={{ marginTop: 10, fontSize: 12, color: active ? '#5a6c1e' : '#b45309', fontWeight: 600 }}>{msg}</p>}
+      </div>
     </div>
   )
 }
