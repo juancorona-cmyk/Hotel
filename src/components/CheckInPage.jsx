@@ -96,10 +96,23 @@ export default function CheckInPage() {
     }
 
     try {
+      // Verificar y solicitar permisos de cámara antes de escanear
+      const { camera } = await BarcodeScanner.checkPermissions()
+      if (camera === 'denied') {
+        alert('Permiso de cámara denegado. Ve a Ajustes > Hotel Punta Galería > Cámara.')
+        return
+      }
+      if (camera !== 'granted') {
+        const { camera: granted } = await BarcodeScanner.requestPermissions()
+        if (granted !== 'granted') {
+          alert('Se necesita permiso de cámara para escanear.')
+          return
+        }
+      }
+
       const { barcodes } = await BarcodeScanner.scan()
       if (barcodes.length > 0) {
         const value = barcodes[0].displayValue
-        // Esperamos una URL como: https://hotelpuntagaleria.mx/checkin?rid=123
         try {
           const url = new URL(value)
           const scannedRid = url.searchParams.get('rid')
@@ -109,7 +122,6 @@ export default function CheckInPage() {
             alert('Código QR no válido para el sistema del hotel.')
           }
         } catch {
-          // Si no es URL, probamos si es solo el ID
           if (!isNaN(value)) {
             navigate(`/checkin?rid=${value}`)
           } else {
@@ -119,7 +131,7 @@ export default function CheckInPage() {
       }
     } catch (err) {
       console.error('Scan error:', err)
-      // Si falla por falta de permisos o no soportado
+      alert('No se pudo abrir la cámara. Intenta de nuevo.')
     }
   }
 

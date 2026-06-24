@@ -760,8 +760,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   const handleActualScan = () => {
     setShowScanSheet(false)
-    if (onStartScan) onStartScan()
-    else navigate('/checkin')
+    // Esperar a que React elimine el overlay del DOM antes de abrir la cámara nativa
+    setTimeout(() => {
+      if (onStartScan) onStartScan()
+      else navigate('/checkin')
+    }, 250)
   }
 
   const handleManualTicket = (e) => {
