@@ -980,123 +980,121 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </svg>
         <span>Pagados</span>
       </button>
-      {showScanSheet && createPortal(
-        <div className="sa-modal-overlay" onClick={() => setShowScanSheet(false)}>
-          <div className="sa-scan-sheet" onClick={e => e.stopPropagation()}>
-            <div className="sa-scan-sheet-handle" />
-            <p className="sa-scan-sheet-title">Verificar acceso</p>
-
-            {/* Escanear QR */}
-            <button className="sa-scan-option" onClick={handleActualScan}>
-              <div className="sa-scan-option-icon sa-scan-option-icon--qr">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-                  <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-                  <path d="M14 14h3v3h-3zM18 17h3v3h-3zM14 18h3v3h-3zM18 14h3v3h-3z"/>
-                </svg>
-              </div>
-              <div className="sa-scan-option-text">
-                <span className="sa-scan-option-label">Escanear QR</span>
-                <span className="sa-scan-option-hint">Apunta la cámara al código QR del invitado</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-
-            {/* Teléfono */}
-            <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'phone' ? null : 'phone')}>
-              <div className="sa-scan-option-icon sa-scan-option-icon--phone">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.16 6.16l1.02-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                </svg>
-              </div>
-              <div className="sa-scan-option-text">
-                <span className="sa-scan-option-label">Número de teléfono</span>
-                <span className="sa-scan-option-hint">Registro reciente de esta semana</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
-                {scanSheetMode === 'phone' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
-              </svg>
-            </button>
-
-            {scanSheetMode === 'phone' && (
-              <div className="sa-scan-phone-block">
-                <form className="sa-scan-ticket-form" onSubmit={handlePhoneSearch}>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    className="sa-input"
-                    placeholder="Ej. 4431234567"
-                    value={phoneNum}
-                    onChange={e => { setPhoneNum(e.target.value); setPhoneResults(null) }}
-                    autoFocus
-                  />
-                  <button type="submit" className="sa-scan-ticket-btn" disabled={phoneBusy}>
-                    {phoneBusy ? '…' : 'Buscar'}
-                  </button>
-                </form>
-                {phoneResults !== null && phoneResults.length === 0 && (
-                  <p className="sa-scan-phone-empty">Sin registro esta semana. Usa número de ticket.</p>
-                )}
-                {phoneResults !== null && phoneResults.length > 1 && (
-                  <div className="sa-scan-phone-results">
-                    {phoneResults.map(r => (
-                      <button key={r.id} className="sa-scan-phone-row" onClick={() => {
-                        setShowScanSheet(false)
-                        setPhoneNum('')
-                        setPhoneResults(null)
-                        navigate(`/checkin?rid=${r.id}`)
-                      }}>
-                        <div className="sa-scan-phone-row-info">
-                          <span className="sa-scan-phone-row-name">{r.full_name}</span>
-                          <span className="sa-scan-phone-row-event">{r.event_name || r.activity_name} · #{String(r.id).padStart(4,'0')}</span>
-                        </div>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Número de ticket */}
-            <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'ticket' ? null : 'ticket')}>
-              <div className="sa-scan-option-icon sa-scan-option-icon--ticket">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/>
-                  <line x1="12" y1="7" x2="12" y2="17" strokeDasharray="2 3"/>
-                </svg>
-              </div>
-              <div className="sa-scan-option-text">
-                <span className="sa-scan-option-label">Número de ticket</span>
-                <span className="sa-scan-option-hint">Si el invitado no trae QR ni PDF</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
-                {scanSheetMode === 'ticket' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
-              </svg>
-            </button>
-
-            {scanSheetMode === 'ticket' && (
-              <form className="sa-scan-ticket-form" onSubmit={handleManualTicket}>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="sa-input"
-                  placeholder="Ej. 1234"
-                  value={ticketNum}
-                  onChange={e => setTicketNum(e.target.value)}
-                  autoFocus
-                />
-                <button type="submit" className="sa-scan-ticket-btn">Buscar</button>
-              </form>
-            )}
-
-            <button className="sa-scan-cancel" onClick={() => setShowScanSheet(false)}>Cancelar</button>
-          </div>
-        </div>,
-        document.body
-      )}
     </nav>
+  )
+
+  // ── Scan Sheet Portal — definido aquí (no dentro de BottomNav) para
+  //    evitar desmontaje por re-render al escribir en los inputs ──
+  const scanPortal = showScanSheet && createPortal(
+    <div className="sa-modal-overlay" onClick={() => setShowScanSheet(false)}>
+      <div className="sa-scan-sheet" onClick={e => e.stopPropagation()}>
+        <div className="sa-scan-sheet-handle" />
+        <p className="sa-scan-sheet-title">Verificar acceso</p>
+
+        <button className="sa-scan-option" onClick={handleActualScan}>
+          <div className="sa-scan-option-icon sa-scan-option-icon--qr">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+              <path d="M14 14h3v3h-3zM18 17h3v3h-3zM14 18h3v3h-3zM18 14h3v3h-3z"/>
+            </svg>
+          </div>
+          <div className="sa-scan-option-text">
+            <span className="sa-scan-option-label">Escanear QR</span>
+            <span className="sa-scan-option-hint">Apunta la cámara al código QR del invitado</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
+        <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'phone' ? null : 'phone')}>
+          <div className="sa-scan-option-icon sa-scan-option-icon--phone">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.16 6.16l1.02-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div className="sa-scan-option-text">
+            <span className="sa-scan-option-label">Número de teléfono</span>
+            <span className="sa-scan-option-hint">Registro reciente de esta semana</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
+            {scanSheetMode === 'phone' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+          </svg>
+        </button>
+
+        {scanSheetMode === 'phone' && (
+          <div className="sa-scan-phone-block">
+            <form className="sa-scan-ticket-form" onSubmit={handlePhoneSearch}>
+              <input
+                type="tel"
+                inputMode="numeric"
+                className="sa-input"
+                placeholder="Ej. 4431234567"
+                value={phoneNum}
+                onChange={e => setPhoneNum(e.target.value)}
+                autoFocus
+              />
+              <button type="submit" className="sa-scan-ticket-btn" disabled={phoneBusy}>
+                {phoneBusy ? '…' : 'Buscar'}
+              </button>
+            </form>
+            {phoneResults !== null && phoneResults.length === 0 && (
+              <p className="sa-scan-phone-empty">Sin registro esta semana. Usa número de ticket.</p>
+            )}
+            {phoneResults !== null && phoneResults.length > 1 && (
+              <div className="sa-scan-phone-results">
+                {phoneResults.map(r => (
+                  <button key={r.id} className="sa-scan-phone-row" onClick={() => {
+                    setShowScanSheet(false); setPhoneNum(''); setPhoneResults(null)
+                    navigate(`/checkin?rid=${r.id}`)
+                  }}>
+                    <div className="sa-scan-phone-row-info">
+                      <span className="sa-scan-phone-row-name">{r.full_name}</span>
+                      <span className="sa-scan-phone-row-event">{r.event_name || r.activity_name} · #{String(r.id).padStart(4,'0')}</span>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'ticket' ? null : 'ticket')}>
+          <div className="sa-scan-option-icon sa-scan-option-icon--ticket">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/>
+              <line x1="12" y1="7" x2="12" y2="17" strokeDasharray="2 3"/>
+            </svg>
+          </div>
+          <div className="sa-scan-option-text">
+            <span className="sa-scan-option-label">Número de ticket</span>
+            <span className="sa-scan-option-hint">Si el invitado no trae QR ni PDF</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
+            {scanSheetMode === 'ticket' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+          </svg>
+        </button>
+
+        {scanSheetMode === 'ticket' && (
+          <form className="sa-scan-ticket-form" onSubmit={handleManualTicket}>
+            <input
+              type="number"
+              inputMode="numeric"
+              className="sa-input"
+              placeholder="Ej. 1234"
+              value={ticketNum}
+              onChange={e => setTicketNum(e.target.value)}
+              autoFocus
+            />
+            <button type="submit" className="sa-scan-ticket-btn">Buscar</button>
+          </form>
+        )}
+
+        <button className="sa-scan-cancel" onClick={() => setShowScanSheet(false)}>Cancelar</button>
+      </div>
+    </div>,
+    document.body
   )
 
   // ── Panel de administrador (movil) ──
@@ -1211,6 +1209,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </div>
 
         <BottomNav />
+        {scanPortal}
         {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
         {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
@@ -1620,6 +1619,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
         )}
 
         <BottomNav />
+        {scanPortal}
         {showMenu && (
           <div className="sa-sheet-overlay" onClick={e => { if (e.target === e.currentTarget) setShowMenu(false) }}>
             <div className="sa-sheet">
@@ -1926,6 +1926,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
           </div>
         )}
         <BottomNav />
+        {scanPortal}
         {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
         {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
@@ -1982,6 +1983,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
             </div>
           </div>
           <BottomNav />
+          {scanPortal}
           {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
           {toast && <StaffToast message={toast.message} type={toast.type} />}
         </div>
@@ -2114,6 +2116,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </div>
 
         <BottomNav />
+        {scanPortal}
         {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
         {toast && <StaffToast message={toast.message} type={toast.type} />}
       </div>
@@ -2468,6 +2471,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
       )}
 
       <BottomNav />
+      {scanPortal}
       {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
       {toast && <StaffToast message={toast.message} type={toast.type} />}
     </div>
