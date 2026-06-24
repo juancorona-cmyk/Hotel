@@ -209,6 +209,20 @@ export default function StaffApp({ onStartScan, onLogout }) {
     fetchVer('/version.json').then(v => v && setLocalVer(v)).catch(() => {})
   }, [fetchVer])
 
+  // Auto-check version al montar — sin esperar a que el user abra el menu
+  useEffect(() => {
+    const check = async () => {
+      const remote = await fetchVer('https://hotelpuntagaleria.mx/version.json')
+      setLatestVer(remote || null)
+    }
+    const t = setTimeout(check, 3000) // 3s despues del login para no bloquear carga
+    return () => clearTimeout(t)
+  }, [fetchVer])
+
+  const [updateDismissed, setUpdateDismissed] = useState(() => {
+    try { return localStorage.getItem('update_dismissed') || '' } catch { return '' }
+  })
+
   // Carga la version desplegada (cache-bust para ver los cambios al instante)
   const loadOnline = useCallback(() => {
     window.location.href = `https://hotelpuntagaleria.mx/checkin?v=${Date.now()}`
@@ -216,7 +230,6 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   const backToInstalled = useCallback(() => {
     try { localStorage.removeItem('ota_mode') } catch {}
-    // history.back regresa a la pagina local ya cargada (sin cruzar https->http)
     if (window.history.length > 1) window.history.back()
     else window.location.href = 'http://localhost/'
   }, [])
@@ -1191,6 +1204,9 @@ export default function StaffApp({ onStartScan, onLogout }) {
           <div className="sa-hero-content">
             <p className="sa-hero-label">HOTEL PUNTA GALERÍA</p>
             <h1 className="sa-hero-title">Panel de Accesos</h1>
+            {appVersion && (
+              <span className="sa-hero-ver" onClick={openVersions}>{appVersion}</span>
+            )}
           </div>
 
           <div className="sa-stats-grid">
@@ -1210,6 +1226,25 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </section>
 
         <div className="sa-body">
+          {updateAvailable && latestVer.version !== updateDismissed && (
+            <div className="sa-update-banner">
+              <div className="sa-update-banner-left">
+                <div className="sa-update-dot" />
+                <div>
+                  <span className="sa-update-title">Nueva versión disponible</span>
+                  <span className="sa-update-sub">{appVersion} → {latestVer.label}</span>
+                </div>
+              </div>
+              <div className="sa-update-actions">
+                <button className="sa-update-btn" onClick={openVersions}>Ver</button>
+                <button className="sa-update-dismiss" onClick={() => {
+                  try { localStorage.setItem('update_dismissed', latestVer.version) } catch {}
+                  setUpdateDismissed(latestVer.version)
+                }}>✕</button>
+              </div>
+            </div>
+          )}
+
           <div className="sa-section-header">
             <h2 className="sa-section-title">Eventos activos</h2>
             <span className="sa-badge-count">{events.length}</span>
