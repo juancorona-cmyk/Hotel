@@ -10,7 +10,7 @@ import {
   deleteBotEvent, updateActivityRegistrationPayment,
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
   adminForceChangePassword, genGenericPassword,
-  getPromoActive, setPromoActive,
+  getPromoActive, setPromoActive, getPromoConfig, setPromoConfig,
   API_BASE
 } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -2912,13 +2912,28 @@ export default function AdminDashboard({ onClose }) {
 }
 
 // ── Promo Config Section ────────────────────────────────────
+const PRESET_COLORS = [
+  { hex: '#b5c840', name: 'Verde lima' },
+  { hex: '#f59e0b', name: 'Ámbar' },
+  { hex: '#ef4444', name: 'Rojo' },
+  { hex: '#3b82f6', name: 'Azul' },
+  { hex: '#8b5cf6', name: 'Violeta' },
+  { hex: '#ec4899', name: 'Rosa' },
+  { hex: '#5a6c1e', name: 'Verde olivo' },
+  { hex: '#0f172a', name: 'Negro' },
+]
+
 function PromoConfigSection() {
   const [active, setActive] = useState(null)
+  const [config, setConfig] = useState({ label: '20% OFF', color: '#b5c840' })
   const [saving, setSaving] = useState(false)
+  const [savingCfg, setSavingCfg] = useState(false)
   const [msg, setMsg] = useState('')
+  const [msgCfg, setMsgCfg] = useState('')
 
   useEffect(() => {
     getPromoActive().then(setActive)
+    getPromoConfig().then(setConfig)
   }, [])
 
   const toggle = async (val) => {
@@ -2926,22 +2941,35 @@ function PromoConfigSection() {
     try {
       await setPromoActive(val)
       setActive(val)
-      setMsg(val ? 'Promo activada. Recarga la web para verla.' : 'Promo desactivada. Recarga la web para confirmar.')
+      setMsg(val ? 'Activada. Recarga la web.' : 'Desactivada. Recarga la web.')
     } catch { setMsg('Error al guardar') }
     finally { setSaving(false) }
   }
 
+  const saveConfig = async () => {
+    if (!config.label.trim()) return
+    setSavingCfg(true); setMsgCfg('')
+    try {
+      await setPromoConfig(config)
+      setMsgCfg('Guardado. Recarga la web para ver los cambios.')
+    } catch { setMsgCfg('Error al guardar') }
+    finally { setSavingCfg(false) }
+  }
+
   if (active === null) return <p className="adm-users__loading">Cargando…</p>
 
+  const previewColor = config.color || '#b5c840'
+
   return (
-    <div style={{ padding: '20px 0', maxWidth: 480 }}>
-      <div className="adm-section-lbl">PROMO WEB — 20% DESCUENTO</div>
-      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '20px 22px', marginTop: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+    <div style={{ padding: '20px 0', maxWidth: 520 }}>
+
+      {/* Toggle ON/OFF */}
+      <div className="adm-section-lbl">ESTADO DE LA PROMO</div>
+      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '18px 22px', marginTop: 10, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
           <div style={{
             width: 52, height: 28, borderRadius: 14, cursor: saving ? 'default' : 'pointer',
-            background: active ? '#5a6c1e' : '#ccc', position: 'relative', transition: 'background .2s',
-            flexShrink: 0,
+            background: active ? '#5a6c1e' : '#ccc', position: 'relative', transition: 'background .2s', flexShrink: 0,
           }} onClick={() => !saving && toggle(!active)}>
             <div style={{
               width: 22, height: 22, borderRadius: '50%', background: '#fff',
@@ -2953,26 +2981,88 @@ function PromoConfigSection() {
             {active ? 'ACTIVA' : 'INACTIVA'}
           </span>
         </div>
-        <p style={{ fontSize: 13, color: '#666', margin: '0 0 14px' }}>
-          Controla si el banner de promo, el marquee y el descuento del 20% se muestran en el inicio.
-        </p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className={`adm-btn-sm ${active ? '' : 'adm-btn-sm--green'}`}
-            disabled={saving || active}
-            onClick={() => toggle(true)}
-          >
-            Activar promo
-          </button>
-          <button
-            className={`adm-btn-sm ${active ? 'adm-btn-sm--del' : ''}`}
-            disabled={saving || !active}
-            onClick={() => toggle(false)}
-          >
-            Quitar promo
-          </button>
+          <button className={`adm-btn-sm${active ? '' : ' adm-btn-sm--green'}`} disabled={saving || active} onClick={() => toggle(true)}>Activar</button>
+          <button className={`adm-btn-sm${active ? ' adm-btn-sm--del' : ''}`} disabled={saving || !active} onClick={() => toggle(false)}>Quitar</button>
         </div>
-        {msg && <p style={{ marginTop: 10, fontSize: 12, color: active ? '#5a6c1e' : '#b45309', fontWeight: 600 }}>{msg}</p>}
+        {msg && <p style={{ marginTop: 8, fontSize: 12, color: active ? '#5a6c1e' : '#b45309', fontWeight: 600 }}>{msg}</p>}
+      </div>
+
+      {/* Personalización */}
+      <div className="adm-section-lbl">PERSONALIZAR PROMO</div>
+      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '18px 22px', marginTop: 10 }}>
+
+        {/* Texto */}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 6 }}>TEXTO DE LA PROMO</label>
+        <input
+          type="text"
+          value={config.label}
+          maxLength={30}
+          onChange={e => setConfig(c => ({ ...c, label: e.target.value }))}
+          placeholder="Ej: 20% OFF, OFERTA ESPECIAL…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 7, border: '1px solid #cdd8a0', fontSize: 14, fontFamily: 'Montserrat, sans-serif', marginBottom: 18, outline: 'none' }}
+        />
+
+        {/* Color */}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 8 }}>COLOR</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          {PRESET_COLORS.map(p => (
+            <div
+              key={p.hex}
+              title={p.name}
+              onClick={() => setConfig(c => ({ ...c, color: p.hex }))}
+              style={{
+                width: 30, height: 30, borderRadius: '50%', background: p.hex, cursor: 'pointer',
+                border: config.color === p.hex ? '3px solid #222' : '3px solid transparent',
+                boxShadow: config.color === p.hex ? '0 0 0 2px #fff inset' : 'none',
+                transition: 'border .15s',
+              }}
+            />
+          ))}
+          {/* Custom color picker */}
+          <div style={{ position: 'relative', width: 30, height: 30 }} title="Color personalizado">
+            <div style={{
+              width: 30, height: 30, borderRadius: '50%', background: 'conic-gradient(red,yellow,lime,cyan,blue,magenta,red)',
+              cursor: 'pointer', border: '2px solid #ccc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <input
+                type="color"
+                value={config.color}
+                onChange={e => setConfig(c => ({ ...c, color: e.target.value }))}
+                style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', padding: 0 }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 8 }}>PREVIEW</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Badge hero */}
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800,
+              letterSpacing: '0.15em', textTransform: 'uppercase',
+              color: previewColor, background: `${previewColor}22`, border: `1px solid ${previewColor}55`,
+              padding: '4px 12px', borderRadius: 20, width: 'fit-content',
+            }}>
+              ✦ PROMO · {config.label || '…'}
+            </span>
+            {/* Strip */}
+            <div style={{
+              background: previewColor, color: '#1a1f0e', fontSize: 10, fontWeight: 800,
+              letterSpacing: '0.12em', textTransform: 'uppercase', padding: '7px 16px',
+              borderRadius: 6, width: 'fit-content',
+            }}>
+              {config.label || '…'} ✦ EXCLUSIVO EN LÍNEA ✦ RESERVA DIRECTO
+            </div>
+          </div>
+        </div>
+
+        <button className="adm-btn-sm adm-btn-sm--green" disabled={savingCfg || !config.label.trim()} onClick={saveConfig}>
+          {savingCfg ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+        {msgCfg && <p style={{ marginTop: 8, fontSize: 12, color: '#5a6c1e', fontWeight: 600 }}>{msgCfg}</p>}
       </div>
     </div>
   )

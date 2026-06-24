@@ -775,6 +775,8 @@ export async function saveTransferProof(id, proofUrl) {
 }
 
 // ── Hotel Settings (promo, etc.) ─────────────────────────
+const PROMO_DEFAULTS = { label: '20% OFF', color: '#b5c840' }
+
 export async function getPromoActive() {
   try {
     const res = await exec("SELECT value FROM hotel_settings WHERE key = 'promo_web_20' LIMIT 1")
@@ -788,5 +790,21 @@ export async function setPromoActive(active) {
   return exec(
     "INSERT OR REPLACE INTO hotel_settings (key, value) VALUES ('promo_web_20', ?)",
     [txt(active ? '1' : '0')]
+  )
+}
+
+export async function getPromoConfig() {
+  try {
+    const res = await exec("SELECT value FROM hotel_settings WHERE key = 'promo_config' LIMIT 1")
+    const row = parseRows(res)[0]
+    if (!row) return { ...PROMO_DEFAULTS }
+    return { ...PROMO_DEFAULTS, ...JSON.parse(row.value) }
+  } catch { return { ...PROMO_DEFAULTS } }
+}
+
+export async function setPromoConfig(config) {
+  return exec(
+    "INSERT OR REPLACE INTO hotel_settings (key, value) VALUES ('promo_config', ?)",
+    [txt(JSON.stringify(config))]
   )
 }

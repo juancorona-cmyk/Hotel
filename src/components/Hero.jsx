@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CDN } from '../lib/cdn'
 import './Hero.css'
 
-export default function Hero({ onBook, promoActive = true }) {
+export default function Hero({ onBook, promoActive = true, promoConfig = { label: '20% OFF', color: '#b5c840' } }) {
   const { t } = useTranslation()
   const [titleNumber, setTitleNumber] = useState(0)
   const [animKey, setAnimKey] = useState(0)
@@ -42,12 +42,16 @@ export default function Hero({ onBook, promoActive = true }) {
 
         <div className="hero__cta-wrap hero__anim-fade-up hero__anim-delay-2">
           {promoActive && (
-            <span className="hero__cta-badge">
+            <span className="hero__cta-badge" style={{
+              color: promoConfig.color,
+              background: `${promoConfig.color}22`,
+              borderColor: `${promoConfig.color}55`,
+            }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
                 <line x1="7" y1="7" x2="7.01" y2="7"/>
               </svg>
-              {t('hero.promoTag')} · 20% OFF
+              {t('hero.promoTag')} · {promoConfig.label}
             </span>
           )}
           <button

@@ -18,7 +18,7 @@ import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
 import PromoStrip from './components/PromoStrip'
-import { setupDB, trackEvent, getProxyConfig, getRegistrationById, getPromoActive } from './lib/turso'
+import { setupDB, trackEvent, getProxyConfig, getRegistrationById, getPromoActive, getPromoConfig } from './lib/turso'
 import { fmtFecha } from './lib/utils'
 import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
@@ -290,7 +290,7 @@ function CheckInBrowserGateway() {
   )
 }
 
-function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive }) {
+function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive, promoConfig }) {
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, origin: 'web', promo: 'web_20', room: roomId })
     setBookingRoom(roomId)
@@ -299,8 +299,8 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
   return (
     <>
       <Navbar />
-      <Hero onBook={() => openBooking('hero', 'deluxe')} promoActive={promoActive} />
-      {promoActive && <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} />}
+      <Hero onBook={() => openBooking('hero', 'deluxe')} promoActive={promoActive} promoConfig={promoConfig} />
+      {promoActive && <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} promoConfig={promoConfig} />}
       <About />
       <Stats />
       <Marquee />
@@ -319,6 +319,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
             initialRoom={bookingRoom}
             onClose={() => setBookingRoom(null)}
             promoActive={promoActive}
+            promoConfig={promoConfig}
           />
         </Suspense>
       )}
@@ -341,10 +342,12 @@ export default function App() {
   const [maintenanceUnlocked, setMaintenanceUnlocked] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
   const [promoActive, setPromoActive] = useState(true)
+  const [promoConfig, setPromoConfig] = useState({ label: '20% OFF', color: '#b5c840' })
   const navigate = useNavigate()
 
   useEffect(() => {
     getPromoActive().then(setPromoActive)
+    getPromoConfig().then(setPromoConfig)
   }, [dataVersion])
 
   useEffect(() => {
@@ -455,6 +458,7 @@ export default function App() {
               dataVersion={dataVersion}
               setDataVersion={setDataVersion}
               promoActive={promoActive}
+              promoConfig={promoConfig}
             />
           )
         } />
