@@ -2368,3 +2368,116 @@
   background: #dcfce7;
   color: #16a34a;
 }
+
+/* ── Scan Sheet ─────────────────────────────────────────────── */
+.sa-scan-sheet {
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 12px 20px 36px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: sa-slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.12);
+}
+
+.sa-scan-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+}
+
+.sa-scan-sheet-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 6px;
+}
+
+.sa-scan-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1.5px solid #e9eef4;
+  border-radius: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.sa-scan-option:active { background: #f0f4f8; }
+
+.sa-scan-option-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sa-scan-option-icon--qr     { background: #eef4e6; color: #5a6c1e; }
+.sa-scan-option-icon--ticket { background: #faf5ec; color: #856c24; }
+
+.sa-scan-option-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sa-scan-option-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.sa-scan-option-hint {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.sa-scan-ticket-form {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+.sa-scan-ticket-form .sa-input { flex: 1; }
+
+.sa-scan-ticket-btn {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: #5a6c1e;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.sa-scan-ticket-btn:active { opacity: 0.8; }
+
+.sa-scan-cancel {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  align-self: center;
+  margin-top: 2px;
+}
