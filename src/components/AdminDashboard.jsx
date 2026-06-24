@@ -1429,6 +1429,7 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
                     <td>
                       {r.folio ? <span className="adm-folio">{r.folio}</span> : <span style={{ color: '#c5c9b8' }}>—</span>}
                       {r.origin === 'web' && <span className="adm-origin-badge">web</span>}
+                      {r.promo === 'web_20' && <span className="adm-origin-badge" style={{ background: '#b45309' }}>PROMO</span>}
                     </td>
                     <td><strong style={{ textTransform: 'capitalize' }}>{r.room ?? '—'}</strong></td>
                     {view === 'confirmed' && <td>{r.nights ?? '—'}</td>}
