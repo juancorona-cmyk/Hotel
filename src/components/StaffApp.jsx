@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, genGenericPassword, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, genGenericPassword, getRegistrationsByPhone, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -763,13 +763,41 @@ export default function StaffApp({ onStartScan, onLogout }) {
   }
 
   const [showScanSheet, setShowScanSheet] = useState(false)
-  const [scanSheetTicket, setScanSheetTicket] = useState(false)
+  const [scanSheetMode, setScanSheetMode] = useState(null) // null | 'ticket' | 'phone'
   const [ticketNum, setTicketNum] = useState('')
+  const [phoneNum, setPhoneNum] = useState('')
+  const [phoneResults, setPhoneResults] = useState(null) // null=sin buscar, []|[...]
+  const [phoneBusy, setPhoneBusy] = useState(false)
 
   const handleScanQR = () => {
-    setScanSheetTicket(false)
+    setScanSheetMode(null)
     setTicketNum('')
+    setPhoneNum('')
+    setPhoneResults(null)
     setShowScanSheet(true)
+  }
+
+  const handlePhoneSearch = async (e) => {
+    e?.preventDefault?.()
+    const digits = String(phoneNum).replace(/\D/g, '')
+    if (digits.length < 7) { showToast('Ingresa al menos 7 dígitos', 'error'); return }
+    setPhoneBusy(true)
+    setPhoneResults(null)
+    try {
+      const results = await getRegistrationsByPhone(digits)
+      if (results.length === 1) {
+        // Un solo registro esta semana → ir directo
+        setShowScanSheet(false)
+        setPhoneNum('')
+        navigate(`/checkin?rid=${results[0].id}`)
+      } else {
+        setPhoneResults(results)
+      }
+    } catch {
+      showToast('Error al buscar. Intenta de nuevo.', 'error')
+    } finally {
+      setPhoneBusy(false)
+    }
   }
 
   const handleActualScan = () => {
@@ -958,6 +986,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
             <div className="sa-scan-sheet-handle" />
             <p className="sa-scan-sheet-title">Verificar acceso</p>
 
+            {/* Escanear QR */}
             <button className="sa-scan-option" onClick={handleActualScan}>
               <div className="sa-scan-option-icon sa-scan-option-icon--qr">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -974,7 +1003,64 @@ export default function StaffApp({ onStartScan, onLogout }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
 
-            <button className="sa-scan-option" onClick={() => setScanSheetTicket(t => !t)}>
+            {/* Teléfono */}
+            <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'phone' ? null : 'phone')}>
+              <div className="sa-scan-option-icon sa-scan-option-icon--phone">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.16 6.16l1.02-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div className="sa-scan-option-text">
+                <span className="sa-scan-option-label">Número de teléfono</span>
+                <span className="sa-scan-option-hint">Registro reciente de esta semana</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
+                {scanSheetMode === 'phone' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+              </svg>
+            </button>
+
+            {scanSheetMode === 'phone' && (
+              <div className="sa-scan-phone-block">
+                <form className="sa-scan-ticket-form" onSubmit={handlePhoneSearch}>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    className="sa-input"
+                    placeholder="Ej. 4431234567"
+                    value={phoneNum}
+                    onChange={e => { setPhoneNum(e.target.value); setPhoneResults(null) }}
+                    autoFocus
+                  />
+                  <button type="submit" className="sa-scan-ticket-btn" disabled={phoneBusy}>
+                    {phoneBusy ? '…' : 'Buscar'}
+                  </button>
+                </form>
+                {phoneResults !== null && phoneResults.length === 0 && (
+                  <p className="sa-scan-phone-empty">Sin registro esta semana. Usa número de ticket.</p>
+                )}
+                {phoneResults !== null && phoneResults.length > 1 && (
+                  <div className="sa-scan-phone-results">
+                    {phoneResults.map(r => (
+                      <button key={r.id} className="sa-scan-phone-row" onClick={() => {
+                        setShowScanSheet(false)
+                        setPhoneNum('')
+                        setPhoneResults(null)
+                        navigate(`/checkin?rid=${r.id}`)
+                      }}>
+                        <div className="sa-scan-phone-row-info">
+                          <span className="sa-scan-phone-row-name">{r.full_name}</span>
+                          <span className="sa-scan-phone-row-event">{r.event_name || r.activity_name} · #{String(r.id).padStart(4,'0')}</span>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Número de ticket */}
+            <button className="sa-scan-option" onClick={() => setScanSheetMode(m => m === 'ticket' ? null : 'ticket')}>
               <div className="sa-scan-option-icon sa-scan-option-icon--ticket">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/>
@@ -986,11 +1072,11 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 <span className="sa-scan-option-hint">Si el invitado no trae QR ni PDF</span>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
-                {scanSheetTicket ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+                {scanSheetMode === 'ticket' ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
               </svg>
             </button>
 
-            {scanSheetTicket && (
+            {scanSheetMode === 'ticket' && (
               <form className="sa-scan-ticket-form" onSubmit={handleManualTicket}>
                 <input
                   type="number"

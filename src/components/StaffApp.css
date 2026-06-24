@@ -2588,3 +2588,72 @@
   transition: background 0.15s;
 }
 .sa-update-dismiss:active { background: rgba(255,255,255,0.15); }
+
+/* ── Phone search en scan sheet ─────────────────────────────── */
+.sa-scan-option-icon--phone { background: #edf0fb; color: #3b55b8; }
+
+.sa-scan-phone-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.sa-scan-phone-empty {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-align: center;
+  padding: 8px 0 2px;
+  margin: 0;
+}
+
+.sa-scan-phone-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.sa-scan-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  border: 1.5px solid #e9eef4;
+  border-radius: 13px;
+  padding: 10px 13px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+.sa-scan-phone-row:active { background: #eef2f8; }
+
+.sa-scan-phone-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sa-scan-phone-row-name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sa-scan-phone-row-event {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

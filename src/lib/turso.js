@@ -763,6 +763,25 @@ export async function getRegistrationById(id) {
   return parseRows(res)[0] ?? null
 }
 
+export async function getRegistrationsByPhone(phone) {
+  const digits = String(phone).replace(/\D/g, '')
+  const normalized = digits.length > 10 ? digits.slice(-10) : digits
+  if (normalized.length < 7) return []
+  const res = await exec(
+    `SELECT r.id, r.activity_name, r.event_id, r.event_name, r.full_name, r.phone,
+            r.payment_method, r.paid, r.checked_in, r.created_at,
+            e.date as event_date
+     FROM activity_registrations r
+     LEFT JOIN hotel_events e ON r.event_id = e.id
+     WHERE SUBSTR(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(r.phone,' ',''),'-',''),'(',''),')',''),'+',''), -10) = ?
+       AND r.created_at >= datetime('now', '-7 days')
+     ORDER BY r.created_at DESC
+     LIMIT 10`,
+    [txt(normalized)]
+  )
+  return parseRows(res)
+}
+
 export async function updateTransferProof(id, proofUrl) {
   const now = `datetime('now')`
   await exec(
