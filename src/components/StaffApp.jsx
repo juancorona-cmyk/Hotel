@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, genGenericPassword, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
@@ -938,6 +939,64 @@ export default function StaffApp({ onStartScan, onLogout }) {
         </svg>
         <span>Pagados</span>
       </button>
+      {showScanSheet && createPortal(
+        <div className="sa-modal-overlay" onClick={() => setShowScanSheet(false)}>
+          <div className="sa-scan-sheet" onClick={e => e.stopPropagation()}>
+            <div className="sa-scan-sheet-handle" />
+            <p className="sa-scan-sheet-title">Verificar acceso</p>
+
+            <button className="sa-scan-option" onClick={handleActualScan}>
+              <div className="sa-scan-option-icon sa-scan-option-icon--qr">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                  <path d="M14 14h3v3h-3zM18 17h3v3h-3zM14 18h3v3h-3zM18 14h3v3h-3z"/>
+                </svg>
+              </div>
+              <div className="sa-scan-option-text">
+                <span className="sa-scan-option-label">Escanear QR</span>
+                <span className="sa-scan-option-hint">Apunta la cámara al código QR del invitado</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+
+            <button className="sa-scan-option" onClick={() => setScanSheetTicket(t => !t)}>
+              <div className="sa-scan-option-icon sa-scan-option-icon--ticket">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/>
+                  <line x1="12" y1="7" x2="12" y2="17" strokeDasharray="2 3"/>
+                </svg>
+              </div>
+              <div className="sa-scan-option-text">
+                <span className="sa-scan-option-label">Número de ticket</span>
+                <span className="sa-scan-option-hint">Si el invitado no trae QR ni PDF</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
+                {scanSheetTicket ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+              </svg>
+            </button>
+
+            {scanSheetTicket && (
+              <form className="sa-scan-ticket-form" onSubmit={handleManualTicket}>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="sa-input"
+                  placeholder="Ej. 1234"
+                  value={ticketNum}
+                  onChange={e => setTicketNum(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="sa-scan-ticket-btn">Buscar</button>
+              </form>
+            )}
+
+            <button className="sa-scan-cancel" onClick={() => setShowScanSheet(false)}>Cancelar</button>
+          </div>
+        </div>,
+        document.body
+      )}
     </nav>
   )
 
@@ -2290,64 +2349,6 @@ export default function StaffApp({ onStartScan, onLogout }) {
       <BottomNav />
       {modal && <StaffModal {...modal} onCancel={() => setModal(null)} />}
       {toast && <StaffToast message={toast.message} type={toast.type} />}
-
-      {showScanSheet && (
-        <div className="sa-modal-overlay" onClick={() => setShowScanSheet(false)}>
-          <div className="sa-scan-sheet" onClick={e => e.stopPropagation()}>
-            <div className="sa-scan-sheet-handle" />
-            <p className="sa-scan-sheet-title">Verificar acceso</p>
-
-            <button className="sa-scan-option" onClick={handleActualScan}>
-              <div className="sa-scan-option-icon sa-scan-option-icon--qr">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-                  <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-                  <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-                  <path d="M14 14h3v3h-3zM18 17h3v3h-3zM14 18h3v3h-3zM18 14h3v3h-3z"/>
-                </svg>
-              </div>
-              <div className="sa-scan-option-text">
-                <span className="sa-scan-option-label">Escanear QR</span>
-                <span className="sa-scan-option-hint">Apunta la cámara al código QR del invitado</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-
-            <button className="sa-scan-option" onClick={() => setScanSheetTicket(t => !t)}>
-              <div className="sa-scan-option-icon sa-scan-option-icon--ticket">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 9V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6z"/>
-                  <line x1="12" y1="7" x2="12" y2="17" strokeDasharray="2 3"/>
-                </svg>
-              </div>
-              <div className="sa-scan-option-text">
-                <span className="sa-scan-option-label">Número de ticket</span>
-                <span className="sa-scan-option-hint">Si el invitado no trae QR ni PDF</span>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round">
-                {scanSheetTicket ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
-              </svg>
-            </button>
-
-            {scanSheetTicket && (
-              <form className="sa-scan-ticket-form" onSubmit={handleManualTicket}>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="sa-input"
-                  placeholder="Ej. 1234"
-                  value={ticketNum}
-                  onChange={e => setTicketNum(e.target.value)}
-                  autoFocus
-                />
-                <button type="submit" className="sa-scan-ticket-btn">Buscar</button>
-              </form>
-            )}
-
-            <button className="sa-scan-cancel" onClick={() => setShowScanSheet(false)}>Cancelar</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
