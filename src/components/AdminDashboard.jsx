@@ -707,6 +707,20 @@ function Distribution({ byType }) {
 }
 
 // ── Users section ─────────────────────────────────────────
+function pwStrength(pwd) {
+  if (!pwd) return null
+  if (pwd.length < 6) return 'short'
+  if (pwd.length < 9) return 'weak'
+  if (pwd.length < 13) return 'ok'
+  return 'strong'
+}
+
+const ROLE_OPTIONS = [
+  { val: 'editor', label: 'Editor', desc: 'Acceso web', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> },
+  { val: 'staff',  label: 'Staff',  desc: 'App móvil',  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> },
+  { val: 'admin',  label: 'Admin',  desc: 'Acceso total', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
+]
+
 function UsersSection({ currentUser, userRole }) {
   const [users, setUsers]       = useState([])
   const [loadingU, setLoadingU] = useState(false)
@@ -717,6 +731,7 @@ function UsersSection({ currentUser, userRole }) {
   const [showNew, setShowNew]   = useState(false)
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [changePwd, setChangePwd] = useState({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })
   const [permModal, setPermModal] = useState(null)
   const [savingPerms, setSavingPerms] = useState(false)
@@ -738,12 +753,20 @@ function UsersSection({ currentUser, userRole }) {
 
   const create = async (e) => {
     e.preventDefault()
-    if (!newUser.trim() || newPwd.length < 6) { setErrU('Mínimo 6 caracteres en la contraseña'); return }
+    const uname = newUser.trim()
+    if (!uname) { setErrU('Ingresa un nombre de usuario'); return }
+    if (/\s/.test(uname)) { setErrU('El usuario no puede tener espacios'); return }
+    if (newPwd.length < 6) { setErrU('La contraseña debe tener al menos 6 caracteres'); return }
     setCreating(true); setErrU('')
     try {
-      await adminCreateUser(newUser.trim(), newPwd, newRole, newMustChange)
-      setNewUser(''); setNewPwd(''); setNewRole('editor'); setNewMustChange(true); loadUsers()
-    } catch { setErrU('Error al crear usuario') }
+      await adminCreateUser(uname, newPwd, newRole, newMustChange)
+      setNewUser(''); setNewPwd(''); setNewRole('editor'); setNewMustChange(true); setShowNew(false)
+      setSuccessMsg(`Usuario "${uname}" creado`)
+      setTimeout(() => setSuccessMsg(''), 3000)
+      loadUsers()
+    } catch (err) {
+      setErrU(err?.message?.includes('UNIQUE') ? 'Ese nombre de usuario ya existe' : 'Error al crear usuario')
+    }
     finally { setCreating(false) }
   }
 
@@ -760,7 +783,6 @@ function UsersSection({ currentUser, userRole }) {
     setCreating(true); setErrU('')
     try {
       await adminChangePassword(changePwd.user, changePwd.val, changePwd.mustChange)
-      // Si es clave generica, mostrarla para enviarla; si no, cerrar
       if (changePwd.mustChange) {
         setChangePwd(p => ({ ...p, done: p.val, val: '' }))
       } else {
@@ -772,7 +794,6 @@ function UsersSection({ currentUser, userRole }) {
   }
 
   const togglePerm = (key) => {
-    // Optimista y con estado funcional: permite marcar varios permisos seguidos sin bloquear la lista.
     setPermModal(p => {
       if (!p) return p
       const updated = { ...(p.permissions ?? {}), [key]: !(p.permissions?.[key]) }
@@ -784,6 +805,8 @@ function UsersSection({ currentUser, userRole }) {
       return { ...p, permissions: updated }
     })
   }
+
+  const strength = pwStrength(newPwd)
 
   return (
     <div className="adm-users">
@@ -830,41 +853,43 @@ function UsersSection({ currentUser, userRole }) {
         </div>
       )}
 
-      {/* Reset password modal */}
+      {/* Reset password inline */}
       {changePwd.open && (
         changePwd.done ? (
-          <div className="adm-users__change" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-            <span className="adm-users__change-title">Clave genérica de <strong>{changePwd.user}</strong></span>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
-              <code style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1, background: '#eef0e3', padding: '6px 12px', borderRadius: 6 }}>{changePwd.done}</code>
+          <div className="adm-users__change adm-users__change--col">
+            <span className="adm-users__change-title">Clave generada para <strong>{changePwd.user}</strong></span>
+            <div className="adm-users__change-key-row">
+              <code className="adm-users__change-key">{changePwd.done}</code>
               <button type="button" className="adm-btn-sm" onClick={() => navigator.clipboard?.writeText(changePwd.done)}>Copiar</button>
             </div>
-            <span style={{ fontSize: 12, color: '#666' }}>Envíasela al usuario. Al ingresar deberá crear su contraseña.</span>
+            <span className="adm-users__change-hint">Comparte esta clave. Al entrar deberá crear una nueva.</span>
             <button type="button" className="adm-btn-sm adm-btn-sm--green" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })}>Listo</button>
           </div>
         ) : (
-        <form onSubmit={saveChange} className="adm-users__change" style={{ flexWrap: 'wrap' }}>
-          <span className="adm-users__change-title">Resetear contraseña de <strong>{changePwd.user}</strong></span>
-          <div className="adm-pw" style={{ flex: 1, minWidth: 180 }}>
-            <input
-              type={changePwd.show ? 'text' : 'password'}
-              value={changePwd.val}
-              onChange={e => setChangePwd(p => ({ ...p, val: e.target.value }))}
-              placeholder="Nueva contraseña"
-              className="adm-pw__input"
-            />
-            <button type="button" className="adm-pw__eye" onClick={() => setChangePwd(p => ({ ...p, show: !p.show }))}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-          <button type="button" className="adm-btn-sm" onClick={() => setChangePwd(p => ({ ...p, val: genGenericPassword(), show: true }))}>Generar genérica</button>
-          <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating}>Guardar</button>
-          <button type="button" className="adm-btn-sm" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })}>Cancelar</button>
-          <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', fontSize: 12, cursor: 'pointer' }}>
-            <input type="checkbox" checked={changePwd.mustChange} onChange={e => setChangePwd(p => ({ ...p, mustChange: e.target.checked }))} />
-            Pedir cambio de contraseña al primer ingreso
-          </label>
-        </form>
+          <form onSubmit={saveChange} className="adm-users__change adm-users__change--col">
+            <span className="adm-users__change-title">Resetear contraseña de <strong>{changePwd.user}</strong></span>
+            <div className="adm-users__change-row">
+              <div className="adm-pw" style={{ flex: 1 }}>
+                <input
+                  type={changePwd.show ? 'text' : 'password'}
+                  value={changePwd.val}
+                  onChange={e => setChangePwd(p => ({ ...p, val: e.target.value }))}
+                  placeholder="Nueva contraseña"
+                  className="adm-pw__input"
+                />
+                <button type="button" className="adm-pw__eye" onClick={() => setChangePwd(p => ({ ...p, show: !p.show }))}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <button type="button" className="adm-btn-sm" onClick={() => setChangePwd(p => ({ ...p, val: genGenericPassword(), show: true }))}>Generar</button>
+              <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating}>Guardar</button>
+              <button type="button" className="adm-btn-sm" onClick={() => setChangePwd({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })}>Cancelar</button>
+            </div>
+            <label className="adm-users__chk-label">
+              <input type="checkbox" checked={changePwd.mustChange} onChange={e => setChangePwd(p => ({ ...p, mustChange: e.target.checked }))} />
+              Pedir cambio de contraseña al primer ingreso
+            </label>
+          </form>
         )
       )}
 
@@ -904,51 +929,90 @@ function UsersSection({ currentUser, userRole }) {
 
       {/* Add user */}
       {userRole === 'admin' && (
-        <form onSubmit={create} className="adm-users__add" style={{ flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-            <input
-              type="text"
-              value={newUser}
-              onChange={e => { setNewUser(e.target.value); setErrU('') }}
-              placeholder="Nuevo usuario"
-              className="adm-users__input"
-              style={{ flex: 1 }}
-            />
-            <div className="adm-pw" style={{ flex: 1 }}>
-              <input
-                type={showNew ? 'text' : 'password'}
-                value={newPwd}
-                onChange={e => { setNewPwd(e.target.value); setErrU('') }}
-                placeholder="Contraseña"
-                className="adm-pw__input"
-              />
-              <button type="button" className="adm-pw__eye" onClick={() => setShowNew(s => !s)}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <div className="adm-newuser-card">
+          <div className="adm-newuser-card__head">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+            Nuevo usuario
+          </div>
+          <form onSubmit={create} className="adm-newuser-card__form">
+            <div className="adm-newuser-card__row">
+              <div className="adm-newuser-field">
+                <label className="adm-newuser-field__lbl">Usuario</label>
+                <div className="adm-newuser-field__wrap">
+                  <svg className="adm-newuser-field__ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  <input
+                    type="text"
+                    value={newUser}
+                    onChange={e => { setNewUser(e.target.value); setErrU('') }}
+                    placeholder="nombre.usuario"
+                    className="adm-newuser-field__input"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div className="adm-newuser-field">
+                <label className="adm-newuser-field__lbl">Contraseña</label>
+                <div className="adm-newuser-field__wrap">
+                  <svg className="adm-newuser-field__ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <input
+                    type={showNew ? 'text' : 'password'}
+                    value={newPwd}
+                    onChange={e => { setNewPwd(e.target.value); setErrU('') }}
+                    placeholder="mín. 6 caracteres"
+                    className="adm-newuser-field__input"
+                    autoComplete="new-password"
+                  />
+                  <button type="button" className="adm-newuser-field__eye" onClick={() => setShowNew(s => !s)}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                {newPwd && (
+                  <div className="adm-newuser-strength">
+                    <div className={`adm-newuser-strength__bar adm-newuser-strength__bar--${strength}`}/>
+                    <span className="adm-newuser-strength__lbl">
+                      {strength === 'short' ? 'Muy corta' : strength === 'weak' ? 'Débil' : strength === 'ok' ? 'Aceptable' : 'Segura'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="adm-newuser-card__genrow">
+              <button type="button" className="adm-newuser-gen-btn"
+                onClick={() => { setNewPwd(genGenericPassword()); setShowNew(true); setErrU('') }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                Generar contraseña
               </button>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
-            <select 
-              value={newRole} 
-              onChange={e => setNewRole(e.target.value)}
-              className="adm-users__input"
-              style={{ flex: 1 }}
-            >
-              <option value="editor">Rol: Editor (Web)</option>
-              <option value="staff">Rol: Staff (App Móvil)</option>
-              <option value="admin">Rol: Administrador Total</option>
-            </select>
-            <button type="submit" className="adm-btn-sm adm-btn-sm--green" disabled={creating} style={{ padding: '0 24px' }}>
-              {creating ? '…' : '+ Crear Usuario'}
+
+            <div className="adm-newuser-card__roles">
+              <span className="adm-newuser-field__lbl">Rol</span>
+              <div className="adm-newuser-roles">
+                {ROLE_OPTIONS.map(r => (
+                  <button key={r.val} type="button"
+                    className={`adm-newuser-role${newRole === r.val ? ' adm-newuser-role--on' : ''}`}
+                    onClick={() => setNewRole(r.val)}>
+                    <span className="adm-newuser-role__icon">{r.icon}</span>
+                    <span className="adm-newuser-role__label">{r.label}</span>
+                    <span className="adm-newuser-role__desc">{r.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="adm-users__chk-label">
+              <input type="checkbox" checked={newMustChange} onChange={e => setNewMustChange(e.target.checked)} />
+              Pedir cambio de contraseña al primer ingreso
+            </label>
+
+            {errU && <p className="adm-users__err">{errU}</p>}
+            {successMsg && <p className="adm-users__ok">{successMsg}</p>}
+
+            <button type="submit" className="adm-newuser-submit" disabled={creating}>
+              {creating ? 'Creando…' : 'Crear usuario'}
             </button>
-          </div>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={newMustChange} onChange={e => setNewMustChange(e.target.checked)} />
-            Clave genérica: pedir nueva contraseña en el primer ingreso
-          </label>
-        </form>
+          </form>
+        </div>
       )}
-      {errU && <p className="adm-users__err">{errU}</p>}
     </div>
   )
 }
