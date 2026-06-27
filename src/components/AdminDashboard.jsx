@@ -732,6 +732,7 @@ function UsersSection({ currentUser, userRole }) {
   const [creating, setCreating] = useState(false)
   const [errU, setErrU]         = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [showNewUserModal, setShowNewUserModal] = useState(false)
   const [changePwd, setChangePwd] = useState({ open: false, user: '', val: '', show: false, mustChange: true, done: '' })
   const [permModal, setPermModal] = useState(null)
   const [savingPerms, setSavingPerms] = useState(false)
@@ -761,6 +762,7 @@ function UsersSection({ currentUser, userRole }) {
     try {
       await adminCreateUser(uname, newPwd, newRole, newMustChange)
       setNewUser(''); setNewPwd(''); setNewRole('editor'); setNewMustChange(true); setShowNew(false)
+      setShowNewUserModal(false)
       setSuccessMsg(`Usuario "${uname}" creado`)
       setTimeout(() => setSuccessMsg(''), 3000)
       loadUsers()
@@ -811,9 +813,18 @@ function UsersSection({ currentUser, userRole }) {
   return (
     <div className="adm-users">
       <div className="adm-users__header">
-        <span>Usuarios del sistema</span>
-        <span className="adm-users__count">{users.length} usuario{users.length !== 1 ? 's' : ''}</span>
+        <div className="adm-users__header-left">
+          <span>Usuarios del sistema</span>
+          <span className="adm-users__count">{users.length} usuario{users.length !== 1 ? 's' : ''}</span>
+        </div>
+        {userRole === 'admin' && (
+          <button className="adm-users__new-btn" onClick={() => { setShowNewUserModal(true); setErrU('') }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nuevo usuario
+          </button>
+        )}
       </div>
+      {successMsg && <p className="adm-users__ok">{successMsg}</p>}
 
       {loadingU ? (
         <p className="adm-users__loading">Cargando…</p>
@@ -927,15 +938,20 @@ function UsersSection({ currentUser, userRole }) {
         </div>
       )}
 
-      {/* Add user */}
-      {userRole === 'admin' && (
-        <div className="adm-newuser-card">
-          <div className="adm-newuser-card__head">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
-            Nuevo usuario
-          </div>
-          <form onSubmit={create} className="adm-newuser-card__form">
-            <div className="adm-newuser-card__row">
+      {/* New user modal */}
+      {showNewUserModal && (
+        <div className="adm-evt-modal-overlay" onMouseDown={e => e.target === e.currentTarget && setShowNewUserModal(false)}>
+          <div className="adm-newuser-modal">
+            <div className="adm-newuser-modal__head">
+              <div className="adm-newuser-modal__title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+                Nuevo usuario
+              </div>
+              <button className="adm-evt-modal__close" onClick={() => setShowNewUserModal(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <form onSubmit={create} className="adm-newuser-card__form">
               <div className="adm-newuser-field">
                 <label className="adm-newuser-field__lbl">Usuario</label>
                 <div className="adm-newuser-field__wrap">
@@ -947,6 +963,7 @@ function UsersSection({ currentUser, userRole }) {
                     placeholder="nombre.usuario"
                     className="adm-newuser-field__input"
                     autoComplete="off"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -975,42 +992,42 @@ function UsersSection({ currentUser, userRole }) {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="adm-newuser-card__genrow">
               <button type="button" className="adm-newuser-gen-btn"
                 onClick={() => { setNewPwd(genGenericPassword()); setShowNew(true); setErrU('') }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                Generar contraseña
+                Generar contraseña automática
               </button>
-            </div>
 
-            <div className="adm-newuser-card__roles">
-              <span className="adm-newuser-field__lbl">Rol</span>
-              <div className="adm-newuser-roles">
-                {ROLE_OPTIONS.map(r => (
-                  <button key={r.val} type="button"
-                    className={`adm-newuser-role${newRole === r.val ? ' adm-newuser-role--on' : ''}`}
-                    onClick={() => setNewRole(r.val)}>
-                    <span className="adm-newuser-role__icon">{r.icon}</span>
-                    <span className="adm-newuser-role__label">{r.label}</span>
-                    <span className="adm-newuser-role__desc">{r.desc}</span>
-                  </button>
-                ))}
+              <div className="adm-newuser-card__roles">
+                <span className="adm-newuser-field__lbl">Rol</span>
+                <div className="adm-newuser-roles">
+                  {ROLE_OPTIONS.map(r => (
+                    <button key={r.val} type="button"
+                      className={`adm-newuser-role${newRole === r.val ? ' adm-newuser-role--on' : ''}`}
+                      onClick={() => setNewRole(r.val)}>
+                      <span className="adm-newuser-role__icon">{r.icon}</span>
+                      <span className="adm-newuser-role__label">{r.label}</span>
+                      <span className="adm-newuser-role__desc">{r.desc}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <label className="adm-users__chk-label">
-              <input type="checkbox" checked={newMustChange} onChange={e => setNewMustChange(e.target.checked)} />
-              Pedir cambio de contraseña al primer ingreso
-            </label>
+              <label className="adm-users__chk-label">
+                <input type="checkbox" checked={newMustChange} onChange={e => setNewMustChange(e.target.checked)} />
+                Pedir cambio de contraseña al primer ingreso
+              </label>
 
-            {errU && <p className="adm-users__err">{errU}</p>}
-            {successMsg && <p className="adm-users__ok">{successMsg}</p>}
+              {errU && <p className="adm-users__err">{errU}</p>}
 
-            <button type="submit" className="adm-newuser-submit" disabled={creating}>
-              {creating ? 'Creando…' : 'Crear usuario'}
-            </button>
-          </form>
+              <div className="adm-newuser-modal__actions">
+                <button type="button" className="adm-btn-sm" onClick={() => setShowNewUserModal(false)}>Cancelar</button>
+                <button type="submit" className="adm-newuser-submit adm-newuser-submit--inline" disabled={creating}>
+                  {creating ? 'Creando…' : 'Crear usuario'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
