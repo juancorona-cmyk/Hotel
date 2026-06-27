@@ -2879,6 +2879,123 @@
   vertical-align: middle;
 }
 
+/* ── Revenue panel (Reportes section) ── */
+.adm-rep-revenue {
+  background: #f8faf0;
+  border: 1px solid #dde4c0;
+  border-radius: 12px;
+  padding: 16px 18px 12px;
+  margin-bottom: 14px;
+}
+.adm-rep-revenue__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #6b7350;
+  margin-bottom: 12px;
+}
+.adm-rep-revenue__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.adm-rep-rev-card {
+  background: #fff;
+  border: 1px solid #e8edcf;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.adm-rep-rev-card--main {
+  border-color: #5a6c1e;
+  background: #f3f7e6;
+}
+.adm-rep-rev-card__val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #5a6c1e;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.adm-rep-rev-card__lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: #6b7350;
+  margin-top: 3px;
+}
+.adm-rep-rev-card__sub {
+  font-size: 10px;
+  color: #9aa07e;
+  margin-top: 1px;
+}
+.adm-rep-revenue__note {
+  font-size: 10px;
+  color: #b0b89a;
+  font-style: italic;
+  margin-top: 10px;
+  text-align: right;
+}
+@media (max-width: 700px) {
+  .adm-rep-revenue__grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Revenue metrics strip ── */
+.adm-rev-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #f8faf0;
+  border: 1px solid #dde4c0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin: 10px 0 4px;
+  flex-wrap: wrap;
+}
+.adm-rev-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0 20px 0 0;
+  border-right: 1px solid #dde4c0;
+  margin-right: 20px;
+}
+.adm-rev-kpi:last-of-type {
+  border-right: none;
+  margin-right: 0;
+}
+.adm-rev-kpi__val {
+  font-size: 20px;
+  font-weight: 800;
+  color: #5a6c1e;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.adm-rev-kpi__lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #6b7350;
+  margin-top: 2px;
+}
+.adm-rev-kpi__sub {
+  font-size: 10px;
+  color: #9aa07e;
+  margin-top: 1px;
+}
+.adm-rev-note {
+  margin-left: auto;
+  font-size: 10px;
+  color: #b0b89a;
+  font-style: italic;
+  white-space: nowrap;
+}
+
 /* Menús desplegables de tabs */
 .adm-tabgroup { position: relative; display: inline-block; }
 .adm-tabmenu {

@@ -90,6 +90,26 @@ const RESERVA_LABELS = {
   booking_modal: 'Modal de reserva',
 }
 
+// Precios por noche por tipo de habitacion (control interno de ganancias estimadas)
+const ROOM_PRICES = { deluxe: 1400, doble: 1600 }
+const PROMO_DISCOUNT = 0.20  // 20% OFF promo web
+
+function calcRevenueMetrics(confirmedRows) {
+  let total = 0, base = 0, promoCount = 0
+  confirmedRows.forEach(r => {
+    const unitPrice = ROOM_PRICES[r.room] || 0
+    if (!unitPrice) return
+    const nights = Number(r.nights || 1)
+    const roomsQty = Number(r.rooms || 1)
+    const gross = unitPrice * nights * roomsQty
+    base += gross
+    const hasPromo = r.promo === 'web_20'
+    if (hasPromo) { total += gross * (1 - PROMO_DISCOUNT); promoCount++ }
+    else total += gross
+  })
+  return { total, base, discount: base - total, promoCount }
+}
+
 // ── Reportes: rangos por mes / semana ────────────────────
 function ymdLocal(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -265,7 +285,7 @@ function barsLegendHtml() {
   </div>`
 }
 
-function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
+function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web, rev, revPromo, revDirect }) {
   const esc = escHtml
   const genDate = new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
   const topN = (arr, n = 6) => {
@@ -297,16 +317,23 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
   .meta { position:absolute; right:0; bottom:9px; text-align:right; font-size:9.5px; color:#8a9170; line-height:1.5; }
   .meta strong { color:${HOTEL_OLIVE}; font-size:11px; }
   h2 { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:${HOTEL_OLIVE}; margin:0 0 8px; font-weight:700; text-align:center; }
-  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:9px; margin-bottom:9px; }
-  .kpi { border:1px solid #e7ead9; border-radius:12px; padding:11px 10px; background:#fafbf5; text-align:center; }
-  .kpi-val { font-size:24px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
-  .kpi-lbl { font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:#6b7350; margin-top:6px; font-weight:700; }
-  .kpi-sub { font-size:8.5px; color:#9aa07e; margin-top:2px; }
-  .webstrip { display:grid; grid-template-columns:108px repeat(4,1fr); gap:9px; align-items:stretch; margin-bottom:11px; }
-  .webstrip .kpi { background:#f1f5e4; }
-  .webstrip-tag { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-size:9.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:#fff; background:${HOTEL_OLIVE}; border-radius:12px; padding:8px; line-height:1.35; }
-  .main { flex:1; display:grid; grid-template-columns:1.5fr 1fr; gap:11px; min-height:0; margin-bottom:11px; }
-  .panel { border:1px solid #e7ead9; border-radius:13px; padding:12px 14px; background:#fff; display:flex; flex-direction:column; min-height:0; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px; }
+  .kpi { border:1px solid #e2e8cc; border-radius:14px; padding:14px 10px; background:#fff; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .kpi-val { font-size:26px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
+  .kpi-lbl { font-size:8.5px; text-transform:uppercase; letter-spacing:.6px; color:#6b7350; margin-top:7px; font-weight:700; }
+  .kpi-sub { font-size:8px; color:#9aa07e; margin-top:2px; }
+  /* L-layout */
+  .body { flex:1; display:grid; grid-template-columns:130px 1.5fr 1fr; gap:11px; min-height:0; margin-bottom:11px; }
+  .left-col { display:flex; flex-direction:column; gap:8px; }
+  .left-badge { background:${HOTEL_OLIVE}; color:#fff; border-radius:12px; padding:12px 8px; text-align:center; font-size:8px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; line-height:1.5; }
+  .web-kpi { border:1px solid #e2e8cc; border-radius:12px; padding:8px 10px; background:#fff; text-align:center; flex:1; display:flex; flex-direction:column; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .web-kpi-val { font-size:15px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
+  .web-kpi-lbl { font-size:7px; text-transform:uppercase; letter-spacing:.5px; color:#6b7350; font-weight:700; margin-top:3px; }
+  .web-kpi-sub { font-size:6.5px; color:#9aa07e; margin-top:1px; }
+  .right-stack { display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .right-stack .rev-panel { flex:1; min-height:0; }
+  .right-stack .ins-panel { flex:none; }
+  .panel { border:1px solid #e2e8cc; border-radius:14px; padding:13px 15px; background:#fff; display:flex; flex-direction:column; min-height:0; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   .panel.grow svg { flex:1; min-height:0; }
   .stat-rows { display:flex; flex-direction:column; gap:7px; margin-top:2px; }
   .stat-row { display:flex; align-items:center; gap:9px; }
@@ -319,6 +346,35 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
   .barleg span span { width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:5px; }
   .foot { border-top:1px solid #e7ead9; padding-top:8px; font-size:9px; color:#aab089; text-align:center; letter-spacing:.5px; }
   .empty { color:#aab089; font-style:italic; font-size:11px; padding:6px 0; text-align:center; }
+  /* Revenue panel */
+  .rev-panel { gap:7px; }
+  .rev-total-card { background:#f3f7e6; border:1.5px solid #5a6c1e; border-radius:10px; padding:9px 12px; text-align:center; }
+  .rev-total-val { font-size:26px; font-weight:800; color:#5a6c1e; line-height:1; letter-spacing:-1px; }
+  .rev-total-lbl { font-size:7.5px; text-transform:uppercase; letter-spacing:.8px; color:#5a6c1e; font-weight:700; margin-top:3px; }
+  .rev-total-sub { font-size:8px; color:#8fa05a; margin-top:2px; }
+  .rev-split { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .rev-split-card { border-radius:8px; padding:7px 10px; border:1px solid #e7ead9; text-align:center; }
+  .rev-split-card--promo { background:#fff8f0; border-color:#f5a623; }
+  .rev-split-val { font-size:15px; font-weight:800; line-height:1; }
+  .rev-split-card--promo .rev-split-val { color:#b45309; }
+  .rev-split-card--direct .rev-split-val { color:#5a6c1e; }
+  .rev-split-lbl { font-size:7px; text-transform:uppercase; letter-spacing:.5px; color:#6b7350; font-weight:700; margin-top:3px; }
+  .rev-split-sub { font-size:7.5px; color:#9aa07e; margin-top:1px; }
+  .rev-discount { display:flex; justify-content:space-between; align-items:center; background:#f5f0ff; border:1px solid #d4b8f0; border-radius:8px; padding:5px 10px; }
+  .rev-discount-txt { font-size:8px; color:#5d3a8a; font-weight:600; line-height:1.3; }
+  .rev-discount-val { font-size:15px; font-weight:800; color:#7b5ea7; white-space:nowrap; margin-left:8px; }
+  .rev-noches { display:flex; justify-content:space-around; border-top:1px solid #e7ead9; padding-top:6px; margin-top:auto; }
+  .rev-noches-item { text-align:center; }
+  .rev-noches-val { font-size:14px; font-weight:800; color:#5a6c1e; }
+  .rev-noches-lbl { font-size:7px; text-transform:uppercase; letter-spacing:.5px; color:#9aa07e; font-weight:600; margin-top:1px; }
+  .rev-pie-row { display:flex; align-items:center; gap:10px; background:#fafbf5; border:1px solid #e7ead9; border-radius:9px; padding:6px 10px; }
+  .rev-pie-legend { flex:1; display:flex; flex-direction:column; gap:4px; }
+  .rev-pie-item { display:flex; align-items:center; gap:5px; font-size:8px; color:#3a4220; }
+  .rev-pie-dot { width:8px; height:8px; border-radius:2px; flex:none; }
+  .rev-pie-pct { font-weight:800; color:#5a6c1e; margin-left:auto; font-size:9px; }
+  .right-stack { display:flex; flex-direction:column; gap:10px; min-height:0; }
+  .right-stack .rev-panel { flex:1; min-height:0; }
+  .right-stack .ins-panel { flex:none; }
 </style></head><body>
   <div class="sheet">
     <div class="head">
@@ -336,21 +392,75 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
       ${kpi(ins.total, 'Inscripciones', ins.paid + ' pagadas')}
     </div>
 
-    <div class="webstrip">
-      <div class="webstrip-tag">Tráfico web<br>Google</div>
-      ${kpi(wv('impresiones'), 'Impresiones', 'en Google')}
-      ${kpi(wv('clics'), 'Visitas (clics)', 'desde Google')}
-      ${kpi(wv('ctr'), 'CTR', 'tasa de clics')}
-      ${kpi(wv('pos'), 'Posición media', 'en resultados')}
-    </div>
+    <div class="body">
+      <div class="left-col">
+        <div class="left-badge">Tráfico Web<br>Google</div>
+        <div class="web-kpi"><div class="web-kpi-val">${esc(wv('impresiones'))}</div><div class="web-kpi-lbl">Impresiones</div><div class="web-kpi-sub">en Google</div></div>
+        <div class="web-kpi"><div class="web-kpi-val">${esc(wv('clics'))}</div><div class="web-kpi-lbl">Visitas (clics)</div><div class="web-kpi-sub">desde Google</div></div>
+        <div class="web-kpi"><div class="web-kpi-val">${esc(wv('ctr'))}</div><div class="web-kpi-lbl">CTR</div><div class="web-kpi-sub">tasa de clics</div></div>
+        <div class="web-kpi"><div class="web-kpi-val">${esc(wv('pos'))}</div><div class="web-kpi-lbl">Posición media</div><div class="web-kpi-sub">en resultados</div></div>
+      </div>
 
-    <div class="main">
       <div class="panel grow">
         <h2>Reservas por período — confirmadas vs intentos</h2>
         ${svgGroupedBars(bk)}
         <div class="barleg"><span><span style="background:#5a6c1e;"></span>Confirmadas</span><span><span style="background:#b5c840;"></span>Intentos</span></div>
       </div>
-      <div class="panel">
+
+      <div class="right-stack">
+      ${rev && rev.base > 0 ? `
+      <div class="panel rev-panel">
+        <h2>Aportación Web Estimada al Hotel</h2>
+        ${(() => {
+          const pieEntries = [['Con PROMO 20%', Math.round(revPromo.total)], ['Sin promo', Math.round(revDirect.total)]]
+          const pieColors = ['#b45309', '#5a6c1e']
+          const total = pieEntries.reduce((s,[,v])=>s+v,0)
+          if(!total) return ''
+          const R=32, cx=38, cy=38, r=R, ri=20
+          let angle=-Math.PI/2, paths=''
+          pieEntries.forEach(([,v],i)=>{
+            const sweep=(v/total)*2*Math.PI
+            const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle)
+            const x2=cx+r*Math.cos(angle+sweep), y2=cy+r*Math.sin(angle+sweep)
+            const xi1=cx+ri*Math.cos(angle), yi1=cy+ri*Math.sin(angle)
+            const xi2=cx+ri*Math.cos(angle+sweep), yi2=cy+ri*Math.sin(angle+sweep)
+            const lg=sweep>Math.PI?1:0
+            paths+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${lg},1 ${x2.toFixed(1)},${y2.toFixed(1)} L${xi2.toFixed(1)},${yi2.toFixed(1)} A${ri},${ri} 0 ${lg},0 ${xi1.toFixed(1)},${yi1.toFixed(1)} Z" fill="${pieColors[i]}"/>`
+            angle+=sweep
+          })
+          const legend=pieEntries.map(([lbl,v],i)=>`<div class="rev-pie-item"><span class="rev-pie-dot" style="background:${pieColors[i]}"></span><span>${escHtml(lbl)}</span><span class="rev-pie-pct">${Math.round((v/total)*100)}%</span></div>`).join('')
+          return `<div class="rev-pie-row"><svg width="76" height="76" viewBox="0 0 76 76">${paths}<circle cx="${cx}" cy="${cy}" r="${ri-1}" fill="#fff"/></svg><div class="rev-pie-legend">${legend}<div style="font-size:7px;color:#9aa07e;margin-top:3px;">por ingreso estimado</div></div></div>`
+        })()}
+        <div class="rev-total-card">
+          <div class="rev-total-val">$${escHtml(Math.round(rev.total).toLocaleString('es-MX'))}</div>
+          <div class="rev-total-lbl">Ingreso total estimado</div>
+          <div class="rev-total-sub">${escHtml(String(agg.confirmed))} reservas · rack $${escHtml(Math.round(rev.base).toLocaleString('es-MX'))}</div>
+        </div>
+        <div class="rev-split">
+          <div class="rev-split-card rev-split-card--promo">
+            <div class="rev-split-val">$${escHtml(Math.round(revPromo.total).toLocaleString('es-MX'))}</div>
+            <div class="rev-split-lbl">Con PROMO 20% OFF</div>
+            <div class="rev-split-sub">${escHtml(String(revPromo.promoCount))} con etiqueta</div>
+          </div>
+          <div class="rev-split-card rev-split-card--direct">
+            <div class="rev-split-val">$${escHtml(Math.round(revDirect.total).toLocaleString('es-MX'))}</div>
+            <div class="rev-split-lbl">Sin promo</div>
+            <div class="rev-split-sub">${escHtml(String(agg.confirmed - revPromo.promoCount))} tarifa completa</div>
+          </div>
+        </div>
+        <div class="rev-discount">
+          <div class="rev-discount-txt">Descuento dado al cliente<br>solo reservas con PROMO</div>
+          <div class="rev-discount-val">$${escHtml(Math.round(revPromo.discount).toLocaleString('es-MX'))}</div>
+        </div>
+        <div class="rev-noches">
+          <div class="rev-noches-item"><div class="rev-noches-val">${escHtml(String(agg.nights))}</div><div class="rev-noches-lbl">Noches</div></div>
+          <div class="rev-noches-item"><div class="rev-noches-val">${escHtml(agg.avgNights)}</div><div class="rev-noches-lbl">Prom.</div></div>
+          <div class="rev-noches-item"><div class="rev-noches-val">${escHtml(String(agg.conversion))}%</div><div class="rev-noches-lbl">Conv.</div></div>
+          <div class="rev-noches-item"><div class="rev-noches-val">${escHtml(String(agg.intents))}</div><div class="rev-noches-lbl">Intentos</div></div>
+        </div>
+      </div>
+      ` : `
+      <div class="panel" style="flex:1;">
         <h2>Noches y desempeño</h2>
         <div class="stat-rows">
           ${statRow('Noches reservadas', agg.nights, Math.max(agg.nights, agg.confirmed, 1))}
@@ -360,8 +470,10 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web }) {
           ${statRow('Inscripciones pagadas', ins.paid, Math.max(ins.total, 1))}
         </div>
         <div style="margin-top:auto;padding-top:8px;font-size:10px;color:#8a9170;text-align:center;">
-          Promedio ${esc(agg.avgNights)} noches por reserva · CTR web ${esc(wv('ctr'))}
+          Promedio ${esc(agg.avgNights)} noches · CTR ${esc(wv('ctr'))}
         </div>
+      </div>
+      `}
       </div>
     </div>
 
@@ -1371,6 +1483,11 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
     })
   }
 
+  const confirmedRows = data.filter(r => r.event_type === 'reserva_confirmada')
+  const rev = calcRevenueMetrics(confirmedRows)
+  const revPromoOnly = calcRevenueMetrics(confirmedRows.filter(r => r.promo === 'web_20'))
+  const fmtMXN = n => `$${Math.round(n).toLocaleString('es-MX')}`
+
   return (
     <div className="adm-activities">
       <div className="adm-users__header">
@@ -1397,6 +1514,29 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
           </span>
         </div>
       </div>
+
+      {view === 'confirmed' && rev.base > 0 && (
+        <div className="adm-rev-strip">
+          <div className="adm-rev-kpi">
+            <span className="adm-rev-kpi__val">{fmtMXN(rev.total)}</span>
+            <span className="adm-rev-kpi__lbl">Ingreso estimado</span>
+            <span className="adm-rev-kpi__sub">con promo aplicada</span>
+          </div>
+          <div className="adm-rev-kpi">
+            <span className="adm-rev-kpi__val" style={{ color: '#6b7350' }}>{fmtMXN(rev.base)}</span>
+            <span className="adm-rev-kpi__lbl">Precio tarifa</span>
+            <span className="adm-rev-kpi__sub">sin descuento</span>
+          </div>
+          <div className="adm-rev-kpi">
+            <span className="adm-rev-kpi__val" style={{ color: '#b45309' }}>{fmtMXN(revPromoOnly.discount)}</span>
+            <span className="adm-rev-kpi__lbl">Descuento dado</span>
+            <span className="adm-rev-kpi__sub">{revPromoOnly.promoCount} con etiqueta PROMO 20%</span>
+          </div>
+          <div className="adm-rev-note">
+            Deluxe {fmtMXN(ROOM_PRICES.deluxe)}/noche · Doble {fmtMXN(ROOM_PRICES.doble)}/noche
+          </div>
+        </div>
+      )}
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
         <div className="adm-registrations-table">
@@ -1555,7 +1695,11 @@ function ReportesSection() {
   const handleExport = async () => {
     setExporting(true); setErr('')
     try {
-      const html = buildHotelReportHTML({ periodLabel: range.label, modeLabel, agg, ins, bk, web })
+      const confInRange = rows.filter(r => r.event_type === 'reserva_confirmada' && inDateRange(r.created_at, range.from, range.to))
+      const rev = calcRevenueMetrics(confInRange)
+      const revPromo = calcRevenueMetrics(confInRange.filter(r => r.promo === 'web_20'))
+      const revDirect = calcRevenueMetrics(confInRange.filter(r => r.promo !== 'web_20'))
+      const html = buildHotelReportHTML({ periodLabel: range.label, modeLabel, agg, ins, bk, web, rev, revPromo, revDirect })
       const fname = `reporte-general-${range.from}_${range.to}.pdf`
       const res = await fetch(`${API_BASE}/.netlify/functions/export-pdf`, {
         method: 'POST',
@@ -1606,26 +1750,26 @@ function ReportesSection() {
       {err && <p style={{ color: '#c0392b', padding: '8px 4px', fontSize: 13 }}>{err}</p>}
 
       {loading ? <p className="adm-users__loading">Cargando…</p> : (
-        <div className="adm-rep-empty">
-          <div className="adm-rep-empty__icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>
-            </svg>
+          <div className="adm-rep-empty">
+              <div className="adm-rep-empty__icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>
+                </svg>
+              </div>
+              <h3 className="adm-rep-empty__title">Reporte listo para exportar</h3>
+              <p className="adm-rep-empty__sub">Período: <strong style={{ textTransform: 'capitalize' }}>{range.label}</strong></p>
+              <p className="adm-rep-empty__txt">
+                El PDF incluye: visitas e impresiones web (Google), reservas confirmadas e intentos,
+                conversión, noches, distribución por habitación y origen, e inscripciones por evento.
+              </p>
+              <button className="adm-btn-sm adm-btn-sm--primary" onClick={handleExport} disabled={exporting}>
+                {exporting ? 'Generando…' : 'Exportar PDF'}
+              </button>
+              {web && !web.ok && (
+                <p className="adm-rep-empty__warn">Tráfico web no disponible ({web.error}). El resto del reporte sí se genera.</p>
+              )}
           </div>
-          <h3 className="adm-rep-empty__title">Reporte listo para exportar</h3>
-          <p className="adm-rep-empty__sub">Período: <strong style={{ textTransform: 'capitalize' }}>{range.label}</strong></p>
-          <p className="adm-rep-empty__txt">
-            El PDF incluye: visitas e impresiones web (Google), reservas confirmadas e intentos,
-            conversión, noches, distribución por habitación y origen, e inscripciones por evento.
-          </p>
-          <button className="adm-btn-sm adm-btn-sm--primary" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Generando…' : 'Exportar PDF'}
-          </button>
-          {web && !web.ok && (
-            <p className="adm-rep-empty__warn">Tráfico web no disponible ({web.error}). El resto del reporte sí se genera.</p>
-          )}
-        </div>
       )}
     </div>
   )
