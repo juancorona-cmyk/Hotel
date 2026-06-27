@@ -306,7 +306,7 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web, rev, 
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  html,body { width:100%; height:100%; }
+  html,body { width:100%; height:100%; background:#fff; }
   body { font-family:'Montserrat',sans-serif; background:#fff; color:#1d2410; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   @page { size:A4 landscape; margin:0; }
   .sheet { width:297mm; height:210mm; padding:10mm 13mm; display:flex; flex-direction:column; overflow:hidden; }
@@ -318,7 +318,7 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web, rev, 
   .meta strong { color:${HOTEL_OLIVE}; font-size:11px; }
   h2 { font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:${HOTEL_OLIVE}; margin:0 0 8px; font-weight:700; text-align:center; }
   .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px; }
-  .kpi { border:1px solid #e2e8cc; border-radius:14px; padding:14px 10px; background:#fff; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .kpi { border:1px solid #e2e8cc; border-radius:14px; padding:14px 10px; background:#fff; text-align:center;  }
   .kpi-val { font-size:26px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
   .kpi-lbl { font-size:8.5px; text-transform:uppercase; letter-spacing:.6px; color:#6b7350; margin-top:7px; font-weight:700; }
   .kpi-sub { font-size:8px; color:#9aa07e; margin-top:2px; }
@@ -326,14 +326,14 @@ function buildHotelReportHTML({ periodLabel, modeLabel, agg, ins, bk, web, rev, 
   .body { flex:1; display:grid; grid-template-columns:130px 1.5fr 1fr; gap:11px; min-height:0; margin-bottom:11px; }
   .left-col { display:flex; flex-direction:column; gap:8px; }
   .left-badge { background:${HOTEL_OLIVE}; color:#fff; border-radius:12px; padding:12px 8px; text-align:center; font-size:8px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; line-height:1.5; }
-  .web-kpi { border:1px solid #e2e8cc; border-radius:12px; padding:8px 10px; background:#fff; text-align:center; flex:1; display:flex; flex-direction:column; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .web-kpi { border:1px solid #e2e8cc; border-radius:12px; padding:8px 10px; background:#fff; text-align:center; flex:1; display:flex; flex-direction:column; justify-content:center;  }
   .web-kpi-val { font-size:15px; font-weight:800; color:${HOTEL_OLIVE}; line-height:1; }
   .web-kpi-lbl { font-size:7px; text-transform:uppercase; letter-spacing:.5px; color:#6b7350; font-weight:700; margin-top:3px; }
   .web-kpi-sub { font-size:6.5px; color:#9aa07e; margin-top:1px; }
   .right-stack { display:flex; flex-direction:column; gap:10px; min-height:0; }
   .right-stack .rev-panel { flex:1; min-height:0; }
   .right-stack .ins-panel { flex:none; }
-  .panel { border:1px solid #e2e8cc; border-radius:14px; padding:13px 15px; background:#fff; display:flex; flex-direction:column; min-height:0; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+  .panel { border:1px solid #e2e8cc; border-radius:14px; padding:13px 15px; background:#fff; display:flex; flex-direction:column; min-height:0;  }
   .panel.grow svg { flex:1; min-height:0; }
   .stat-rows { display:flex; flex-direction:column; gap:7px; margin-top:2px; }
   .stat-row { display:flex; align-items:center; gap:9px; }
