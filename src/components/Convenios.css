@@ -1,0 +1,123 @@
+.convenios {
+  background: #fff;
+  padding: 72px 0;
+  overflow: hidden;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+}
+
+.convenios__head {
+  text-align: center;
+  padding: 0 32px;
+  margin-bottom: 44px;
+}
+
+.convenios__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  color: #626c1f;
+  margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.convenios.is-visible .convenios__eyebrow {
+  animation: convReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.convenios__title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(22px, 3.4vw, 34px);
+  font-weight: 900;
+  color: #1a1a1a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.convenios.is-visible .convenios__title {
+  animation: convReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards;
+}
+
+@keyframes convReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.convenios__track-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.convenios__track {
+  display: flex;
+  align-items: center;
+  gap: 3.5rem;
+  width: max-content;
+  padding: 0.5rem 32px;
+  animation: convScroll 34s linear infinite;
+  will-change: transform;
+}
+
+.convenios__track-wrap:hover .convenios__track {
+  animation-play-state: paused;
+}
+
+@keyframes convScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.convenio-card {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+}
+
+.convenio-card__img {
+  height: 100%;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+  filter: grayscale(100%);
+  opacity: 0.5;
+  transition: filter 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
+}
+
+.convenio-card__img:hover {
+  filter: grayscale(0%);
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.convenio-card__name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #888;
+  white-space: nowrap;
+  padding: 10px 22px;
+  border: 1.5px solid #ddd;
+  border-radius: 999px;
+  transition: color 0.35s ease, border-color 0.35s ease;
+}
+
+.convenio-card__name:hover {
+  color: #626c1f;
+  border-color: #626c1f;
+}
+
+@media (max-width: 640px) {
+  .convenios { padding: 56px 0; }
+  .convenio-card { height: 48px; }
+  .convenio-card__img { max-width: 130px; }
+  .convenios__track { gap: 2.4rem; }
+}

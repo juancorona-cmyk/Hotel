@@ -16,6 +16,10 @@ export function fmtHora(s) {
   return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'pm' : 'am'}`
 }
 
+export function getDeviceType() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
+}
+
 export function isValidPhone(raw) {
   const digits = raw.replace(/[\s\-().+]/g, '')
   if (raw.trim().startsWith('+')) return /^\+\d{7,15}$/.test(raw.trim().replace(/[\s\-().]/g, ''))

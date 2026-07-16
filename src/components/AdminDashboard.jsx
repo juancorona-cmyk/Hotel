@@ -66,7 +66,7 @@ const PERMS_CONFIG = [
 // Agrupación de tabs en menús desplegables (barra más limpia)
 const TAB_GROUPS = [
   { id: 'metricas',      label: 'Métricas',      items: [['stats', 'Estadísticas'], ['google', 'Google'], ['reportes', 'Reportes']] },
-  { id: 'reservaciones', label: 'Reservaciones', items: [['reservas', 'Reservas'], ['inscripciones', 'Inscripciones']] },
+  { id: 'reservaciones', label: 'Reservaciones', items: [['reservas', 'Reservas'], ['dispositivos', 'Dispositivos'], ['inscripciones', 'Inscripciones']] },
   { id: 'contenido',     label: 'Contenido',     items: [['contenido', 'Actividades y Eventos']] },
   { id: 'config',        label: 'Configuración', items: [['config', 'Configuración']] },
 ]
@@ -1687,6 +1687,82 @@ function HotelReservationsSection({ dateFrom = '', dateTo = '', isAdmin = false 
   )
 }
 
+// ── Reservations by device (mobile vs desktop) ───────────
+const DEVICE_LABELS = { mobile: 'Móvil', desktop: 'PC', unknown: 'Desconocido' }
+const DEVICE_COLORS = { mobile: '#5a6c1e', desktop: '#6b7350', unknown: '#c5c9b8' }
+
+function DeviceReservationsSection({ dateFrom = '', dateTo = '' }) {
+  const [data, setData]     = useState([])
+  const [loading, setLoading] = useState(false)
+  const [view, setView]     = useState('confirmed')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const d = await getHotelReservationEvents()
+    setData(d)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const filtered = data.filter(r => {
+    if (view === 'confirmed' && r.event_type !== 'reserva_confirmada') return false
+    if (view === 'intents'   && r.event_type !== 'reserva_click')      return false
+    if (dateFrom || dateTo) {
+      const d = r.created_at ? r.created_at.slice(0, 10) : ''
+      if (dateFrom && d < dateFrom) return false
+      if (dateTo   && d > dateTo)   return false
+    }
+    return true
+  })
+
+  const total = filtered.length
+  const counts = { mobile: 0, desktop: 0, unknown: 0 }
+  filtered.forEach(r => { counts[r.device === 'mobile' || r.device === 'desktop' ? r.device : 'unknown']++ })
+  const pct = (n) => total > 0 ? Math.round((n / total) * 100) : 0
+
+  return (
+    <div className="adm-activities">
+      <div className="adm-users__header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>Dispositivos</span>
+          <div className="adm-ins-toggle">
+            <button className={view === 'confirmed' ? 'active' : ''} onClick={() => setView('confirmed')}>Confirmadas</button>
+            <button className={view === 'intents'   ? 'active' : ''} onClick={() => setView('intents')}>Intentos</button>
+          </div>
+        </div>
+        <span className="adm-users__count" style={{ marginLeft: 'auto' }}>{total} reserva{total !== 1 ? 's' : ''}</span>
+      </div>
+
+      {loading ? <p className="adm-users__loading">Cargando…</p> : total === 0 ? (
+        <p className="adm-conv-empty" style={{ padding: '14px 16px' }}>Sin datos aún</p>
+      ) : (
+        <>
+          <div className="adm-rev-strip">
+            {['mobile', 'desktop', 'unknown'].map(k => (
+              <div className="adm-rev-kpi" key={k}>
+                <span className="adm-rev-kpi__val" style={{ color: DEVICE_COLORS[k] }}>{counts[k]}</span>
+                <span className="adm-rev-kpi__lbl">{DEVICE_LABELS[k]}</span>
+                <span className="adm-rev-kpi__sub">{pct(counts[k])}% del total</span>
+              </div>
+            ))}
+            <div className="adm-rev-note">
+              Móvil = teléfono/tablet · PC = escritorio/laptop · Desconocido = reservas sin registro de dispositivo
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', height: 22, borderRadius: 6, overflow: 'hidden', margin: '4px 16px 16px', border: '1px solid #e5e7d9' }}>
+            {['mobile', 'desktop', 'unknown'].filter(k => counts[k] > 0).map(k => (
+              <div key={k} title={`${DEVICE_LABELS[k]}: ${pct(counts[k])}%`}
+                style={{ width: `${pct(counts[k])}%`, background: DEVICE_COLORS[k] }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Confirm Modal ────────────────────────────────────────
 function ConfirmModal({ title, message, onConfirm, onCancel, confirmLabel = 'Eliminar', loading = false }) {
   useEffect(() => {
@@ -2865,6 +2941,7 @@ export default function AdminDashboard({ onClose }) {
     if (isAdmin) return true
     if (key === 'users') return false
     if (key === 'contenido') return userPerms?.actividades === true || userPerms?.eventos === true
+    if (key === 'dispositivos') return userPerms?.reservas === true
     return userPerms?.[key] === true
   }
 
@@ -3021,7 +3098,7 @@ export default function AdminDashboard({ onClose }) {
               )
             })}
             {isAdmin && <button className={`adm-period-btn adm-tab-btn ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>Usuarios</button>}
-            {(tab === 'inscripciones' || tab === 'reservas') && (
+            {(tab === 'inscripciones' || tab === 'reservas' || tab === 'dispositivos') && (
               <div className="adm-bar-daterange">
                 <span className="adm-bar-daterange__label">Período</span>
                 <DatePicker value={insDateFrom} onChange={setInsDateFrom} placeholder="Desde" allowPast />
@@ -3046,6 +3123,8 @@ export default function AdminDashboard({ onClose }) {
               <ContenidoSection canSee={canSee} initial={tab === 'eventos' ? 'eventos' : 'actividades'} />
             ) : tab === 'reservas' ? (
               <HotelReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
+            ) : tab === 'dispositivos' ? (
+              <DeviceReservationsSection dateFrom={insDateFrom} dateTo={insDateTo} />
             ) : tab === 'inscripciones' ? (
               <ActivityRegistrationsSection dateFrom={insDateFrom} dateTo={insDateTo} isAdmin={isAdmin} />
             ) : tab === 'reportes' ? (

@@ -1354,6 +1354,17 @@
 .sa-adm-bar-fill { height: 100%; background: linear-gradient(90deg, #838c2f, #5a6c1e); border-radius: 999px; }
 .sa-adm-bar-val { font-size: 13px; font-weight: 800; color: #5a6c1e; min-width: 22px; text-align: right; }
 
+.sa-adm-log-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f1ede4; }
+.sa-adm-log-row:last-child { border-bottom: none; }
+.sa-adm-log-tag { flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; }
+.sa-adm-log-tag--registro { background: #eef0dc; color: #626c1f; }
+.sa-adm-log-tag--pago { background: #e7f5ea; color: #1f7a44; }
+.sa-adm-log-tag--checkin { background: #e8effa; color: #2563eb; }
+.sa-adm-log-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.sa-adm-log-name { font-size: 13px; font-weight: 800; color: #323f48; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-adm-log-event { font-size: 11px; font-weight: 600; color: #b8a99a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-adm-log-time { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #9aa19a; }
+
 .sa-adm-user { padding: 12px 0; border-bottom: 1px solid #f1ede4; }
 .sa-adm-user:last-child { border-bottom: none; }
 .sa-adm-user-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1374,6 +1385,26 @@
 }
 .sa-adm-pw-row { display: flex; gap: 8px; margin-top: 10px; }
 .sa-adm-pw-row .sa-input { flex: 1; }
+.sa-adm-pw-row--stack { flex-direction: column; align-items: stretch; }
+.sa-adm-pw-row--stack .sa-input { flex: none; width: 100%; }
+.sa-adm-pw-btnrow { display: flex; gap: 8px; }
+.sa-adm-pw-btnrow .sa-adm-pw-btn,
+.sa-adm-pw-btnrow .sa-adm-pw-save { flex: 1; text-align: center; }
+.sa-adm-pw-chk { display: flex; gap: 6px; align-items: center; width: 100%; font-size: 12px; font-weight: 600; color: #5b6670; }
+.sa-adm-roles { display: flex; gap: 6px; flex-wrap: wrap; }
+.sa-adm-role-btn {
+  flex: 1;
+  min-width: 78px;
+  background: #f1ede0;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #626c1f;
+  text-align: center;
+}
+.sa-adm-role-btn--on { background: #5a6c1e; color: #fff; }
 .sa-adm-pw-save {
   background: linear-gradient(135deg, #6a7d24, #5a6c1e);
   color: #fff;

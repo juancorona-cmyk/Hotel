@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DateRangePicker from './DateRangePicker'
 import { trackEvent } from '../lib/turso'
+import { getDeviceType } from '../lib/utils'
 import './BookingModal.css'
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -79,7 +80,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = true,
     if (!checkin || !checkout) return
     // Folio = firma para identificar que el prospecto vino de la página web y cruzarlo en métricas
     const folio = 'HPG-' + Date.now().toString(36).toUpperCase().slice(-6)
-    trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', promo: 'web_20', folio, room: roomId, nights, adults, children, rooms, checkin, checkout })
+    trackEvent('reserva_confirmada', { source: 'booking_modal', origin: 'web', promo: 'web_20', folio, room: roomId, nights, adults, children, rooms, checkin, checkout, device: getDeviceType() })
     // Sin emojis: en WhatsApp de PC se veían como "◆". Etiquetas en negrita se ven igual en PC y celular.
     const lines = [
       t('modal.waMsg.hola'),

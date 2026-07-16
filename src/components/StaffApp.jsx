@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminChangePassword, genGenericPassword, getRegistrationsByPhone, API_BASE } from '../lib/turso'
+import { getEvents, getArchivedEvents, getActivityRegistrationsByEvent, getAllActivityRegistrations, saveActivity, upsertActivityEvent, updateActivity, deleteEvent, closeEvent, deleteActivity, updateActivityRegistrationPayment, checkInRegistration, resetAllEventsAndAttendees, adminGetUsers, adminCreateUser, adminChangePassword, genGenericPassword, getRegistrationsByPhone, API_BASE } from '../lib/turso'
 import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -37,6 +37,20 @@ function closedRelative(dateStr) {
   if (diff < 30) return `Cerró hace ${Math.floor(diff / 7)} semanas`
   if (diff < 60) return 'Cerró hace 1 mes'
   return `Cerró hace ${Math.floor(diff / 30)} meses`
+}
+
+// Etiqueta de recencia fina para historial de actividad (checkin/pago): "hace 5 min", "hace 2h"...
+function timeAgoShort(isoStr) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr.includes('T') ? isoStr : isoStr.replace(' ', 'T') + 'Z')
+  if (isNaN(d.getTime())) return ''
+  const diffMin = Math.round((Date.now() - d.getTime()) / 60000)
+  if (diffMin < 1) return 'ahora'
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `hace ${diffH}h`
+  const diffD = Math.round(diffH / 24)
+  return `hace ${diffD}d`
 }
 
 // ── Alert utilities (fuera del componente para estabilidad) ──
@@ -254,6 +268,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [pwSaving, setPwSaving] = useState(false)
   const [pwGeneric, setPwGeneric] = useState(true) // forzar cambio al ingresar
   const [pwDone, setPwDone] = useState('')          // clave generica generada para enviar
+  const [showNewUser, setShowNewUser] = useState(false)
+  const [newUserName, setNewUserName] = useState('')
+  const [newUserPw, setNewUserPw] = useState('')
+  const [newUserRole, setNewUserRole] = useState('staff')
+  const [newUserMustChange, setNewUserMustChange] = useState(true)
+  const [creatingUser, setCreatingUser] = useState(false)
+  const [newUserErr, setNewUserErr] = useState('')
+  const [newUserDone, setNewUserDone] = useState('')
 
   const loadUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -286,6 +308,29 @@ export default function StaffApp({ onStartScan, onLogout }) {
       setPwSaving(false)
     }
   }, [pwValue, pwGeneric, loadUsers])
+
+  const createNewUser = useCallback(async () => {
+    const uname = newUserName.trim()
+    if (!uname) { setNewUserErr('Ingresa un nombre de usuario'); return }
+    if (/\s/.test(uname)) { setNewUserErr('El usuario no puede tener espacios'); return }
+    const chk = checkPasswordStrength(newUserPw.trim())
+    if (!chk.ok) { setNewUserErr(chk.message); return }
+    setCreatingUser(true); setNewUserErr('')
+    try {
+      await adminCreateUser(uname, newUserPw.trim(), newUserRole, newUserMustChange)
+      if (newUserMustChange) {
+        setNewUserDone(newUserPw.trim())
+      } else {
+        showToast(`Usuario "${uname}" creado`)
+        setShowNewUser(false); setNewUserName(''); setNewUserPw(''); setNewUserRole('staff'); setNewUserMustChange(true)
+      }
+      loadUsers()
+    } catch (err) {
+      setNewUserErr(err?.message?.includes('UNIQUE') ? 'Ese nombre de usuario ya existe' : 'Error al crear usuario')
+    } finally {
+      setCreatingUser(false)
+    }
+  }, [newUserName, newUserPw, newUserRole, newUserMustChange, loadUsers])
 
   // Reset total (solo admin): borra eventos + asistentes, doble confirmacion
   const handleResetAll = useCallback(() => {
@@ -1112,6 +1157,17 @@ export default function StaffApp({ onStartScan, onLogout }) {
     allRegs.forEach(r => { const k = r.event_name || 'Sin evento'; byEvent[k] = (byEvent[k] || 0) + 1 })
     const topEvents = Object.entries(byEvent).sort((a, b) => b[1] - a[1]).slice(0, 5)
     const maxTop = topEvents.length ? topEvents[0][1] : 1
+    // Historial de actividad reciente: registros, pagos y checkins, más recientes primero
+    const activityLog = allRegs
+      .flatMap(r => {
+        const items = [{ ts: r.created_at, label: 'Registro', name: r.full_name, event: r.event_name }]
+        if (r.paid_at) items.push({ ts: r.paid_at, label: 'Pago', name: r.full_name, event: r.event_name })
+        if (r.checked_in_at) items.push({ ts: r.checked_in_at, label: 'Check-in', name: r.full_name, event: r.event_name })
+        return items
+      })
+      .filter(i => i.ts)
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+      .slice(0, 20)
 
     return (
       <div className="sa-root sa-root--admin">
@@ -1152,7 +1208,99 @@ export default function StaffApp({ onStartScan, onLogout }) {
             ))}
           </div>
 
-          <h2 className="sa-adm-h">Usuarios</h2>
+          <h2 className="sa-adm-h">Historial de actividad</h2>
+          <div className="sa-adm-card">
+            {activityLog.length === 0 ? (
+              <p className="sa-adm-empty">Sin actividad aún</p>
+            ) : activityLog.map((item, idx) => (
+              <div key={idx} className="sa-adm-log-row">
+                <span className={`sa-adm-log-tag sa-adm-log-tag--${item.label === 'Pago' ? 'pago' : item.label === 'Check-in' ? 'checkin' : 'registro'}`}>
+                  {item.label}
+                </span>
+                <div className="sa-adm-log-info">
+                  <span className="sa-adm-log-name">{item.name || 'Sin nombre'}</span>
+                  <span className="sa-adm-log-event">{item.event || 'Sin evento'}</span>
+                </div>
+                <span className="sa-adm-log-time">{timeAgoShort(item.ts)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="sa-section-header">
+            <h2 className="sa-adm-h" style={{ margin: 0 }}>Usuarios</h2>
+            <button
+              className="sa-adm-pw-btn"
+              onClick={() => {
+                setShowNewUser(v => !v)
+                setNewUserName(''); setNewUserPw(''); setNewUserRole('staff'); setNewUserMustChange(true); setNewUserErr(''); setNewUserDone('')
+              }}
+            >
+              {showNewUser ? 'Cancelar' : '+ Nuevo usuario'}
+            </button>
+          </div>
+
+          {showNewUser && (
+            <div className="sa-adm-card" style={{ marginBottom: 12 }}>
+              {newUserDone ? (
+                <div className="sa-adm-pw-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
+                  <span style={{ fontSize: 13, color: '#666' }}>Usuario "{newUserName}" creado. Clave genérica, envíasela:</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <code style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1, background: '#eef0e3', padding: '6px 12px', borderRadius: 6 }}>{newUserDone}</code>
+                    <button className="sa-adm-pw-save" onClick={() => navigator.clipboard?.writeText(newUserDone)}>Copiar</button>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#888' }}>Al ingresar deberá crear su contraseña.</span>
+                  <button className="sa-adm-pw-save" onClick={() => { setShowNewUser(false); setNewUserName(''); setNewUserPw(''); setNewUserDone('') }}>Listo</button>
+                </div>
+              ) : (
+                <>
+                  <div className="sa-adm-pw-row sa-adm-pw-row--stack">
+                    <input
+                      type="text"
+                      className="sa-input"
+                      placeholder="nombre.usuario"
+                      value={newUserName}
+                      onChange={e => { setNewUserName(e.target.value); setNewUserErr('') }}
+                      autoCapitalize="none"
+                      autoComplete="off"
+                    />
+                    <input
+                      type="text"
+                      className="sa-input"
+                      placeholder="Contraseña (mín. 6)"
+                      value={newUserPw}
+                      onChange={e => { setNewUserPw(e.target.value); setNewUserErr('') }}
+                    />
+                    <div className="sa-adm-pw-btnrow">
+                      <button className="sa-adm-pw-btn" onClick={() => setNewUserPw(genGenericPassword())}>
+                        Generar genérica
+                      </button>
+                    </div>
+                    <div className="sa-adm-roles">
+                      {['staff', 'admin', 'editor'].map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          className={`sa-adm-role-btn ${newUserRole === r ? 'sa-adm-role-btn--on' : ''}`}
+                          onClick={() => setNewUserRole(r)}
+                        >
+                          {r === 'staff' ? 'Staff' : r === 'admin' ? 'Admin' : 'Editor'}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="sa-adm-pw-chk">
+                      <input type="checkbox" checked={newUserMustChange} onChange={e => setNewUserMustChange(e.target.checked)} />
+                      Pedir cambio de contraseña al primer ingreso
+                    </label>
+                    {newUserErr && <p style={{ color: '#ef4444', fontSize: 12, margin: 0 }}>{newUserErr}</p>}
+                    <button className="sa-adm-pw-save" disabled={creatingUser} onClick={createNewUser}>
+                      {creatingUser ? 'Creando…' : 'Crear usuario'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="sa-adm-card">
             {loadingUsers ? (
               <p className="sa-adm-empty">Cargando…</p>
@@ -1181,7 +1329,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       <button className="sa-adm-pw-save" onClick={() => { setPwTarget(null); setPwValue(''); setPwDone('') }}>Listo</button>
                     </div>
                   ) : (
-                  <div className="sa-adm-pw-row" style={{ flexWrap: 'wrap' }}>
+                  <div className="sa-adm-pw-row sa-adm-pw-row--stack">
                     <input
                       type="text"
                       className="sa-input"
@@ -1190,13 +1338,15 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       onChange={e => setPwValue(e.target.value)}
                       autoFocus
                     />
-                    <button className="sa-adm-pw-btn" onClick={() => { setPwValue(genGenericPassword()); setPwGeneric(true) }}>
-                      Generar genérica
-                    </button>
-                    <button className="sa-adm-pw-save" disabled={pwSaving} onClick={() => savePassword(u.username)}>
-                      {pwSaving ? '…' : 'Guardar'}
-                    </button>
-                    <label style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%', fontSize: 12 }}>
+                    <div className="sa-adm-pw-btnrow">
+                      <button className="sa-adm-pw-btn" onClick={() => { setPwValue(genGenericPassword()); setPwGeneric(true) }}>
+                        Generar genérica
+                      </button>
+                      <button className="sa-adm-pw-save" disabled={pwSaving} onClick={() => savePassword(u.username)}>
+                        {pwSaving ? '…' : 'Guardar'}
+                      </button>
+                    </div>
+                    <label className="sa-adm-pw-chk">
                       <input type="checkbox" checked={pwGeneric} onChange={e => setPwGeneric(e.target.checked)} />
                       Pedir cambio al primer ingreso
                     </label>
@@ -1490,13 +1640,29 @@ export default function StaffApp({ onStartScan, onLogout }) {
                       <span className="sa-archived-stat sa-archived-stat--paid"><b>{paid}</b> pagados</span>
                       <span className="sa-archived-stat sa-archived-stat--attended"><b>{attended}</b> asistieron</span>
                     </div>
-                    {canCreate && (
-                      <button className="sa-new-edition-btn sa-new-edition-btn--full" onClick={e => { e.stopPropagation(); setShowEditionPicker(ev) }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
-                        </svg>
-                        Nueva edición
-                      </button>
+                    {(canCreate || lowerRole === 'admin') && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {canCreate && (
+                          <button className="sa-new-edition-btn sa-new-edition-btn--full" onClick={e => { e.stopPropagation(); setShowEditionPicker(ev) }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+                            </svg>
+                            Nueva edición
+                          </button>
+                        )}
+                        {lowerRole === 'admin' && (
+                          <button
+                            className="sa-edit-card-btn"
+                            onClick={e => { e.stopPropagation(); handleDeleteEvent(ev) }}
+                            style={{ background: '#fff1f2', color: '#ef4444', flex: '0 0 auto' }}
+                            title="Eliminar evento"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )
@@ -1823,16 +1989,18 @@ export default function StaffApp({ onStartScan, onLogout }) {
                           <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                       </button>
-                      <button
-                        className="sa-edit-card-btn"
-                        onClick={() => handleDeleteEvent(ev)}
-                        style={{ background: '#fff1f2', color: '#ef4444' }}
-                        title="Eliminar evento"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
-                        </svg>
-                      </button>
+                      {lowerRole === 'admin' && (
+                        <button
+                          className="sa-edit-card-btn"
+                          onClick={() => handleDeleteEvent(ev)}
+                          style={{ background: '#fff1f2', color: '#ef4444' }}
+                          title="Eliminar evento"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1871,6 +2039,18 @@ export default function StaffApp({ onStartScan, onLogout }) {
                           </svg>
                           Nueva edición
                         </button>
+                        {lowerRole === 'admin' && (
+                          <button
+                            className="sa-edit-card-btn"
+                            onClick={e => { e.stopPropagation(); handleDeleteEvent(ev) }}
+                            style={{ background: '#fff1f2', color: '#ef4444' }}
+                            title="Eliminar evento"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )

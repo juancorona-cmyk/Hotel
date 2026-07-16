@@ -14,12 +14,13 @@ import Videos from './components/Videos'
 import Restaurant from './components/Restaurant'
 import EventHall from './components/EventHall'
 import Testimonials from './components/Testimonials'
+import Convenios from './components/Convenios'
 import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
 import PromoStrip from './components/PromoStrip'
 import { setupDB, trackEvent, getProxyConfig, getRegistrationById, getPromoActive, getPromoConfig } from './lib/turso'
-import { fmtFecha } from './lib/utils'
+import { fmtFecha, getDeviceType } from './lib/utils'
 import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
 
@@ -292,7 +293,7 @@ function CheckInBrowserGateway() {
 
 function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive, promoConfig }) {
   const openBooking = (source, roomId) => {
-    trackEvent('reserva_click', { source, origin: 'web', promo: 'web_20', room: roomId })
+    trackEvent('reserva_click', { source, origin: 'web', promo: 'web_20', room: roomId, device: getDeviceType() })
     setBookingRoom(roomId)
   }
 
@@ -303,6 +304,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
       {promoActive && <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} promoConfig={promoConfig} />}
       <About />
       <Stats />
+      <Convenios />
       <Marquee />
       <Amenidades key={`amenidades-${dataVersion}`} />
       <Rooms onBook={(roomId) => openBooking('rooms', roomId)} />
