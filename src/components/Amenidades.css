@@ -118,6 +118,10 @@
   text-align: center;
 }
 
+.amenidades__item--clickable {
+  cursor: pointer;
+}
+
 /* ── Actividades ─────────────────────────────── */
 .actividades {
   margin-top: 64px;

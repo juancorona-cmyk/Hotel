@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DateRangePicker from './DateRangePicker'
+import PetPolicyModal from './PetPolicyModal'
 import { trackEvent } from '../lib/turso'
 import { getDeviceType } from '../lib/utils'
 import './BookingModal.css'
@@ -51,6 +52,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = true,
   const [adults,   setAdults]   = useState(1)
   const [children, setChildren] = useState(0)
   const [rooms,    setRooms]    = useState(1)
+  const [showPetPolicy, setShowPetPolicy] = useState(false)
 
   const room         = ROOMS.find(r => r.id === roomId)
   const nights       = nightsBetween(checkin, checkout)
@@ -150,6 +152,13 @@ export default function BookingModal({ initialRoom, onClose, promoActive = true,
                 </button>
               ))}
             </div>
+            <button type="button" className="bm-pet-link" onClick={() => setShowPetPolicy(true)}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                <circle cx="4.5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19.5" cy="9.5" r="2.2"/>
+                <path d="M12 11c-3.3 0-7 2.3-7 5.6 0 1.9 1.5 3.4 3.4 3.4.9 0 1.5-.3 2.4-.6.7-.3 1.4-.5 2.2-.5s1.5.2 2.2.5c.9.3 1.5.6 2.4.6 1.9 0 3.4-1.5 3.4-3.4 0-3.3-3.7-5.6-7-5.6z"/>
+              </svg>
+              ¿Viajas con mascota? Ver reglamento Pet Friendly
+            </button>
           </div>
 
           {/* Dates — custom range picker */}
@@ -236,6 +245,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = true,
 
         </form>
       </div>
+      {showPetPolicy && <PetPolicyModal onClose={() => setShowPetPolicy(false)} />}
     </div>
   )
 }

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '../lib/turso'
+import { openPetPolicyPdf } from '../lib/petPolicyPdf'
 import './Footer.css'
 
 const NAV = [
@@ -56,6 +58,20 @@ const SOCIAL = [
 export default function Footer() {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
+  const [petPolicyBusy, setPetPolicyBusy] = useState(false)
+
+  const handlePetPolicyClick = async (e) => {
+    e.preventDefault()
+    if (petPolicyBusy) return
+    setPetPolicyBusy(true)
+    try {
+      await openPetPolicyPdf()
+    } catch (err) {
+      console.error('[petPolicy] Error:', err)
+    } finally {
+      setPetPolicyBusy(false)
+    }
+  }
 
   const NAV = [
     { label: t('nav.inicio'),       href: '#inicio' },
@@ -158,6 +174,10 @@ export default function Footer() {
           <a href="#inicio">{t('footer.privacidad')}</a>
           <span>·</span>
           <a href="#inicio">{t('footer.terminos')}</a>
+          <span>·</span>
+          <a href="#inicio" onClick={handlePetPolicyClick}>
+            {petPolicyBusy ? 'Generando…' : 'Mascotas'}
+          </a>
         </div>
       </div>
     </footer>

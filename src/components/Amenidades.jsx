@@ -4,6 +4,7 @@ import { getActivities, getEventByActivityId, trackEvent } from '../lib/turso'
 import { getActivityIcon } from '../lib/activityIcons'
 import { fmtFecha, fmtHora } from '../lib/utils'
 import { CDN } from '../lib/cdn'
+import { openPetPolicyPdf } from '../lib/petPolicyPdf'
 import ActivityRegModal from './ActivityRegModal'
 import './Amenidades.css'
 
@@ -42,7 +43,20 @@ export default function Amenidades() {
   const [dbActivities, setDbActivities] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [linkedEvent, setLinkedEvent] = useState(null)
+  const [petPolicyBusy, setPetPolicyBusy] = useState(false)
   const sectionRef = useRef(null)
+
+  const handlePetPolicyClick = async () => {
+    if (petPolicyBusy) return
+    setPetPolicyBusy(true)
+    try {
+      await openPetPolicyPdf()
+    } catch (err) {
+      console.error('[petPolicy] Error:', err)
+    } finally {
+      setPetPolicyBusy(false)
+    }
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -66,6 +80,12 @@ export default function Amenidades() {
     { key: 'amenidades.salon',       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
     { key: 'amenidades.jardines',    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
     { key: 'amenidades.checkin',     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> },
+    {
+      key: 'amenidades.petFriendly',
+      icon: <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="4.5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19.5" cy="9.5" r="2.2"/><path d="M12 11c-3.3 0-7 2.3-7 5.6 0 1.9 1.5 3.4 3.4 3.4.9 0 1.5-.3 2.4-.6.7-.3 1.4-.5 2.2-.5s1.5.2 2.2.5c.9.3 1.5.6 2.4.6 1.9 0 3.4-1.5 3.4-3.4 0-3.3-3.7-5.6-7-5.6z"/></svg>,
+      onClick: handlePetPolicyClick,
+      busy: petPolicyBusy,
+    },
   ]
 
   const activities = (dbActivities ?? []).filter(isActivityVisible)
@@ -78,10 +98,17 @@ export default function Amenidades() {
         <h2 className="amenidades__title">{t('amenidades.titulo')}</h2>
 
         <div className={`amenidades__grid ${isVisible ? 'is-visible' : ''}`}>
-          {amenidades.map(({ key, icon }) => (
-            <div key={key} className="amenidades__item">
+          {amenidades.map(({ key, icon, onClick, busy }) => (
+            <div
+              key={key}
+              className={`amenidades__item ${onClick ? 'amenidades__item--clickable' : ''}`}
+              onClick={onClick}
+              role={onClick ? 'button' : undefined}
+              tabIndex={onClick ? 0 : undefined}
+              onKeyDown={onClick ? (e => { if (e.key === 'Enter') onClick() }) : undefined}
+            >
               <div className="amenidades__icon">{icon}</div>
-              <span>{t(key)}</span>
+              <span>{busy ? '...' : t(key)}</span>
             </div>
           ))}
         </div>
