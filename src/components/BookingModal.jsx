@@ -29,7 +29,7 @@ function Counter({ value, onChange, min = 0, max = 10 }) {
   )
 }
 
-export default function BookingModal({ initialRoom, onClose, promoActive = true, promoConfig = { label: '20% OFF', color: '#b5c840' } }) {
+export default function BookingModal({ initialRoom, onClose, promoActive = false, promoConfig = { label: '20% OFF', color: '#b5c840' } }) {
   const { t, i18n } = useTranslation()
 
   const ROOMS = [

@@ -343,7 +343,7 @@ export default function App() {
   const [showMaintenance] = useState(false)
   const [maintenanceUnlocked, setMaintenanceUnlocked] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
-  const [promoActive, setPromoActive] = useState(true)
+  const [promoActive, setPromoActive] = useState(false)
   const [promoConfig, setPromoConfig] = useState({ label: '20% OFF', color: '#b5c840' })
   const navigate = useNavigate()
 

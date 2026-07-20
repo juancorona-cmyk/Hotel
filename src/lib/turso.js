@@ -804,9 +804,9 @@ export async function getPromoActive() {
   try {
     const res = await exec("SELECT value FROM hotel_settings WHERE key = 'promo_web_20' LIMIT 1")
     const row = parseRows(res)[0]
-    if (!row) return true
+    if (!row) return false
     return row.value !== '0'
-  } catch { return true }
+  } catch { return false }
 }
 
 export async function setPromoActive(active) {
