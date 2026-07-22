@@ -293,7 +293,7 @@ function CheckInBrowserGateway() {
 
 function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive, promoConfig }) {
   const openBooking = (source, roomId) => {
-    trackEvent('reserva_click', { source, origin: 'web', promo: 'web_20', room: roomId, device: getDeviceType() })
+    trackEvent('reserva_click', { source, origin: 'web', ...(promoActive ? { promo: 'web_20' } : {}), room: roomId, device: getDeviceType() })
     setBookingRoom(roomId)
   }
 
