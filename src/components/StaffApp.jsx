@@ -938,7 +938,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
         attendees: evAttendees,
         isPaid, isCheckedIn, isTransfer,
       })
-      showToast('PDF descargado')
+      showToast('PDF listo')
     } catch {
       showToast('Error al generar el PDF', 'error')
     } finally {
