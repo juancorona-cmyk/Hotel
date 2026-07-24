@@ -159,6 +159,11 @@
 
 @keyframes sa-spin { to { transform: rotate(360deg); } }
 
+.sa-mini-spinner--dark {
+  border-color: rgba(50,63,72,0.2);
+  border-top-color: #4a5a1e;
+}
+
 /* ── Hero text ── */
 .sa-hero-content { margin-bottom: 20px; }
 .sa-hero-label {

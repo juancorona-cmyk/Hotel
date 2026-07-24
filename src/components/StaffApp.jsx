@@ -149,7 +149,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [showSplash, setShowSplash] = useState(true)
   const [showEventPicker, setShowEventPicker] = useState(false)
   const [showFilterPicker, setShowFilterPicker] = useState(false)
-  const [exportingPdf, setExportingPdf] = useState(false)
+  const [showExportPicker, setShowExportPicker] = useState(false)
+  const [exportingEventId, setExportingEventId] = useState(null)
   const [showEditionPicker, setShowEditionPicker] = useState(null) // archived event or null
 
   // ── Modal & Toast ──
@@ -926,19 +927,23 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const isPaid       = (r) => r.paid === 1         || r.paid === '1'
   const isTransfer   = (r) => (r.payment_method || '').toLowerCase().includes('transfer')
 
-  const handleExportAttendeesPdf = async () => {
-    setExportingPdf(true)
+  // Exporta el PDF del evento elegido sin navegar ni cambiar la vista actual
+  const handleExportEventPdf = async (ev) => {
+    setExportingEventId(ev ? ev.id : 'all')
     try {
+      const evAttendees = ev ? await getActivityRegistrationsByEvent(ev.id) : allRegs
       await downloadAttendeeListPdf({
-        eventName: selectedEvent ? selectedEvent.name : 'Todos los Asistentes',
-        eventDate: selectedEvent ? selectedEvent.date : '',
-        attendees: filteredAttendees,
+        eventName: ev ? ev.name : 'Todos los Asistentes',
+        eventDate: ev ? ev.date : '',
+        attendees: evAttendees,
         isPaid, isCheckedIn, isTransfer,
       })
+      showToast('PDF descargado')
     } catch {
       showToast('Error al generar el PDF', 'error')
     } finally {
-      setExportingPdf(false)
+      setExportingEventId(null)
+      setShowExportPicker(false)
     }
   }
 
@@ -2349,14 +2354,10 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   : 'Registros globales del hotel'}
               </span>
             </div>
-            <button className="sa-top-btn" onClick={handleExportAttendeesPdf} disabled={exportingPdf} aria-label="Exportar PDF">
-              {exportingPdf ? (
-                <span className="sa-mini-spinner" />
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
-                </svg>
-              )}
+            <button className="sa-top-btn" onClick={() => setShowExportPicker(true)} aria-label="Exportar PDF">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+              </svg>
             </button>
             <button className="sa-top-btn" onClick={onLogout} aria-label="Salir">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4757" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -2483,6 +2484,38 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 >
                   <span>{ev.name}</span>
                   {selectedEvent?.id === ev.id && <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExportPicker && (
+        <div className="sa-picker-overlay" onClick={() => setShowExportPicker(false)}>
+          <div className="sa-picker-sheet" onClick={e => e.stopPropagation()}>
+            <div className="sa-picker-header">
+              <span className="sa-picker-title">Exportar PDF de un evento</span>
+              <button className="sa-picker-close" onClick={() => setShowExportPicker(false)}>✕</button>
+            </div>
+            <div className="sa-picker-list">
+              <button
+                className="sa-picker-item"
+                disabled={exportingEventId !== null}
+                onClick={() => handleExportEventPdf(null)}
+              >
+                <span>Todos los registros</span>
+                {exportingEventId === 'all' && <span className="sa-mini-spinner sa-mini-spinner--dark" />}
+              </button>
+              {events.map(ev => (
+                <button
+                  key={ev.id}
+                  className="sa-picker-item"
+                  disabled={exportingEventId !== null}
+                  onClick={() => handleExportEventPdf(ev)}
+                >
+                  <span>{ev.name}</span>
+                  {exportingEventId === ev.id && <span className="sa-mini-spinner sa-mini-spinner--dark" />}
                 </button>
               ))}
             </div>
