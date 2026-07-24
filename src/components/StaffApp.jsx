@@ -172,7 +172,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const showToast = useCallback((message, type = 'success') => {
     if (toastTimer.current) clearTimeout(toastTimer.current)
     setToast({ message, type })
-    toastTimer.current = setTimeout(() => setToast(null), 2800)
+    toastTimer.current = setTimeout(() => setToast(null), type === 'error' ? 6000 : 2800)
   }, [])
 
   // ── Create Event State ──
@@ -941,7 +941,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
       showToast('PDF listo')
     } catch (err) {
       console.error('[export-pdf]', err)
-      showToast('Error al generar el PDF', 'error')
+      const msg = err?.message || err?.errorMessage || String(err)
+      showToast(`Error PDF: ${msg}`.slice(0, 120), 'error')
     } finally {
       setExportingEventId(null)
       setShowExportPicker(false)
