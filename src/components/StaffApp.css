@@ -146,6 +146,19 @@
   transform: scale(0.94);
 }
 
+.sa-top-btn:disabled { opacity: 0.6; cursor: default; }
+
+.sa-mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: sa-spin 0.7s linear infinite;
+}
+
+@keyframes sa-spin { to { transform: rotate(360deg); } }
+
 /* ── Hero text ── */
 .sa-hero-content { margin-bottom: 20px; }
 .sa-hero-label {

@@ -6,6 +6,7 @@ import { DatePicker, TimePicker } from './common/DateTimePickers'
 import { getActivityIcon } from '../lib/activityIcons'
 import { checkPasswordStrength } from '../lib/passwordStrength'
 import { subscribeToPush } from '../lib/pushNotifications'
+import { downloadAttendeeListPdf } from '../lib/attendeeListPdf'
 import './StaffApp.css'
 
 const FILTERS = { all: 'Todos', paid: 'Pagados', pending: 'Pendientes', attended: 'Asistieron' }
@@ -148,6 +149,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const [showSplash, setShowSplash] = useState(true)
   const [showEventPicker, setShowEventPicker] = useState(false)
   const [showFilterPicker, setShowFilterPicker] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const [showEditionPicker, setShowEditionPicker] = useState(null) // archived event or null
 
   // ── Modal & Toast ──
@@ -923,6 +925,22 @@ export default function StaffApp({ onStartScan, onLogout }) {
   const isCheckedIn  = (r) => r.checked_in === 1  || r.checked_in === '1'
   const isPaid       = (r) => r.paid === 1         || r.paid === '1'
   const isTransfer   = (r) => (r.payment_method || '').toLowerCase().includes('transfer')
+
+  const handleExportAttendeesPdf = async () => {
+    setExportingPdf(true)
+    try {
+      await downloadAttendeeListPdf({
+        eventName: selectedEvent ? selectedEvent.name : 'Todos los Asistentes',
+        eventDate: selectedEvent ? selectedEvent.date : '',
+        attendees: filteredAttendees,
+        isPaid, isCheckedIn, isTransfer,
+      })
+    } catch {
+      showToast('Error al generar el PDF', 'error')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
 
   const totalPaid    = allRegs.filter(isPaid).length
   const totalPending = allRegs.filter(r => !isPaid(r)).length
@@ -2331,6 +2349,15 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   : 'Registros globales del hotel'}
               </span>
             </div>
+            <button className="sa-top-btn" onClick={handleExportAttendeesPdf} disabled={exportingPdf} aria-label="Exportar PDF">
+              {exportingPdf ? (
+                <span className="sa-mini-spinner" />
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+                </svg>
+              )}
+            </button>
             <button className="sa-top-btn" onClick={onLogout} aria-label="Salir">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff4757" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>

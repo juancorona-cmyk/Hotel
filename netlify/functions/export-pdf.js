@@ -82,7 +82,7 @@ export default async (req) => {
 
   let browser = null
   try {
-    const { html, filename = 'reporte.pdf', pageWidth, pageHeight, landscape = false, preferCSSPageSize = false } = await req.json()
+    const { html, filename = 'reporte.pdf', pageWidth, pageHeight, format = 'A4', landscape = false, preferCSSPageSize = false } = await req.json()
     const { executablePath, args } = await getBrowserConfig()
 
     browser = await puppeteer.launch({
@@ -111,7 +111,7 @@ export default async (req) => {
       }
     } else {
       pdfOptions = {
-        format: 'A4',
+        format,
         landscape: !!landscape,
         preferCSSPageSize: !!preferCSSPageSize,
         printBackground: true,
