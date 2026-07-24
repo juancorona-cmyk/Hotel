@@ -939,7 +939,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
         isPaid, isCheckedIn, isTransfer,
       })
       showToast('PDF listo')
-    } catch {
+    } catch (err) {
+      console.error('[export-pdf]', err)
       showToast('Error al generar el PDF', 'error')
     } finally {
       setExportingEventId(null)

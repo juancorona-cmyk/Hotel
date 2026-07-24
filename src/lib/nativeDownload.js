@@ -23,7 +23,14 @@ export async function saveOrShareBlob(blob, filename) {
       data,
       directory: Directory.Cache,
     })
-    await Share.share({ title: filename, url: uri, dialogTitle: 'Guardar o compartir PDF' })
+    try {
+      await Share.share({ title: filename, url: uri, dialogTitle: 'Guardar o compartir PDF' })
+    } catch (err) {
+      // El staff cerro el sheet de compartir sin elegir app — el PDF ya se genero bien,
+      // no es un error real de la funcion.
+      if (String(err?.message || err).toLowerCase().includes('cancel')) return
+      throw err
+    }
     return
   }
 
