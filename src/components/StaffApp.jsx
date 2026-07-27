@@ -240,15 +240,19 @@ export default function StaffApp({ onStartScan, onLogout }) {
     try { return localStorage.getItem('update_dismissed') || '' } catch { return '' }
   })
 
-  // Carga la version desplegada (cache-bust para ver los cambios al instante)
+  // Carga la version desplegada y marca ota_mode para que main.jsx la
+  // vuelva a cargar en cada arranque de la app — ya no se vuelve a la
+  // version vieja empacada en el APK (ver main.jsx).
   const loadOnline = useCallback(() => {
+    try { localStorage.setItem('ota_mode', '1') } catch {}
     window.location.href = `https://hotelpuntagaleria.mx/checkin?v=${Date.now()}`
   }, [])
 
-  const backToInstalled = useCallback(() => {
-    try { localStorage.removeItem('ota_mode') } catch {}
-    if (window.history.length > 1) window.history.back()
-    else window.location.href = 'http://localhost/'
+  // Misma carga pero SIN marcar ota_mode: se usa cuando la version requiere
+  // plugins nativos que el APK instalado no tiene (nativeMismatch). Si algo
+  // se rompe, el proximo arranque vuelve solo a la version instalada.
+  const loadOnlineRisky = useCallback(() => {
+    window.location.href = `https://hotelpuntagaleria.mx/checkin?v=${Date.now()}`
   }, [])
 
   // Abre el panel de versiones y consulta la ultima publicada
@@ -1935,13 +1939,8 @@ export default function StaffApp({ onStartScan, onLogout }) {
                   </button>
                 )}
                 {updateAvailable && nativeMismatch && (
-                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={loadOnline}>
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={loadOnlineRisky}>
                     Actualizar solo lo visual (no recomendado)
-                  </button>
-                )}
-                {onRemoteBuild && (
-                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={() => { setShowVersions(false); backToInstalled() }}>
-                    Volver a versión instalada
                   </button>
                 )}
                 {!updateAvailable && !onRemoteBuild && latestVer && (
