@@ -262,6 +262,14 @@ export default function StaffApp({ onStartScan, onLogout }) {
 
   const appVersion = localVer?.label || ''
   const updateAvailable = latestVer && localVer && latestVer.version !== localVer.version
+  // Si la firma de plugins nativos difiere, el JS de la ultima version llama
+  // codigo nativo (Filesystem, Share, etc.) que el APK instalado no tiene
+  // compilado. "Actualizar en linea" en ese caso rompe funciones (ver
+  // nativeDownload.js) — hay que pedir reinstalar el APK, no solo recargar.
+  const nativeMismatch = !!(
+    updateAvailable && latestVer.nativeSig && localVer.nativeSig &&
+    latestVer.nativeSig !== localVer.nativeSig
+  )
 
   // ── Panel admin movil ──
   const [adminUsers, setAdminUsers] = useState([])
@@ -1491,7 +1499,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
               <div className="sa-update-banner-left">
                 <div className="sa-update-dot" />
                 <div>
-                  <span className="sa-update-title">Nueva versión disponible</span>
+                  <span className="sa-update-title">{nativeMismatch ? 'Requiere reinstalar la app' : 'Nueva versión disponible'}</span>
                   <span className="sa-update-sub">{appVersion} → {latestVer.label}</span>
                 </div>
               </div>
@@ -1911,10 +1919,24 @@ export default function StaffApp({ onStartScan, onLogout }) {
                 <span className="sa-ver-code">{latestVer?.label || (latestVer === null ? '—' : '…')}</span>
               </div>
 
+              {nativeMismatch && (
+                <p className="sa-ver-warning">
+                  Esta versión necesita funciones nuevas del teléfono (guardar/compartir
+                  archivos) que tu app instalada no tiene. "Actualizar en línea" no las
+                  activará y algunas funciones darán error. Pide al administrador el APK
+                  más reciente y reinstálalo.
+                </p>
+              )}
+
               <div className="sa-ver-actions">
-                {updateAvailable && (
+                {updateAvailable && !nativeMismatch && (
                   <button className="sa-ver-btn" onClick={loadOnline}>
                     Actualizar a {latestVer.label}
+                  </button>
+                )}
+                {updateAvailable && nativeMismatch && (
+                  <button className="sa-ver-btn sa-ver-btn--soft" onClick={loadOnline}>
+                    Actualizar solo lo visual (no recomendado)
                   </button>
                 )}
                 {onRemoteBuild && (

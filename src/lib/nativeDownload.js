@@ -17,18 +17,34 @@ function blobToBase64(blob) {
 // nativo de compartir, desde donde el staff lo guarda donde quiera.
 export async function saveOrShareBlob(blob, filename) {
   if (Capacitor.isNativePlatform()) {
-    const data = await blobToBase64(blob)
-    const { uri } = await Filesystem.writeFile({
-      path: filename,
-      data,
-      directory: Directory.Cache,
-    })
+    let uri
+    try {
+      const data = await blobToBase64(blob)
+      const written = await Filesystem.writeFile({
+        path: filename,
+        data,
+        directory: Directory.Cache,
+      })
+      uri = written.uri
+    } catch (err) {
+      // La app instalada es mas vieja que el JS que se esta ejecutando (p.ej. tras
+      // "Actualizar en linea") y el plugin nativo de Filesystem no esta compilado
+      // en el APK instalado. Avisar claro en vez del error crudo de Capacitor.
+      if (String(err?.message || err).toLowerCase().includes('not implemented')) {
+        throw new Error('Tu app necesita reinstalarse para guardar PDFs. Pide el APK más reciente al administrador.')
+      }
+      throw err
+    }
     try {
       await Share.share({ title: filename, url: uri, dialogTitle: 'Guardar o compartir PDF' })
     } catch (err) {
       // El staff cerro el sheet de compartir sin elegir app — el PDF ya se genero bien,
       // no es un error real de la funcion.
-      if (String(err?.message || err).toLowerCase().includes('cancel')) return
+      const msg = String(err?.message || err).toLowerCase()
+      if (msg.includes('cancel')) return
+      if (msg.includes('not implemented')) {
+        throw new Error('Tu app necesita reinstalarse para compartir PDFs. Pide el APK más reciente al administrador.')
+      }
       throw err
     }
     return

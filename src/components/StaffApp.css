@@ -1662,6 +1662,18 @@
 .sa-ver-mode--err { color: #ff4757; }
 .sa-ver-code { font-size: 14px; font-weight: 700; color: #323f48; font-variant-numeric: tabular-nums; word-break: break-all; }
 
+.sa-ver-warning {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #9a6b06;
+  background: #fdecc8;
+  border: 1px solid #f6d999;
+  border-radius: 14px;
+  padding: 11px 13px;
+  margin: 4px 0 10px;
+}
+
 .sa-ver-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 .sa-ver-btn {
   width: 100%;
