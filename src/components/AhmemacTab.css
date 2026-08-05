@@ -1,0 +1,54 @@
+.ahmemac-tab {
+  position: fixed;
+  top: 42%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #5a6c1e;
+  padding: 14px 8px 16px;
+  border-radius: 10px 0 0 10px;
+  box-shadow: -4px 4px 18px rgba(0,0,0,0.28);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.25s ease, padding-right 0.25s ease;
+}
+
+.ahmemac-tab:hover {
+  transform: translateY(-50%) translateX(-4px);
+}
+
+.ahmemac-tab__img {
+  height: 32px;
+  width: 32px;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.ahmemac-tab__text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .ahmemac-tab {
+    top: 34%;
+    padding: 10px 6px 12px;
+  }
+  .ahmemac-tab__img { height: 26px; width: 26px; }
+  .ahmemac-tab__text { font-size: 10px; }
+}

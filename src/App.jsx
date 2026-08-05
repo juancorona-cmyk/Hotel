@@ -5,6 +5,8 @@ import { Capacitor } from '@capacitor/core'
 import Navbar from './components/Navbar'
 import MaintenanceBanner from './components/MaintenanceBanner'
 import Hero from './components/Hero'
+import AhmemacStrip from './components/AhmemacStrip'
+import AhmemacTab from './components/AhmemacTab'
 import About from './components/About'
 import Stats from './components/Stats'
 import Marquee from './components/Marquee'
@@ -302,6 +304,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} promoActive={promoActive} promoConfig={promoConfig} />
       {promoActive && <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} promoConfig={promoConfig} />}
+      <AhmemacStrip />
       <About />
       <Stats />
       <Convenios />
@@ -315,6 +318,7 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
       <Location />
       <Footer />
       <HotelBot />
+      <AhmemacTab />
       {bookingRoom && (
         <Suspense fallback={<LazyFallback />}>
           <BookingModal

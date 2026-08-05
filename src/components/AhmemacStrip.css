@@ -1,0 +1,60 @@
+.ahmemac-strip {
+  background: #5a6c1e;
+  padding: 28px 32px;
+}
+
+.ahmemac-strip__inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+.ahmemac-strip__logo {
+  height: 128px;
+  width: 128px;
+  border-radius: 20px;
+  background: #fff;
+  padding: 10px;
+  object-fit: contain;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.32), 0 0 0 3px rgba(255,255,255,0.25);
+  flex-shrink: 0;
+  display: block;
+}
+
+.ahmemac-strip__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ahmemac-strip__titulo {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.ahmemac-strip__desc {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(12.5px, 1.6vw, 15px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
+  max-width: 480px;
+}
+
+@media (max-width: 640px) {
+  .ahmemac-strip { padding: 24px 20px; }
+  .ahmemac-strip__inner { justify-content: center; text-align: center; }
+  .ahmemac-strip__logo { height: 92px; width: 92px; border-radius: 16px; }
+}

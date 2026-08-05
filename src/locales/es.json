@@ -25,6 +25,12 @@
     "promoDescuento": "20% de descuento en tu estadía",
     "promoCta": "Reservar con 20% OFF"
   },
+  "ahmemac": {
+    "mensaje": "Somos socios AHMEMAC · Asociación de Hoteles y Moteles de Michoacán",
+    "titulo": "AHMEMAC",
+    "descripcion": "Socios de la Asociación de Hoteles y Moteles de Michoacán",
+    "tab": "AHMEMAC"
+  },
   "nosotros": {
     "lead": "Hotel Punta Galería, tu refugio en Morelia",
     "p1": "Nuestra historia comenzó hace aproximadamente 40 años bajo el nombre de Hostal Real Camelinas. En febrero de 2011, evolucionamos para convertirnos en Hotel Punta Galería, manteniendo siempre nuestra esencia de hospitalidad.",
