@@ -74,7 +74,7 @@
 }
 
 .convenio-card {
-  flex: 0 0 auto;
+  flex: 0 0 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,9 +82,10 @@
 }
 
 .convenio-card__img {
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   width: auto;
-  max-width: 180px;
+  height: auto;
   object-fit: contain;
   filter: grayscale(100%);
   opacity: 0.5;
@@ -117,7 +118,6 @@
 
 @media (max-width: 640px) {
   .convenios { padding: 56px 0; }
-  .convenio-card { height: 48px; }
-  .convenio-card__img { max-width: 130px; }
+  .convenio-card { flex: 0 0 100px; height: 48px; }
   .convenios__track { gap: 2.4rem; }
 }

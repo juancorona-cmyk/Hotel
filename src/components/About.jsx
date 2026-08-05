@@ -33,6 +33,7 @@ export default function About() {
           <p className="about__lead">{t('nosotros.lead')}</p>
           <p>{t('nosotros.p1')}</p>
           <p>{t('nosotros.p2')}</p>
+          <p className="about__credencial">{t('nosotros.credencial')}</p>
         </div>
         <div className="about__image-wrap">
           <img src={CDN.NOSOTROS} alt="Hotel Punta Galería nosotros" className="about__image" />

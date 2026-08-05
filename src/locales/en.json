@@ -28,7 +28,8 @@
   "nosotros": {
     "lead": "Hotel Punta Galería, your retreat in Morelia",
     "p1": "Our history began approximately 40 years ago as Hostal Real Camelinas. In February 2011, we evolved to become Hotel Punta Galería, always maintaining our essence of hospitality.",
-    "p2": "Rest in a peaceful environment surrounded by gardens, just minutes from the Historic Center. Whether for business or leisure, here you will find the perfect combination of comfort, location, and warmth."
+    "p2": "Rest in a peaceful environment surrounded by gardens, just minutes from the Historic Center. Whether for business or leisure, here you will find the perfect combination of comfort, location, and warmth.",
+    "credencial": "National Tourism Registry RNT 1160530182 · AHMEMAC Member, Michoacán State Hotel & Motel Association"
   },
   "stats": {
     "anos": "Years of experience",
@@ -217,6 +218,8 @@
     "privacidad": "Privacy Policy",
     "terminos": "Terms of Use",
     "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
-    "derechos": "Hotel Punta Galería · All rights reserved."
+    "derechos": "Hotel Punta Galería · All rights reserved.",
+    "registro": "RNT 1160530182",
+    "ahmemac": "AHMEMAC Member — Michoacán State Hotel & Motel Association"
   }
 }

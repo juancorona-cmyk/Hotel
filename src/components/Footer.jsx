@@ -169,15 +169,22 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="footer__bottom">
-        <span>© {year} {t('footer.derechos')}</span>
-        <div className="footer__bottom-links">
-          <a href="#inicio">{t('footer.privacidad')}</a>
-          <span>·</span>
-          <a href="#inicio">{t('footer.terminos')}</a>
-          <span>·</span>
-          <a href="#inicio" onClick={handlePetPolicyClick}>
-            {petPolicyBusy ? 'Generando…' : 'Mascotas'}
-          </a>
+        <div className="footer__legal">
+          <span>{t('footer.registro')}</span>
+          <span className="footer__legal-sep">·</span>
+          <span>{t('footer.ahmemac')}</span>
+        </div>
+        <div className="footer__bottom-row">
+          <span>© {year} {t('footer.derechos')}</span>
+          <div className="footer__bottom-links">
+            <a href="#inicio">{t('footer.privacidad')}</a>
+            <span>·</span>
+            <a href="#inicio">{t('footer.terminos')}</a>
+            <span>·</span>
+            <a href="#inicio" onClick={handlePetPolicyClick}>
+              {petPolicyBusy ? 'Generando…' : 'Mascotas'}
+            </a>
+          </div>
         </div>
       </div>
     </footer>

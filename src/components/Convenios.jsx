@@ -20,6 +20,10 @@ const partners = [
   { name: 'Rochem de México', img: '/convenios/rochem-de-mexico.jpeg' },
   { name: 'Tiendas Chedraui', img: '/convenios/tiendas-chedraui.webp' },
   { name: 'Clínica Oftalmológica La Salud', img: '/convenios/clinica-oftalmologica-la-salud.png' },
+  { name: 'Ópticas Lux', img: '/convenios/opticas_lux_logo.jpeg' },
+  { name: 'GNP', img: '/convenios/logo-GNP.jpeg' },
+  { name: 'Mapfre', img: '/convenios/mapfre.png' },
+  { name: 'MetLife', img: '/convenios/MetLife-Logo.jpg' },
 ]
 
 const loop = [...partners, ...partners]

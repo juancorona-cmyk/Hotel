@@ -28,7 +28,8 @@
   "nosotros": {
     "lead": "Hotel Punta Galería, tu refugio en Morelia",
     "p1": "Nuestra historia comenzó hace aproximadamente 40 años bajo el nombre de Hostal Real Camelinas. En febrero de 2011, evolucionamos para convertirnos en Hotel Punta Galería, manteniendo siempre nuestra esencia de hospitalidad.",
-    "p2": "Descansa en un ambiente tranquilo, rodeado de jardines, a solo minutos del Centro Histórico. Ya sea por negocios o por placer, aquí encontrarás la combinación perfecta de comodidad, ubicación y calidez."
+    "p2": "Descansa en un ambiente tranquilo, rodeado de jardines, a solo minutos del Centro Histórico. Ya sea por negocios o por placer, aquí encontrarás la combinación perfecta de comodidad, ubicación y calidez.",
+    "credencial": "Registro Nacional de Turismo RNT 1160530182 · Socio AHMEMAC, Asociación de Hoteles y Moteles del Estado de Michoacán A.C."
   },
   "stats": {
     "anos": "Años de experiencia",
@@ -217,6 +218,8 @@
     "privacidad": "Política de privacidad",
     "terminos": "Términos de uso",
     "direccion": "Perif. Paseo de la República 59, Nueva Jacarandas, 58090 Morelia, Mich.",
-    "derechos": "Hotel Punta Galería · Todos los derechos reservados."
+    "derechos": "Hotel Punta Galería · Todos los derechos reservados.",
+    "registro": "RNT 1160530182",
+    "ahmemac": "Socio AHMEMAC — Asociación de Hoteles y Moteles del Estado de Michoacán A.C."
   }
 }
