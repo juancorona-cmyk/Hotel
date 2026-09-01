@@ -104,7 +104,7 @@
 
 .arm-header__pills {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
   margin-top: 2px;
@@ -1052,6 +1052,8 @@
   .arm-form { padding: 16px 16px 24px; }
   .arm-header { padding: 12px 44px 8px; }
   .arm-success { padding: 14px 16px 16px; gap: 8px; }
+  .arm-header__pills { gap: 5px; }
+  .arm-header__pill { padding: 3px 8px; font-size: 10px; }
 }
 
 /* ── Proof upload (arm-pend screen) ─────────────── */

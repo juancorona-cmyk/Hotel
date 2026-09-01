@@ -319,7 +319,7 @@ export async function upsertActivityEvent(activityId, activityName, price, descr
 
 export async function getEventByActivityId(activityId) {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity FROM hotel_events WHERE activity_id = ? AND active = 1 ORDER BY date DESC, created_at DESC LIMIT 1',
+    'SELECT e.id, e.name, e.slug, e.price, e.description, e.date, e.capacity, a.hora FROM hotel_events e LEFT JOIN activities a ON e.activity_id = a.id WHERE e.activity_id = ? AND e.active = 1 ORDER BY e.date DESC, e.created_at DESC LIMIT 1',
     [int(activityId)]
   )
   return parseRows(res)[0] ?? null
@@ -421,7 +421,7 @@ export async function getEvents() {
 
 export async function getEventBySlug(slug) {
   const res = await exec(
-    'SELECT id, name, slug, price, description, date, capacity, activity_id FROM hotel_events WHERE (slug = ? OR slug LIKE ? || \'-%\') AND active = 1 ORDER BY length(slug) ASC LIMIT 1',
+    'SELECT e.id, e.name, e.slug, e.price, e.description, e.date, e.capacity, e.activity_id, a.hora FROM hotel_events e LEFT JOIN activities a ON e.activity_id = a.id WHERE (e.slug = ? OR e.slug LIKE ? || \'-%\') AND e.active = 1 ORDER BY length(e.slug) ASC LIMIT 1',
     [txt(slug), txt(slug)]
   )
   return parseRows(res)[0] ?? null

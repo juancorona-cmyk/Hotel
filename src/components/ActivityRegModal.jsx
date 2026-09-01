@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { fmtFecha } from '../lib/utils'
+import { fmtFecha, fmtHora } from '../lib/utils'
 import { HOTEL_CLABE, HOTEL_TITULAR } from '../lib/registrationConstants'
 import { useRegistration, WHATSAPP_OPTIONS, HOW_FOUND_OPTIONS } from '../hooks/useRegistration'
 import './ActivityRegModal.css'
@@ -26,6 +26,8 @@ export default function ActivityRegModal({ activity, onClose, event }) {
   }, [onClose])
 
   const showPrice = (event?.price ?? 0) > 0
+  const fecha = activity?.fecha || event?.date
+  const hora = activity?.hora || event?.hora
 
   return (
     <div className="arm-overlay" onClick={onClose}>
@@ -38,6 +40,22 @@ export default function ActivityRegModal({ activity, onClose, event }) {
             <h2 className="arm-title">{activity?.name || event?.name}</h2>
             {event?.description && <p className="arm-header__desc">{event.description}</p>}
             <div className="arm-header__pills">
+              {fecha && (
+                <span className="arm-header__pill">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  {fmtFecha(fecha)}
+                </span>
+              )}
+              {hora && (
+                <span className="arm-header__pill">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}>
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+                  </svg>
+                  {fmtHora(hora)}
+                </span>
+              )}
               {showPrice && (
                 <span className="arm-header__pill arm-header__pill--price">
                   ${parseFloat(event.price).toFixed(2)}
