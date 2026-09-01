@@ -167,11 +167,26 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
   }, [phone, event?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Spots left ──────────────────────────────────────
+  // Se refresca en intervalos y al volver a la pestaña, no solo al montar,
+  // para que no quede desactualizado si otros se inscriben mientras la
+  // página sigue abierta (antes se calculaba una sola vez y se congelaba).
   useEffect(() => {
     if (!event?.id || !capacity) return
-    getRegistrationCountByEvent(event.id)
-      .then(count => setSpotsLeft(Math.max(0, capacity - count)))
-      .catch(() => setSpotsLeft(null))
+    let cancelled = false
+    const fetchSpots = () => {
+      getRegistrationCountByEvent(event.id)
+        .then(count => { if (!cancelled) setSpotsLeft(Math.max(0, capacity - count)) })
+        .catch(() => { if (!cancelled) setSpotsLeft(null) })
+    }
+    fetchSpots()
+    const interval = setInterval(fetchSpots, 20000)
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchSpots() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [event?.id, capacity])
 
   // ── Poll payment status ─────────────────────────────
