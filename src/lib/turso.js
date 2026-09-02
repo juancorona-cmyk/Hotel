@@ -326,12 +326,27 @@ export async function getEventByActivityId(activityId) {
 }
 
 // ── Activity Registrations ────────────────────────────
+// El INSERT queda condicionado atomicamente al cupo disponible (subquery en el WHERE)
+// para que dos personas registrandose al mismo tiempo en el ultimo lugar no puedan
+// sobrepasar la capacidad — antes solo el frontend revisaba spotsLeft, sin garantia real.
 export async function createActivityRegistration(activityId, activityName, fullName, phone, howFound, whatsapp, eventId, eventName, paymentMethod) {
+  const evId = int(eventId ?? 0)
   const res = await exec(
-    'INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), int(eventId ?? 0), txt(eventName ?? ''), txt(paymentMethod ?? '')]
+    `INSERT INTO activity_registrations (activity_id, activity_name, full_name, phone, how_found, whatsapp, event_id, event_name, payment_method)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?
+     WHERE ? <= 0
+        OR COALESCE((SELECT capacity FROM hotel_events WHERE id = ?), 0) <= 0
+        OR (SELECT COUNT(*) FROM activity_registrations WHERE event_id = ?)
+           < (SELECT capacity FROM hotel_events WHERE id = ?)`,
+    [
+      int(activityId ?? 0), txt(activityName ?? ''), txt(fullName), txt(phone), txt(howFound ?? ''), txt(whatsapp ?? ''), evId, txt(eventName ?? ''), txt(paymentMethod ?? ''),
+      evId, evId, evId, evId,
+    ]
   )
-  const rawId = res?.results?.[0]?.response?.result?.last_insert_rowid
+  const result = res?.results?.[0]?.response?.result
+  const affected = Number(result?.affected_row_count ?? result?.rows_written ?? 0)
+  if (!affected) return null
+  const rawId = result?.last_insert_rowid
   return rawId ? Number(rawId) : null
 }
 

@@ -247,6 +247,14 @@ export function useRegistration({ event, activity, initialRegId, onRegistered })
         event?.name ?? '',
         method,
       )
+      if (!regId) {
+        // El cupo se llenó justo antes de este registro (otro usuario tomó el último lugar)
+        setSpotsLeft(0)
+        setError('Ya no hay lugares disponibles. Alguien más tomó el último cupo justo ahora.')
+        setStep(1)
+        setSubmitting(false)
+        return
+      }
       trackEvent('activity_reg_confirm', {
         activity_id: actId,
         activity_name: actName,
