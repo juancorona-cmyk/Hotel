@@ -190,6 +190,19 @@
   margin-top: 2px;
 }
 
+.bm-room-tab__price {
+  font-size: 12px;
+  color: #2a2a2a;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.bm-price-note {
+  font-size: 11px;
+  color: #888;
+  margin: 8px 0 0;
+}
+
 
 .bm-nights-badge {
   display: inline-flex;
@@ -324,6 +337,13 @@
   font-weight: 500;
 }
 .bm-summary svg { color: #7a8c2e; flex-shrink: 0; }
+
+.bm-summary__total {
+  margin-left: auto;
+  font-weight: 800;
+  color: #5a6c1e;
+  font-size: 14px;
+}
 
 .bm-submit {
   display: flex;

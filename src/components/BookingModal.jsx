@@ -33,8 +33,8 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
   const { t, i18n } = useTranslation()
 
   const ROOMS = [
-    { id: 'deluxe', name: t('modal.deluxe'), maxAdults: 2, maxChildren: 0, label: t('modal.habDeluxe') },
-    { id: 'doble',  name: t('modal.doble'),  maxAdults: 4, maxChildren: 2, label: t('modal.habDoble') },
+    { id: 'deluxe', name: t('modal.deluxe'), maxAdults: 2, maxChildren: 0, label: t('modal.habDeluxe'), price: 1600 },
+    { id: 'doble',  name: t('modal.doble'),  maxAdults: 4, maxChildren: 2, label: t('modal.habDoble'), price: 1350 },
   ]
 
   const fmtDate = (str) => {
@@ -57,6 +57,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
   const room         = ROOMS.find(r => r.id === roomId)
   const nights       = nightsBetween(checkin, checkout)
   const extraPersons = Math.max(0, adults - room.maxAdults * rooms)
+  const totalPrice    = room.price * rooms * nights
 
   useEffect(() => {
     if (adults > room.maxAdults)     setAdults(room.maxAdults)
@@ -149,9 +150,13 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
                     {r.maxAdults} {t(r.maxAdults === 1 ? 'modal.adulto' : 'modal.adultos')}
                     {r.maxChildren > 0 ? ` · ${t('modal.hastaNinos', { count: r.maxChildren })}` : ''}
                   </span>
+                  <span className="bm-room-tab__price">${r.price} MXN / {t('habitaciones.porNoche')}</span>
                 </button>
               ))}
             </div>
+            {roomId === 'doble' && (
+              <p className="bm-price-note">{t('habitaciones.desayunoIncluido')}</p>
+            )}
             <button type="button" className="bm-pet-link" onClick={() => setShowPetPolicy(true)}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <circle cx="4.5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19.5" cy="9.5" r="2.2"/>
@@ -233,6 +238,9 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
                 {children > 0 ? ` · ${children} ${t(children === 1 ? 'modal.nino' : 'modal.ninos')}` : ''}
                 {nights > 0 ? ` · ${nights} ${t(nights === 1 ? 'modal.noche' : 'modal.noches')}` : ''}
               </span>
+              {totalPrice > 0 && (
+                <span className="bm-summary__total">${totalPrice} MXN</span>
+              )}
             </div>
             <button type="submit" className="bm-submit" disabled={!checkin || !checkout}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">

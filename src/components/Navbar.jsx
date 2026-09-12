@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import './Navbar.css'
 
 export default function Navbar() {
@@ -14,6 +15,7 @@ export default function Navbar() {
     { key: 'nav.restaurante',  href: '#restaurante' },
     { key: 'nav.eventos',      href: '#eventos' },
     { key: 'nav.ubicacion',    href: '#ubicacion' },
+    // { key: 'nav.casaAmbar', href: '/casa-ambar', route: true }, // oculto temporalmente
   ]
 
   useEffect(() => {
@@ -38,9 +40,13 @@ export default function Navbar() {
         <span /><span /><span />
       </button>
       <ul className={`navbar__links ${menuOpen ? 'navbar__links--open' : ''}`}>
-        {links.map(({ key, href }) => (
+        {links.map(({ key, href, route }) => (
           <li key={key}>
-            <a href={href} onClick={() => setMenuOpen(false)}>{t(key)}</a>
+            {route ? (
+              <Link to={href} onClick={() => setMenuOpen(false)}>{t(key)}</Link>
+            ) : (
+              <a href={href} onClick={() => setMenuOpen(false)}>{t(key)}</a>
+            )}
           </li>
         ))}
         <li className="navbar__lang-item">

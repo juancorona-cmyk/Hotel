@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CDN } from '../lib/cdn'
+import RoomIncludesModal from './RoomIncludesModal'
 import './Rooms.css'
 
 const icons = {
@@ -11,12 +12,14 @@ const icons = {
   wifi:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>,
   tv:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>,
   desk:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="9" width="20" height="3" rx="1"/><path d="M5 12v7M19 12v7M5 19h14M9 9V5h6v4"/></svg>,
+  desayuno: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
 }
 
 export default function Rooms({ onBook }) {
   const { t } = useTranslation()
   const [current, setCurrent] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
+  const [showIncludes, setShowIncludes] = useState(false)
   const sectionRef = useRef(null)
   const touchStartX = useRef(null)
 
@@ -41,6 +44,7 @@ export default function Rooms({ onBook }) {
     {
       id: 'deluxe',
       name: 'Deluxe',
+      price: 1600,
       image: CDN.DELUXE,
       features: [
         { icon: icons.personas, key: 'habitaciones.personas1' },
@@ -54,6 +58,7 @@ export default function Rooms({ onBook }) {
     {
       id: 'doble',
       name: 'Doble',
+      price: 1350,
       image: CDN.DELUXE_DOUBLE,
       features: [
         { icon: icons.personas, key: 'habitaciones.personas2' },
@@ -71,6 +76,7 @@ export default function Rooms({ onBook }) {
   const room = rooms[current]
 
   return (
+    <>
     <section id="habitaciones" className={`rooms ${isVisible ? 'is-visible' : ''}`} ref={sectionRef}>
       <video
         className="rooms__video-bg"
@@ -99,6 +105,18 @@ export default function Rooms({ onBook }) {
           <div className="rooms__info">
             <p className="rooms__label">{t('habitaciones.label')}</p>
             <h3 className="rooms__name">{room.name}</h3>
+            <p className="rooms__price">
+              <span className="rooms__price-amount">${room.price} <small>MXN</small></span>
+              <span className="rooms__price-unit">{t('habitaciones.porNoche')}</span>
+            </p>
+            <button
+              type="button"
+              className="rooms__includes-btn"
+              onClick={() => setShowIncludes(true)}
+            >
+              <span className="rooms__includes-icon">{icons.desayuno}</span>
+              {room.id === 'doble' ? t('habitaciones.desayunoIncluido') : t('habitaciones.verDetalles')}
+            </button>
             <ul className="rooms__features">
               {room.features.map(({ icon, key }) => (
                 <li key={key}>
@@ -135,5 +153,7 @@ export default function Rooms({ onBook }) {
         ))}
       </div>
     </section>
+    {showIncludes && <RoomIncludesModal room={room} onClose={() => setShowIncludes(false)} />}
+    </>
   )
 }

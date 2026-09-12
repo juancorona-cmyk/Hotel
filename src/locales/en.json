@@ -7,6 +7,7 @@
     "restaurante": "RESTAURANT",
     "eventos": "EVENT HALL",
     "ubicacion": "LOCATION",
+    "casaAmbar": "CASA ÁMBAR",
     "menu": "Menu",
     "cambiarIdioma": "Change language"
   },
@@ -78,7 +79,14 @@
     "wifi": "Free Wi-Fi",
     "tv": "Smart TV",
     "escritorio": "Work desk",
-    "btn": "Book via WhatsApp"
+    "btn": "Book via WhatsApp",
+    "porNoche": "per night",
+    "desayunoIncluido": "Breakfast included when booking through the website",
+    "verDetalles": "See reservation details",
+    "detallesReserva": "Reservation details",
+    "precioWeb": "Price available only when booking online",
+    "checkinCheckout": "Check-in / Check-out 24 hrs",
+    "entendido": "Got it"
   },
   "videos": {
     "eyebrow": "DISCOVER THE HOTEL",

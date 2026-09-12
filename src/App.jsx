@@ -29,6 +29,7 @@ import './components/MaintenanceBanner.css'
 const BookingModal = lazy(() => import('./components/BookingModal'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const EventoPage = lazy(() => import('./components/EventoPage'))
+const CasaAmbarPage = lazy(() => import('./components/CasaAmbarPage'))
 const CheckInPage = lazy(() => import('./components/CheckInPage'))
 
 // True solo en Android/iOS nativo, false en navegador web
@@ -436,6 +437,14 @@ export default function App() {
             <EventoPage key={dataVersion} />
           </Suspense>
         } />
+
+        {/* Ruta oculta temporalmente
+        <Route path="/casa-ambar" element={
+          <Suspense fallback={<LazyFallback />}>
+            <CasaAmbarPage />
+          </Suspense>
+        } />
+        */}
 
         {/* Browser-only route, ignored in native app as /* matches first */}
         <Route path="/checkin" element={
