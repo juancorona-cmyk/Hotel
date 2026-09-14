@@ -32,7 +32,7 @@ import './components/MaintenanceBanner.css'
 const BookingModal = lazy(() => import('./components/BookingModal'))
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const EventoPage = lazy(() => import('./components/EventoPage'))
-const CasaAmbarPage = lazy(() => import('./components/CasaAmbarPage'))
+// const CasaAmbarPage = lazy(() => import('./components/CasaAmbarPage')) // pendiente: archivo aun no subido
 const CheckInPage = lazy(() => import('./components/CheckInPage'))
 
 // True solo en Android/iOS nativo, false en navegador web
