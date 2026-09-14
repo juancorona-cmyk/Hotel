@@ -33,7 +33,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
   const { t, i18n } = useTranslation()
 
   const ROOMS = [
-    { id: 'deluxe', name: t('modal.deluxe'), maxAdults: 2, maxChildren: 0, label: t('modal.habDeluxe'), price: 1600 },
+    { id: 'deluxe', name: t('modal.deluxe'), maxAdults: 2, maxChildren: 0, label: t('modal.habDeluxe'), price: 1500 },
     { id: 'doble',  name: t('modal.doble'),  maxAdults: 4, maxChildren: 2, label: t('modal.habDoble'), price: 1350 },
   ]
 
@@ -154,9 +154,7 @@ export default function BookingModal({ initialRoom, onClose, promoActive = false
                 </button>
               ))}
             </div>
-            {roomId === 'doble' && (
-              <p className="bm-price-note">{t('habitaciones.desayunoIncluido')}</p>
-            )}
+            <p className="bm-price-note">{t('habitaciones.desayunoIncluido')}</p>
             <button type="button" className="bm-pet-link" onClick={() => setShowPetPolicy(true)}>
               <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <circle cx="4.5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19.5" cy="9.5" r="2.2"/>

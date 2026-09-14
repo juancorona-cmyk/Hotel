@@ -13,15 +13,29 @@ const icons = {
   tv:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 20h8M12 18v2"/></svg>,
   desk:     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="9" width="20" height="3" rx="1"/><path d="M5 12v7M19 12v7M5 19h14M9 9V5h6v4"/></svg>,
   desayuno: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
+  ojo: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>,
 }
 
-export default function Rooms({ onBook }) {
+const URGENCY_DEFAULTS = { badgeEnabled: false, roomsLeft: {} }
+
+export default function Rooms({ onBook, urgencyConfig = URGENCY_DEFAULTS }) {
   const { t } = useTranslation()
   const [current, setCurrent] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
   const [showIncludes, setShowIncludes] = useState(false)
+  const [viewers, setViewers] = useState(() => 6 + Math.floor(Math.random() * 19))
   const sectionRef = useRef(null)
   const touchStartX = useRef(null)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setViewers(v => {
+        const delta = Math.floor(Math.random() * 5) - 2
+        return Math.min(34, Math.max(4, v + delta))
+      })
+    }, 4000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -44,7 +58,7 @@ export default function Rooms({ onBook }) {
     {
       id: 'deluxe',
       name: 'Deluxe',
-      price: 1600,
+      price: 1500,
       image: CDN.DELUXE,
       features: [
         { icon: icons.personas, key: 'habitaciones.personas1' },
@@ -104,6 +118,17 @@ export default function Rooms({ onBook }) {
           </div>
           <div className="rooms__info">
             <p className="rooms__label">{t('habitaciones.label')}</p>
+            <p className="rooms__viewers">
+              <span className="rooms__viewers-icon">{icons.ojo}</span>
+              <strong>{viewers}</strong>
+              <span className="rooms__viewers-sep">·</span>
+              personas han visto esto
+            </p>
+            {urgencyConfig.badgeEnabled && urgencyConfig.roomsLeft?.[room.id] > 0 && (
+              <span className="rooms__urgency-badge">
+                Solo quedan {urgencyConfig.roomsLeft[room.id]} habitaciones
+              </span>
+            )}
             <h3 className="rooms__name">{room.name}</h3>
             <p className="rooms__price">
               <span className="rooms__price-amount">${room.price} <small>MXN</small></span>
@@ -115,7 +140,7 @@ export default function Rooms({ onBook }) {
               onClick={() => setShowIncludes(true)}
             >
               <span className="rooms__includes-icon">{icons.desayuno}</span>
-              {room.id === 'doble' ? t('habitaciones.desayunoIncluido') : t('habitaciones.verDetalles')}
+              {t('habitaciones.desayunoIncluido')}
             </button>
             <ul className="rooms__features">
               {room.features.map(({ icon, key }) => (

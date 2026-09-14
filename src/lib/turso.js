@@ -846,3 +846,51 @@ export async function setPromoConfig(config) {
     [txt(JSON.stringify(config))]
   )
 }
+
+// ── Urgency Config (badge cuartos + countdown) ───────────
+const URGENCY_DEFAULTS = {
+  badgeEnabled: true,
+  roomsLeft: { deluxe: 3, doble: 5 },
+  countdownEnabled: true,
+  countdownText: 'Reserva hoy y llévate el desayuno incluido gratis',
+  countdownColor: '#5a6c1e',
+}
+
+export async function getUrgencyConfig() {
+  try {
+    const res = await exec("SELECT value FROM hotel_settings WHERE key = 'urgency_config' LIMIT 1")
+    const row = parseRows(res)[0]
+    if (!row) return { ...URGENCY_DEFAULTS }
+    const parsed = JSON.parse(row.value)
+    return { ...URGENCY_DEFAULTS, ...parsed, roomsLeft: { ...URGENCY_DEFAULTS.roomsLeft, ...parsed.roomsLeft } }
+  } catch { return { ...URGENCY_DEFAULTS } }
+}
+
+export async function setUrgencyConfig(config) {
+  return exec(
+    "INSERT OR REPLACE INTO hotel_settings (key, value) VALUES ('urgency_config', ?)",
+    [txt(JSON.stringify(config))]
+  )
+}
+
+// ── Live activity (viendo / reservando ahora) ────────────
+// Cuenta sesiones reales de bot_events, excluyendo la propia. Sin datos = no se muestra nada.
+export async function getLiveActivity() {
+  try {
+    const mySession = getSession()
+    const [viewersRes, bookersRes] = await Promise.all([
+      exec(
+        "SELECT COUNT(DISTINCT session_id) as cnt FROM bot_events WHERE event_type = 'page_view' AND session_id != ? AND created_at >= datetime('now', '-10 minutes')",
+        [txt(mySession)]
+      ),
+      exec(
+        "SELECT COUNT(DISTINCT session_id) as cnt FROM bot_events WHERE event_type = 'reserva_click' AND session_id != ? AND created_at >= datetime('now', '-15 minutes')",
+        [txt(mySession)]
+      ),
+    ])
+    return {
+      viewing: Number(parseRows(viewersRes)[0]?.cnt || 0),
+      booking: Number(parseRows(bookersRes)[0]?.cnt || 0),
+    }
+  } catch { return { viewing: 0, booking: 0 } }
+}

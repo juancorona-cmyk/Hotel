@@ -21,7 +21,10 @@ import Location from './components/Location'
 import Footer from './components/Footer'
 import HotelBot from './components/HotelBot'
 import PromoStrip from './components/PromoStrip'
-import { setupDB, trackEvent, getProxyConfig, getRegistrationById, getPromoActive, getPromoConfig } from './lib/turso'
+import CountdownBanner from './components/CountdownBanner'
+import CountdownFloat from './components/CountdownFloat'
+import LiveActivityBadge from './components/LiveActivityBadge'
+import { setupDB, trackEvent, getProxyConfig, getRegistrationById, getPromoActive, getPromoConfig, getUrgencyConfig } from './lib/turso'
 import { fmtFecha, getDeviceType } from './lib/utils'
 import { updateCDN } from './lib/cdn'
 import './components/MaintenanceBanner.css'
@@ -294,7 +297,7 @@ function CheckInBrowserGateway() {
   )
 }
 
-function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive, promoConfig }) {
+function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVersion, setDataVersion, promoActive, promoConfig, urgencyConfig }) {
   const openBooking = (source, roomId) => {
     trackEvent('reserva_click', { source, origin: 'web', ...(promoActive ? { promo: 'web_20' } : {}), room: roomId, device: getDeviceType() })
     setBookingRoom(roomId)
@@ -305,13 +308,16 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
       <Navbar />
       <Hero onBook={() => openBooking('hero', 'deluxe')} promoActive={promoActive} promoConfig={promoConfig} />
       {promoActive && <PromoStrip onBook={() => openBooking('hero_strip', 'deluxe')} promoConfig={promoConfig} />}
+      {urgencyConfig.countdownEnabled && (
+        <CountdownBanner onBook={() => openBooking('countdown_banner', 'deluxe')} config={urgencyConfig} />
+      )}
       <AhmemacStrip />
       <About />
       <Stats />
       <Convenios />
       <Marquee />
       <Amenidades key={`amenidades-${dataVersion}`} />
-      <Rooms onBook={(roomId) => openBooking('rooms', roomId)} />
+      <Rooms onBook={(roomId) => openBooking('rooms', roomId)} urgencyConfig={urgencyConfig} />
       <Videos />
       <Restaurant />
       <EventHall />
@@ -320,6 +326,10 @@ function HomeApp({ bookingRoom, setBookingRoom, showAdmin, setShowAdmin, dataVer
       <Footer />
       <HotelBot />
       <AhmemacTab />
+      <LiveActivityBadge />
+      {urgencyConfig.countdownEnabled && (
+        <CountdownFloat onBook={() => openBooking('countdown_float', 'deluxe')} config={urgencyConfig} />
+      )}
       {bookingRoom && (
         <Suspense fallback={<LazyFallback />}>
           <BookingModal
@@ -350,11 +360,19 @@ export default function App() {
   const [dataVersion, setDataVersion] = useState(0)
   const [promoActive, setPromoActive] = useState(false)
   const [promoConfig, setPromoConfig] = useState({ label: '20% OFF', color: '#b5c840' })
+  const [urgencyConfig, setUrgencyConfig] = useState({
+    badgeEnabled: false,
+    roomsLeft: {},
+    countdownEnabled: false,
+    countdownText: '',
+    countdownColor: '#5a6c1e',
+  })
   const navigate = useNavigate()
 
   useEffect(() => {
     getPromoActive().then(setPromoActive)
     getPromoConfig().then(setPromoConfig)
+    getUrgencyConfig().then(setUrgencyConfig)
   }, [dataVersion])
 
   useEffect(() => {
@@ -474,6 +492,7 @@ export default function App() {
               setDataVersion={setDataVersion}
               promoActive={promoActive}
               promoConfig={promoConfig}
+              urgencyConfig={urgencyConfig}
             />
           )
         } />

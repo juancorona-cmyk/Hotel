@@ -11,6 +11,7 @@ import {
   getRegistrationById, checkInRegistration, undoCheckInRegistration,
   adminForceChangePassword, genGenericPassword,
   getPromoActive, setPromoActive, getPromoConfig, setPromoConfig,
+  getUrgencyConfig, setUrgencyConfig,
   API_BASE
 } from '../lib/turso'
 import { checkPasswordStrength } from '../lib/passwordStrength'
@@ -3130,7 +3131,10 @@ export default function AdminDashboard({ onClose }) {
             ) : tab === 'reportes' ? (
               <ReportesSection />
             ) : tab === 'config' ? (
-              <PromoConfigSection />
+              <>
+                <PromoConfigSection />
+                <UrgencyConfigSection />
+              </>
             ) : tab === 'google' ? (
               <SearchConsoleTab />
             ) : loading && !stats ? (
@@ -3367,6 +3371,130 @@ function PromoConfigSection() {
           {savingCfg ? 'Guardando…' : 'Guardar cambios'}
         </button>
         {msgCfg && <p style={{ marginTop: 8, fontSize: 12, color: '#5a6c1e', fontWeight: 600 }}>{msgCfg}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Urgency Config Section (badge cuartos + countdown) ──────
+function UrgencyConfigSection() {
+  const [cfg, setCfg] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => { getUrgencyConfig().then(setCfg) }, [])
+
+  const save = async () => {
+    setSaving(true); setMsg('')
+    try {
+      await setUrgencyConfig(cfg)
+      setMsg('Guardado. Recarga la web para ver los cambios.')
+    } catch { setMsg('Error al guardar') }
+    finally { setSaving(false) }
+  }
+
+  if (!cfg) return <p className="adm-users__loading">Cargando…</p>
+
+  const Toggle = ({ on, onClick }) => (
+    <div style={{
+      width: 52, height: 28, borderRadius: 14, cursor: 'pointer',
+      background: on ? '#5a6c1e' : '#ccc', position: 'relative', transition: 'background .2s', flexShrink: 0,
+    }} onClick={onClick}>
+      <div style={{
+        width: 22, height: 22, borderRadius: '50%', background: '#fff',
+        position: 'absolute', top: 3, left: on ? 27 : 3, transition: 'left .2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+      }} />
+    </div>
+  )
+
+  return (
+    <div style={{ padding: '20px 0', maxWidth: 520 }}>
+
+      {/* Badge últimas habitaciones */}
+      <div className="adm-section-lbl">BADGE "ÚLTIMAS HABITACIONES"</div>
+      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '18px 22px', marginTop: 10, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <Toggle on={cfg.badgeEnabled} onClick={() => setCfg(c => ({ ...c, badgeEnabled: !c.badgeEnabled }))} />
+          <span style={{ fontWeight: 700, fontSize: 15, color: cfg.badgeEnabled ? '#3a4a10' : '#888' }}>
+            {cfg.badgeEnabled ? 'ACTIVO' : 'INACTIVO'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 6 }}>CUARTOS RESTANTES DELUXE</label>
+            <input
+              type="number" min="0" max="99"
+              value={cfg.roomsLeft.deluxe ?? 0}
+              onChange={e => setCfg(c => ({ ...c, roomsLeft: { ...c.roomsLeft, deluxe: Number(e.target.value) } }))}
+              style={{ width: 90, boxSizing: 'border-box', padding: '8px 12px', borderRadius: 7, border: '1px solid #cdd8a0', fontSize: 14, fontFamily: 'Montserrat, sans-serif', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 6 }}>CUARTOS RESTANTES DOBLE</label>
+            <input
+              type="number" min="0" max="99"
+              value={cfg.roomsLeft.doble ?? 0}
+              onChange={e => setCfg(c => ({ ...c, roomsLeft: { ...c.roomsLeft, doble: Number(e.target.value) } }))}
+              style={{ width: 90, boxSizing: 'border-box', padding: '8px 12px', borderRadius: 7, border: '1px solid #cdd8a0', fontSize: 14, fontFamily: 'Montserrat, sans-serif', outline: 'none' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Countdown */}
+      <div className="adm-section-lbl">COUNTDOWN DE OFERTA</div>
+      <div style={{ background: '#f8f9f3', border: '1px solid #dde5c0', borderRadius: 10, padding: '18px 22px', marginTop: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <Toggle on={cfg.countdownEnabled} onClick={() => setCfg(c => ({ ...c, countdownEnabled: !c.countdownEnabled }))} />
+          <span style={{ fontWeight: 700, fontSize: 15, color: cfg.countdownEnabled ? '#3a4a10' : '#888' }}>
+            {cfg.countdownEnabled ? 'ACTIVO' : 'INACTIVO'}
+          </span>
+        </div>
+
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 6 }}>TEXTO DEL COUNTDOWN</label>
+        <input
+          type="text"
+          value={cfg.countdownText}
+          maxLength={60}
+          onChange={e => setCfg(c => ({ ...c, countdownText: e.target.value }))}
+          placeholder="Ej: Reserva hoy y llévate el desayuno incluido gratis"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 7, border: '1px solid #cdd8a0', fontSize: 14, fontFamily: 'Montserrat, sans-serif', marginBottom: 18, outline: 'none' }}
+        />
+
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 8 }}>COLOR</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {PRESET_COLORS.map(p => (
+            <div
+              key={p.hex}
+              title={p.name}
+              onClick={() => setCfg(c => ({ ...c, countdownColor: p.hex }))}
+              style={{
+                width: 30, height: 30, borderRadius: '50%', background: p.hex, cursor: 'pointer',
+                border: cfg.countdownColor === p.hex ? '3px solid #222' : '3px solid transparent',
+                boxShadow: cfg.countdownColor === p.hex ? '0 0 0 2px #fff inset' : 'none',
+                transition: 'border .15s',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Preview */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', letterSpacing: '.05em', marginBottom: 8 }}>PREVIEW</label>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
+            background: cfg.countdownColor, color: '#fff', fontSize: 11, fontWeight: 800,
+            textTransform: 'uppercase', padding: '10px 14px', borderRadius: 6,
+          }}>
+            ⏱ {cfg.countdownText || '…'} · Termina en <span style={{ background: 'rgba(0,0,0,.2)', padding: '2px 8px', borderRadius: 6 }}>05:32:10</span>
+          </div>
+        </div>
+
+        <button className="adm-btn-sm adm-btn-sm--green" disabled={saving} onClick={save}>
+          {saving ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+        {msg && <p style={{ marginTop: 8, fontSize: 12, color: '#5a6c1e', fontWeight: 600 }}>{msg}</p>}
       </div>
     </div>
   )

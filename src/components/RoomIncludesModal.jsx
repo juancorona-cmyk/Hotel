@@ -43,12 +43,10 @@ export default function RoomIncludesModal({ room, onClose }) {
               <div className="rim-list__icon">{icons.clock}</div>
               <span>{t('habitaciones.checkinCheckout')}</span>
             </li>
-            {room.id === 'doble' && (
-              <li className="rim-list--highlight">
-                <div className="rim-list__icon">{icons.desayuno}</div>
-                <span>{t('amenidades.desayuno')}</span>
-              </li>
-            )}
+            <li className="rim-list--highlight">
+              <div className="rim-list__icon">{icons.desayuno}</div>
+              <span>{t('amenidades.desayuno')}</span>
+            </li>
             <li>
               <div className="rim-list__icon">{icons.precio}</div>
               <span>{t('habitaciones.precioWeb')}</span>

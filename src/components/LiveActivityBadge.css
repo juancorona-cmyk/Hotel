@@ -1,0 +1,52 @@
+.lab {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 997;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 31, 14, 0.92);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 30px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  animation: labEnter 0.4s ease both;
+  pointer-events: none;
+}
+
+@keyframes labEnter {
+  0%   { transform: translateX(-50%) translateY(16px); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+.lab__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6bcf6b;
+  flex-shrink: 0;
+  animation: labPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes labPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+
+@media (max-width: 640px) {
+  .lab {
+    font-size: 11px;
+    padding: 8px 14px;
+    max-width: calc(100vw - 32px);
+    white-space: normal;
+    text-align: center;
+    bottom: 90px;
+  }
+}
