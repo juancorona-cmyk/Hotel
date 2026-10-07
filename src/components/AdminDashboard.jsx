@@ -758,7 +758,8 @@ function UsersSection({ currentUser, userRole }) {
     const uname = newUser.trim()
     if (!uname) { setErrU('Ingresa un nombre de usuario'); return }
     if (/\s/.test(uname)) { setErrU('El usuario no puede tener espacios'); return }
-    if (newPwd.length < 6) { setErrU('La contraseña debe tener al menos 6 caracteres'); return }
+    const pwChk = checkPasswordStrength(newPwd)
+    if (!pwChk.ok) { setErrU(pwChk.message); return }
     setCreating(true); setErrU('')
     try {
       await adminCreateUser(uname, newPwd, newRole, newMustChange)
@@ -782,7 +783,8 @@ function UsersSection({ currentUser, userRole }) {
 
   const saveChange = async (e) => {
     e.preventDefault()
-    if (changePwd.val.length < 6) { setErrU('Mínimo 6 caracteres'); return }
+    const pwChk = checkPasswordStrength(changePwd.val)
+    if (!pwChk.ok) { setErrU(pwChk.message); return }
     setCreating(true); setErrU('')
     try {
       await adminChangePassword(changePwd.user, changePwd.val, changePwd.mustChange)
@@ -976,7 +978,7 @@ function UsersSection({ currentUser, userRole }) {
                     type={showNew ? 'text' : 'password'}
                     value={newPwd}
                     onChange={e => { setNewPwd(e.target.value); setErrU('') }}
-                    placeholder="mín. 6 caracteres"
+                    placeholder="mín. 8, letras y números"
                     className="adm-newuser-field__input"
                     autoComplete="new-password"
                   />

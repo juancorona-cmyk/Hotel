@@ -1303,7 +1303,7 @@ export default function StaffApp({ onStartScan, onLogout }) {
                     <input
                       type="text"
                       className="sa-input"
-                      placeholder="Contraseña (mín. 6)"
+                      placeholder="Contraseña (mín. 8, letras y números)"
                       value={newUserPw}
                       onChange={e => { setNewUserPw(e.target.value); setNewUserErr('') }}
                     />
