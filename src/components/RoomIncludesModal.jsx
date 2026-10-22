@@ -45,7 +45,7 @@ export default function RoomIncludesModal({ room, onClose }) {
             </li>
             <li className="rim-list--highlight">
               <div className="rim-list__icon">{icons.desayuno}</div>
-              <span>{t('amenidades.desayuno')}</span>
+              <span>{t('amenidades.desayunoDetalle')}</span>
             </li>
             <li>
               <div className="rim-list__icon">{icons.precio}</div>
