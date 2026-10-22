@@ -3460,7 +3460,7 @@ function UrgencyConfigSection() {
           value={cfg.countdownText}
           maxLength={60}
           onChange={e => setCfg(c => ({ ...c, countdownText: e.target.value }))}
-          placeholder="Ej: Reserva hoy y llévate el desayuno incluido gratis"
+          placeholder="Ej: Desayuno incluido gratis (2 personas)"
           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 7, border: '1px solid #cdd8a0', fontSize: 14, fontFamily: 'Montserrat, sans-serif', marginBottom: 18, outline: 'none' }}
         />
 

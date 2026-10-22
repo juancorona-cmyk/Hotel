@@ -31,7 +31,7 @@ export default function CountdownFloat({ onBook, config = {} }) {
   }, [])
 
   const color = config.countdownColor || '#5a6c1e'
-  const text = config.countdownText || 'Reserva hoy y llévate el desayuno incluido gratis'
+  const text = config.countdownText || 'Reserva hoy y llévate el desayuno incluido gratis (2 personas)'
 
   if (isMobile && !expanded) {
     return (

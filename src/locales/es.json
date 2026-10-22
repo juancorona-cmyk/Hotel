@@ -52,7 +52,7 @@
     "ac": "Aire acondicionado",
     "restaurante": "Restaurante",
     "salon": "Salón de eventos",
-    "desayuno": "Desayuno incluido",
+    "desayuno": "Desayuno incluido (valido solo para 2 personas)",
     "checkin": "Check-in 24 hrs",
     "petFriendly": "Pet Friendly · Reglamento",
     "ubicacion": "Ubicación céntrica",
@@ -100,7 +100,7 @@
   },
   "restaurante": {
     "titulo": "RESTAURANTE",
-    "p1": "Disfruta de un espacio acogedor donde la frescura y el sabor se encuentran en cada platillo. Nuestro restaurante ofrece desayunos, comidas y cenas preparados con ingredientes de calidad, en un ambiente tranquilo rodeado de naturaleza.",
+    "p1": "Disfruta de un espacio acogedor donde la frescura y el sabor se encuentran en cada platillo. Nuestro restaurante ofrece desayunos, comidas y cenas preparados con ingredientes de calidad, en un ambiente tranquilo rodeado de naturaleza. El desayuno incluido en tu reserva es valido solo para 2 personas.",
     "p2Inicio": "Es el lugar ideal para ",
     "p2Bold": "festejar cumpleaños, reuniones de amigos o de trabajo",
     "p2Fin": ", o simplemente para disfrutar de una comida o un café en un ambiente de tranquilidad.",

@@ -21,7 +21,7 @@ export default function CountdownBanner({ onBook, config = {} }) {
   }, [])
 
   const color = config.countdownColor || '#5a6c1e'
-  const text = config.countdownText || 'Reserva hoy y llévate el desayuno incluido gratis'
+  const text = config.countdownText || 'Reserva hoy y llévate el desayuno incluido gratis (2 personas)'
 
   return (
     <div className="cdb" role="banner" onClick={onBook} style={{ background: color }}>

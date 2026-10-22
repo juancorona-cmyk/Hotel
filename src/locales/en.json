@@ -52,7 +52,7 @@
     "ac": "Air conditioning",
     "restaurante": "Restaurant",
     "salon": "Event hall",
-    "desayuno": "Breakfast included",
+    "desayuno": "Breakfast included (valid for 2 guests only)",
     "checkin": "24-hr check-in",
     "petFriendly": "Pet Friendly · Policy",
     "ubicacion": "Central location",
@@ -100,7 +100,7 @@
   },
   "restaurante": {
     "titulo": "RESTAURANT",
-    "p1": "Enjoy a welcoming space where freshness and flavor meet in every dish. Our restaurant offers breakfast, lunch and dinner prepared with quality ingredients, in a peaceful environment surrounded by nature.",
+    "p1": "Enjoy a welcoming space where freshness and flavor meet in every dish. Our restaurant offers breakfast, lunch and dinner prepared with quality ingredients, in a peaceful environment surrounded by nature. The breakfast included in your reservation is valid for 2 guests only.",
     "p2Inicio": "It is the ideal place to ",
     "p2Bold": "celebrate birthdays, friend or work gatherings",
     "p2Fin": ", or simply to enjoy a meal or coffee in a tranquil atmosphere.",

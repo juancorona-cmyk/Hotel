@@ -852,7 +852,7 @@ const URGENCY_DEFAULTS = {
   badgeEnabled: true,
   roomsLeft: { deluxe: 3, doble: 5 },
   countdownEnabled: true,
-  countdownText: 'Reserva hoy y llévate el desayuno incluido gratis',
+  countdownText: 'Reserva hoy y llévate el desayuno incluido gratis (2 personas)',
   countdownColor: '#5a6c1e',
 }
 
